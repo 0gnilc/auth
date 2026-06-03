@@ -24,7 +24,7 @@ Rules:
   - header must not end with a period
   - header must be at most 100 characters
 
-See COMMIT_CONVENTION.md for details.
+See .github/commit-convention.md for details.
 MSG
   exit 1
 fi

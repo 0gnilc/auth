@@ -53,6 +53,6 @@ jobs:
 
           if [[ "$failed" -ne 0 ]]; then
             echo
-            echo "Commit messages must follow COMMIT_CONVENTION.md."
+            echo "Commit messages must follow .github/commit-convention.md."
             exit 1
           fi
