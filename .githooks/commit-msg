@@ -1,0 +1,30 @@
+#!/usr/bin/env sh
+
+commit_msg_file="$1"
+header="$(sed -n '1p' "$commit_msg_file")"
+
+pattern='^(revert: .+|((feat|fix|docs|style|refactor|perf|test|workflow|build|ci|chore|types|wip)(\([a-z0-9][a-z0-9._-]*\))?: [a-z][^.]?.{0,87}[^.]))$'
+
+if ! printf '%s' "$header" | grep -Eq "$pattern"; then
+  cat <<'MSG'
+Invalid commit message.
+
+Expected format:
+  <type>(<scope>): <subject>
+  <type>: <subject>
+  revert: <reverted commit header>
+
+Allowed types:
+  feat, fix, docs, style, refactor, perf, test, workflow, build, ci, chore, types, wip
+
+Rules:
+  - type and subject are required
+  - scope is optional and must be lowercase letters/numbers/._-
+  - subject must start with a lowercase letter
+  - header must not end with a period
+  - header must be at most 100 characters
+
+See COMMIT_CONVENTION.md for details.
+MSG
+  exit 1
+fi
