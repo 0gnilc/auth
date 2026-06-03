@@ -11,5 +11,9 @@ target/
 # Logs
 *.log
 
-# Claude local settings
-.claude/settings.local.json
+# AI tooling (developer-specific)
+.claude/
+CLAUDE.md
+CLAUDE.me
+docs/agent/
+docs/agents/
