@@ -1,20 +1,20 @@
 # Git Commit Convention
 
-本项目提交信息遵循 Conventional Commits 风格，并参考 [vue-vben-admin commit convention](https://github.com/vbenjs/vue-vben-admin/blob/main/.github/commit-convention.md)。本规范同时通过本地 `commit-msg` hook 和 GitHub 仓库 ruleset 进行约束。
+This project follows Conventional Commits and references the [vue-vben-admin commit convention](https://github.com/vbenjs/vue-vben-admin/blob/main/.github/commit-convention.md). The convention is enforced by the local `commit-msg` hook and by the GitHub repository ruleset.
 
-## 提交格式
+## Commit format
 
 ```text
 <type>(<scope>): <subject>
 ```
 
-`scope` 可选：
+`scope` is optional:
 
 ```text
 <type>: <subject>
 ```
 
-完整提交可包含正文和页脚：
+A full commit message may include a body and footer:
 
 ```text
 <header>
@@ -24,32 +24,32 @@
 <footer>
 ```
 
-## 类型（type）
+## Type
 
-仅允许以下类型：
+Only the following types are allowed:
 
-| 类型 | 说明 | 是否进入变更日志 |
+| Type | Description | Changelog |
 | --- | --- | --- |
-| `feat` | 新功能 | 是 |
-| `fix` | 问题修复 | 是 |
-| `perf` | 性能优化 | 是 |
-| `docs` | 文档变更 | 否 |
-| `style` | 代码格式、样式调整，不影响逻辑 | 否 |
-| `refactor` | 重构，不新增功能也不修复缺陷 | 否 |
-| `test` | 测试相关 | 否 |
-| `workflow` | 工作流相关 | 否 |
-| `build` | 构建系统或依赖相关 | 否 |
-| `ci` | CI 配置相关 | 否 |
-| `chore` | 杂项维护 | 否 |
-| `types` | 类型定义相关 | 否 |
-| `wip` | 临时开发提交 | 否 |
-| `revert` | 回滚提交 | 否 |
+| `feat` | New feature | Yes |
+| `fix` | Bug fix | Yes |
+| `perf` | Performance improvement | Yes |
+| `docs` | Documentation change | No |
+| `style` | Formatting or style change that does not affect logic | No |
+| `refactor` | Refactoring without adding features or fixing bugs | No |
+| `test` | Test-related change | No |
+| `workflow` | Workflow-related change | No |
+| `build` | Build system or dependency change | No |
+| `ci` | CI configuration change | No |
+| `chore` | Miscellaneous maintenance change | No |
+| `types` | Type definition change | No |
+| `wip` | Work-in-progress commit | No |
+| `revert` | Revert commit | No |
 
-包含 `BREAKING CHANGE:` 的提交，无论类型如何，都视为破坏性变更并应进入变更日志。
+Any commit that contains `BREAKING CHANGE:` is treated as a breaking change and should be included in the changelog, regardless of its type.
 
-## 范围（scope）
+## Scope
 
-`scope` 用于说明变更影响的模块或区域。建议使用小写短词，例如：
+`scope` identifies the module or area affected by the change. Use short lowercase names, for example:
 
 - `core`
 - `rbac`
@@ -59,25 +59,25 @@
 - `docs`
 - `workflow`
 
-## 主题（subject）
+## Subject
 
-- 必填。
-- 使用祈使句、现在时。
-- 以小写字母开头。
-- 不以句号结尾。
-- 建议简洁明确；本地与远程规则限制 header 最长 100 个字符。
+- Required.
+- Use imperative, present-tense wording.
+- Start with a lowercase letter.
+- Do not end with a period.
+- Keep it concise. The local and remote rules limit the header to 100 characters.
 
-## 正文（body）
+## Body
 
-正文用于解释：
+Use the body to explain:
 
-- 为什么需要该变更。
-- 新行为与旧行为的差异。
-- 重要实现细节或迁移说明。
+- Why the change is needed.
+- How the new behavior differs from the previous behavior.
+- Important implementation details or migration notes.
 
-## 页脚（footer）
+## Footer
 
-页脚用于记录破坏性变更和 issue 关联：
+Use the footer for breaking changes and issue references:
 
 ```text
 BREAKING CHANGE: describe the breaking change
@@ -87,9 +87,9 @@ BREAKING CHANGE: describe the breaking change
 close #28
 ```
 
-## 回滚提交
+## Revert commits
 
-回滚提交应使用：
+A revert commit should use:
 
 ```text
 revert: <reverted commit header>
@@ -97,7 +97,7 @@ revert: <reverted commit header>
 This reverts commit <hash>.
 ```
 
-## 示例
+## Examples
 
 ```text
 feat(core): add permission evaluator
