@@ -7,38 +7,38 @@ import java.util.List;
 
 @Data
 public class PageResult<T> {
-    private Integer totalPage;
+    private long totalPage;
 
-    private Integer totalCount;
+    private long totalCount;
 
-    private Integer pageSize;
+    private long pageSize;
 
-    private Integer currentPage;
+    private long currentPage;
 
     private List<T> list;
 
-    public PageResult(List<T> list, int totalCount, int pageSize, int currentPage) {
+    public PageResult(List<T> list, long totalCount, long pageSize, long currentPage) {
         this.list = list;
         this.totalCount = totalCount;
         this.pageSize = pageSize;
         this.currentPage = currentPage;
-        this.totalPage = (int) Math.ceil((double) totalCount / pageSize);
+        this.totalPage = (long) Math.ceil((double) totalCount / pageSize);
     }
 
     public PageResult(IPage<T> page) {
         this.list = page.getRecords();
-        this.totalCount = (int) page.getTotal();
-        this.pageSize = (int) page.getSize();
-        this.currentPage = (int) page.getCurrent();
-        this.totalPage = (int) page.getPages();
+        this.totalCount = page.getTotal();
+        this.pageSize = page.getSize();
+        this.currentPage = page.getCurrent();
+        this.totalPage = page.getPages();
     }
 
     public PageResult() {
         this.list = List.of();
-        this.totalCount = 0;
-        this.pageSize = 10;
-        this.currentPage = 1;
-        this.totalPage = 0;
+        this.totalCount = 0L;
+        this.pageSize = 10L;
+        this.currentPage = 1L;
+        this.totalPage = 0L;
     }
 
     public static <T> PageResult<T> of(IPage<T> page) {
@@ -46,7 +46,7 @@ public class PageResult<T> {
     }
 
     public static <T> PageResult<T> of(IPage<?> page, List<T> list) {
-        return new PageResult<>(list, (int) page.getTotal(), (int) page.getSize(), (int) page.getCurrent());
+        return new PageResult<>(list, page.getTotal(), page.getSize(), page.getCurrent());
     }
 
     public static <T> PageResult<T> of(PageResult<?> page, List<T> list) {

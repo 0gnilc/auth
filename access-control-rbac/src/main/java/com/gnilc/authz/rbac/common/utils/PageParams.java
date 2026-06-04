@@ -6,12 +6,12 @@ import lombok.Data;
 
 @Data
 public class PageParams {
-    private final static Integer DEFAULT_CURRENT_PAGE = 1;
-    private final static Integer DEFAULT_PAGE_SIZE = 10;
+    private final static Long DEFAULT_CURRENT_PAGE = 1L;
+    private final static Long DEFAULT_PAGE_SIZE = 10L;
 
-    private Integer currentPage;
+    private Long currentPage;
 
-    private Integer pageSize;
+    private Long pageSize;
 
     public <T> IPage<T> getPage() {
         if (currentPage == null || currentPage < 1) {
