@@ -3,11 +3,10 @@ package com.gnilc.authz.annotation;
 
 import com.gnilc.authz.decision.AccessDecision;
 import com.gnilc.authz.decision.AffirmativeAccessDecision;
-import com.gnilc.authz.denied.AccessDenied;
-import com.gnilc.authz.provider.DelegatingResourcePermissionsProvider;
-import com.gnilc.authz.provider.DelegatingSubjectPermissionsProvider;
-import com.gnilc.authz.provider.ResourcePermissionsProvider;
-import com.gnilc.authz.provider.SubjectPermissionsProvider;
+import com.gnilc.authz.provider.DelegatingGrantedPermissionsProvider;
+import com.gnilc.authz.provider.DelegatingRequiredPermissionsProvider;
+import com.gnilc.authz.provider.GrantedPermissionsProvider;
+import com.gnilc.authz.provider.RequiredPermissionsProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.AutoConfigureOrder;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -23,28 +22,20 @@ public class AccessControlConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(AccessDecision.class)
-    public AccessDecision accessDecision(@Qualifier(DelegatingSubjectPermissionsProvider.BEAN_NAME) DelegatingSubjectPermissionsProvider sp,
-                                         @Qualifier(DelegatingResourcePermissionsProvider.BEAN_NAME) DelegatingResourcePermissionsProvider rp) {
-        return new AffirmativeAccessDecision(sp, rp);
+    public AccessDecision accessDecision(@Qualifier(DelegatingGrantedPermissionsProvider.BEAN_NAME) DelegatingGrantedPermissionsProvider granted,
+                                         @Qualifier(DelegatingRequiredPermissionsProvider.BEAN_NAME) DelegatingRequiredPermissionsProvider required) {
+        return new AffirmativeAccessDecision(granted, required);
     }
 
-    @Bean
-    @ConditionalOnMissingBean(AccessDenied.class)
-    public AccessDenied accessDenied() {
-        return resource -> {
-            // Do not handle
-        };
-    }
-
-    @Bean(name = DelegatingSubjectPermissionsProvider.BEAN_NAME)
+    @Bean(name = DelegatingGrantedPermissionsProvider.BEAN_NAME)
     @Lazy
-    public DelegatingSubjectPermissionsProvider delegatingVisitorOwnedPermissionsProvider(Set<SubjectPermissionsProvider> sps) {
-        return new DelegatingSubjectPermissionsProvider(sps);
+    public DelegatingGrantedPermissionsProvider delegatingGrantedPermissionsProvider(Set<GrantedPermissionsProvider> providers) {
+        return new DelegatingGrantedPermissionsProvider(providers);
     }
 
-    @Bean(name = DelegatingResourcePermissionsProvider.BEAN_NAME)
+    @Bean(name = DelegatingRequiredPermissionsProvider.BEAN_NAME)
     @Lazy
-    public DelegatingResourcePermissionsProvider delegatingTargetAccessiblePermissionsProvider(Set<ResourcePermissionsProvider> rps) {
-        return new DelegatingResourcePermissionsProvider(rps);
+    public DelegatingRequiredPermissionsProvider delegatingRequiredPermissionsProvider(Set<RequiredPermissionsProvider> providers) {
+        return new DelegatingRequiredPermissionsProvider(providers);
     }
 }

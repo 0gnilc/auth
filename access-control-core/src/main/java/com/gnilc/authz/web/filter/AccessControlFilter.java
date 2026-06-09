@@ -1,41 +1,64 @@
 package com.gnilc.authz.web.filter;
 
 import com.google.common.base.Preconditions;
+import com.gnilc.authz.context.AccessContext;
+import com.gnilc.authz.context.AccessContextAdapter;
 import com.gnilc.authz.decision.AccessDecision;
-import com.gnilc.authz.denied.AccessDenied;
+import com.gnilc.authz.denied.AccessDeniedHandler;
+import com.gnilc.authz.web.context.FilterDeniedContext;
 import jakarta.servlet.*;
+import jakarta.servlet.http.HttpServletRequest;
 
 
 import java.io.IOException;
 
 /**
- * 权限控制过滤器
+ * 权限控制过滤器。
+ * <p>
+ * 过滤器只负责连接 Servlet 环境和授权核心：构造访问上下文、执行决策、分派拒绝处理。
  */
 public class AccessControlFilter implements Filter {
     public static final int REGISTRATION_ORDER = Integer.MAX_VALUE;
     public static final int REGISTRATION_ORDER_PREVIOUS = REGISTRATION_ORDER - 1;
     /**
-     * 访问决策器
+     * 访问上下文适配器。
+     */
+    private final AccessContextAdapter<HttpServletRequest> accessContextAdapter;
+    /**
+     * 访问决策器。
      */
     private final AccessDecision accessDecision;
     /**
-     * 访问拒绝器
+     * 访问拒绝处理器。
      */
-    private final AccessDenied accessDenied;
+    private final AccessDeniedHandler<FilterDeniedContext> accessDeniedHandler;
 
-    public AccessControlFilter(final AccessDecision accessDecision, final AccessDenied accessDenied) {
+    /**
+     * 创建权限控制过滤器。
+     *
+     * @param accessContextAdapter 访问上下文适配器
+     * @param accessDecision       访问决策器
+     * @param accessDeniedHandler  访问拒绝处理器
+     */
+    public AccessControlFilter(final AccessContextAdapter<HttpServletRequest> accessContextAdapter,
+                               final AccessDecision accessDecision,
+                               final AccessDeniedHandler<FilterDeniedContext> accessDeniedHandler) {
+        Preconditions.checkArgument(accessContextAdapter != null, "accessContextAdapter == null!");
         Preconditions.checkArgument(accessDecision != null, "accessDecision == null!");
-        Preconditions.checkArgument(accessDenied != null, "accessDenied == null!");
+        Preconditions.checkArgument(accessDeniedHandler != null, "accessDeniedHandler == null!");
+        this.accessContextAdapter = accessContextAdapter;
         this.accessDecision = accessDecision;
-        this.accessDenied = accessDenied;
+        this.accessDeniedHandler = accessDeniedHandler;
     }
 
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
-        if (accessDecision.decide()) {
+        AccessContext context = accessContextAdapter.adapt((HttpServletRequest) request);
+        if (accessDecision.decide(context)) {
             chain.doFilter(request, response);
-        } else {
-            accessDenied.denied(new FilterWrapper(request, response, chain));
+            return;
         }
+        // 拒绝处理保留 Servlet 上下文，但授权核心只接收 AccessContext。
+        accessDeniedHandler.handle(context, new FilterDeniedContext(request, response, chain));
     }
 }

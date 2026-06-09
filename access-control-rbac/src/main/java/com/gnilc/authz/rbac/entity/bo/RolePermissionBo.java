@@ -13,7 +13,7 @@ import lombok.Data;
  * @author kyhns7
  */
 @Data
-@TableName("ac_role_permission")
+@TableName("authz_role_permission")
 public class RolePermissionBo implements Serializable {
 	@Serial
 	private static final long serialVersionUID = 1L;

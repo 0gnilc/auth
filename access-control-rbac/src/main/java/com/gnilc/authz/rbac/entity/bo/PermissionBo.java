@@ -14,7 +14,7 @@ import lombok.Data;
  * @author kyhns7
  */
 @Data
-@TableName("ac_permission")
+@TableName("authz_permission")
 public class PermissionBo implements Serializable {
     @Serial
     private static final long serialVersionUID = 1L;
@@ -25,7 +25,7 @@ public class PermissionBo implements Serializable {
     @TableId(type = IdType.AUTO)
     private Long id;
     /**
-     * 是否删除
+     * 是否删除,0未删除、1已删除
      */
     private Integer del;
     /**
@@ -41,21 +41,25 @@ public class PermissionBo implements Serializable {
     /**
      * 权限标识
      */
-    private String symbol;
+    private String code;
     /**
      * 权限名称
      */
     private String name;
     /**
+     * 访问目标标识
+     */
+    private String targetIdentifier;
+    /**
+     * 访问目标限定符
+     */
+    private String targetQualifier;
+    /**
      * 描述/备注
      */
     private String remark;
     /**
-     * 受保护的资源
+     * 是否公开访问,0否、1是
      */
-    private String resource;
-    /**
-     * 是否公开
-     */
-    private Boolean exposed;
+    private Boolean publicAccess;
 }

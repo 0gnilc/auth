@@ -4,10 +4,11 @@ import com.gnilc.authz.rbac.common.utils.R;
 import com.gnilc.authz.rbac.entity.dto.PermissionDto;
 import com.gnilc.authz.rbac.entity.dto.PermissionQueryDto;
 import com.gnilc.authz.rbac.entity.vo.PermissionVo;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
-
+import com.gnilc.authz.rbac.event.RbacAuthzEvent;
 import com.gnilc.authz.rbac.service.PermissionService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -18,28 +19,31 @@ import java.util.List;
  * @author kyhns7
  */
 @RestController
-@RequestMapping("/ac/permission")
+@RequestMapping("/authz/permission")
 public class PermissionController {
     @Autowired
     private PermissionService permissionService;
 
-    @PostMapping("/list")
-    public R<List<PermissionVo>> getPermissions(@RequestBody PermissionQueryDto qd) {
-        List<PermissionVo> list = permissionService.getPermissions(qd);
+    @Autowired
+    private ApplicationEventPublisher publisher;
 
-        return R.success(list);
+    @PostMapping("/list")
+    public R<List<PermissionVo>> getPermissions(@RequestBody PermissionQueryDto pqd) {
+        List<PermissionVo> pvs = permissionService.getPermissions(pqd);
+
+        return R.success(pvs);
     }
 
-    @PostMapping("/save")
-    public R<?> savePermission(@RequestBody PermissionDto pd) {
-        permissionService.savePermission(pd);
+    @PostMapping("/create")
+    public R<?> createPermission(@RequestBody PermissionDto pd) {
+        permissionService.createPermission(pd);
 
         return R.success();
     }
 
-    @PostMapping("/modify")
-    public R<?> modifyPermission(@RequestBody PermissionDto pd) {
-        permissionService.modifyPermission(pd);
+    @PostMapping("/update")
+    public R<?> updatePermission(@RequestBody PermissionDto pd) {
+        permissionService.updatePermission(pd);
 
         return R.success();
     }
@@ -47,6 +51,15 @@ public class PermissionController {
     @PostMapping("/remove/{id}")
     public R<?> removePermission(@PathVariable("id") Long id) {
         permissionService.removePermission(id);
+
+        return R.success();
+    }
+
+    @PostMapping("/cache/clear-all")
+    public R<?> clearAllPermissionCache() {
+        publisher.publishEvent(RbacAuthzEvent.of(
+                RbacAuthzEvent.Type.ALL,
+                RbacAuthzEvent.Action.CLEAR));
 
         return R.success();
     }

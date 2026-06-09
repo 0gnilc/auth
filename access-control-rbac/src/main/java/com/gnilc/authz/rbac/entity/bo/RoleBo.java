@@ -14,7 +14,7 @@ import lombok.Data;
  * @author kyhns7
  */
 @Data
-@TableName("ac_role")
+@TableName("authz_role")
 public class RoleBo implements Serializable {
     @Serial
     private static final long serialVersionUID = 1L;
@@ -25,7 +25,7 @@ public class RoleBo implements Serializable {
     @TableId(type = IdType.AUTO)
     private Long id;
     /**
-     * 是否删除
+     * 是否删除,0未删除、1已删除
      */
     private Integer del;
     /**
@@ -41,9 +41,9 @@ public class RoleBo implements Serializable {
     /**
      * 角色标识
      */
-    private String symbol;
+    private String code;
     /**
-     * 角色名
+     * 角色名称
      */
     private String name;
     /**
@@ -51,8 +51,7 @@ public class RoleBo implements Serializable {
      */
     private String remark;
     /**
-     * 是否系统内置
-     *
+     * 是否系统内置,0否、1是
      */
-    private Boolean internal;
+    private Boolean builtIn;
 }

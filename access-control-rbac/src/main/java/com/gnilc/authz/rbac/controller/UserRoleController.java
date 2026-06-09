@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/ac/user-role")
+@RequestMapping("/authz/user-role")
 public class UserRoleController {
 
     @Autowired
@@ -21,9 +21,9 @@ public class UserRoleController {
         return R.success(roleIds);
     }
 
-    @PostMapping("/save")
-    public R<?> saveUserRole(@RequestBody UserRoleDto userRoleDto) {
-        userRoleService.saveUserRole(userRoleDto);
+    @PostMapping("/update")
+    public R<?> updateUserRole(@RequestBody UserRoleDto urd) {
+        userRoleService.updateUserRole(urd);
 
         return R.success();
     }

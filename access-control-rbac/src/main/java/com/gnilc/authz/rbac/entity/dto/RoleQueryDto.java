@@ -12,13 +12,13 @@ public class RoleQueryDto {
     /**
      * 角色标识
      */
-    private String symbol;
+    private String code;
     /**
-     * 角色名
+     * 角色名称
      */
     private String name;
     /**
-     * 系统内置,1是、0否
+     * 是否系统内置,0否、1是
      */
-    private Boolean internal;
+    private Boolean builtIn;
 }

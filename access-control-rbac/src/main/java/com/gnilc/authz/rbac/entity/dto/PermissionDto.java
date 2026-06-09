@@ -16,21 +16,25 @@ public class PermissionDto {
     /**
      * 权限标识
      */
-    private String symbol;
+    private String code;
     /**
      * 权限名称
      */
     private String name;
     /**
+     * 访问目标标识
+     */
+    private String targetIdentifier;
+    /**
+     * 访问目标限定符
+     */
+    private String targetQualifier;
+    /**
      * 描述/备注
      */
     private String remark;
     /**
-     * 权限主体对象
+     * 是否公开访问,0否、1是
      */
-    private String resource;
-    /**
-     * 是否公开
-     */
-    private Boolean exposed;
+    private Boolean publicAccess;
 }

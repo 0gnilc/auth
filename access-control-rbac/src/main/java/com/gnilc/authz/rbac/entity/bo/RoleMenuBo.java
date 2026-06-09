@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
  * @author kyhns7
  */
 @Data
-@TableName("ac_role_menu")
+@TableName("authz_role_menu")
 public class RoleMenuBo implements Serializable {
 	@Serial
 	private static final long serialVersionUID = 1L;

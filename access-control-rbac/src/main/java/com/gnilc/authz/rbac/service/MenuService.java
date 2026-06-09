@@ -11,13 +11,13 @@ public interface MenuService extends IService<MenuBo> {
 
     List<MenuVo> getMenuTree();
 
-    void saveMenu(MenuDto menuDto);
+    void createMenu(MenuDto md);
 
-    void modifyMenu(MenuDto menuDto);
+    void updateMenu(MenuDto md);
 
     MenuBo getMenuByPath(String path);
 
-    MenuBo getMenuBySymbol(String symbol);
+    MenuBo getMenuByAccessCode(String accessCode);
 
     void removeMenu(Long id);
 

@@ -10,10 +10,13 @@ import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindingResult;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.List;
 
@@ -30,6 +33,24 @@ public class CustomExceptionControllerAdvice {
         String s = StringUtils.join(messages, "\n");
         log.error(s, e);
         return R.error(ResponseCode.ARGUMENT_INVALID.getCode(), s);
+    }
+
+    @ExceptionHandler(value = HttpMessageNotReadableException.class)
+    public R<?> httpMessageNotReadableExceptionHandler(HttpMessageNotReadableException e) {
+        log.error(e.getMessage(), e);
+        return R.error(ResponseCode.ARGUMENT_INVALID.getCode(), "请求体格式错误");
+    }
+
+    @ExceptionHandler(value = MethodArgumentTypeMismatchException.class)
+    public R<?> methodArgumentTypeMismatchExceptionHandler(MethodArgumentTypeMismatchException e) {
+        log.error(e.getMessage(), e);
+        return R.error(ResponseCode.ARGUMENT_INVALID.getCode(), "请求参数格式错误");
+    }
+
+    @ExceptionHandler(value = HttpMediaTypeNotSupportedException.class)
+    public R<?> httpMediaTypeNotSupportedExceptionHandler(HttpMediaTypeNotSupportedException e) {
+        log.error(e.getMessage(), e);
+        return R.error(ResponseCode.ARGUMENT_INVALID.getCode(), "请求内容类型不支持");
     }
 
     @ExceptionHandler(value = InvalidArgumentException.class)

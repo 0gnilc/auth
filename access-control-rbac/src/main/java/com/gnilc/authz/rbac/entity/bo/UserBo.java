@@ -13,7 +13,7 @@ import lombok.Data;
  * @author kyhns7
  */
 @Data
-@TableName("ac_user")
+@TableName("authz_user")
 public class UserBo implements Serializable {
 	@Serial
 	private static final long serialVersionUID = 1L;

@@ -30,16 +30,16 @@ public interface UserService extends IService<UserBo> {
      * 绑定角色
      *
      * @param userId 用户id
-     * @param roleSymbol 角色标识
+     * @param roleCode 角色标识
      */
-    boolean bindRole(Long userId, String roleSymbol);
+    boolean bindRole(Long userId, String roleCode);
 
     /**
      * 解绑角色
      * @param userId 用户id
-     * @param roleSymbol 角色标识
+     * @param roleCode 角色标识
      */
-    boolean unbindRole(Long userId, String roleSymbol);
+    boolean unbindRole(Long userId, String roleCode);
 
     /**
      * 根据用户id获取绑定的所有角色
@@ -51,10 +51,10 @@ public interface UserService extends IService<UserBo> {
     /**
      * 判断用户是否拥有指定角色
      * @param userId 用户id
-     * @param roleSymbol 角色标识
+     * @param roleCode 角色标识
      * @return 拥有返回true,否则返回false
      */
-    boolean checkRole(Long userId, String roleSymbol);
+    boolean checkRole(Long userId, String roleCode);
 
     /**
      * 根据用户id获取用户的所有权限
@@ -69,5 +69,11 @@ public interface UserService extends IService<UserBo> {
      * @return 菜单列表
      */
     List<MenuBo> getMenus(Long userId);
+    /**
+     * 根据用户id获取用户信息
+     * @param userId 用户id
+     * @return 用户信息
+     */
+    UserBo geUser(Long userId);
 }
 

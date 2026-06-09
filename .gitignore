@@ -15,5 +15,6 @@ target/
 .claude/
 CLAUDE.md
 CLAUDE.me
+CONTEXT.md
 docs/agent/
 docs/agents/

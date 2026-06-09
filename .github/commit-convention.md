@@ -73,7 +73,7 @@ Use the body to explain:
 
 - Why the change is needed.
 - How the new behavior differs from the previous behavior.
-- Important implementation details or migration notes.
+- Important implementation infos or migration notes.
 
 ## Footer
 

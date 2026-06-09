@@ -16,27 +16,27 @@ import java.util.List;
  * @author kyhns7
  */
 @RestController
-@RequestMapping("/ac/menu")
+@RequestMapping("/authz/menu")
 public class MenuController {
     @Autowired
     private MenuService menuService;
 
     @PostMapping("/tree")
     public R<List<MenuVo>> getMenuTree() {
-        List<MenuVo> tree = menuService.getMenuTree();
-        return R.success(tree);
+        List<MenuVo> mvs = menuService.getMenuTree();
+        return R.success(mvs);
     }
 
-    @PostMapping("/save")
-    public R<?> saveMenu(@RequestBody MenuDto menuDto) {
-        menuService.saveMenu(menuDto);
+    @PostMapping("/create")
+    public R<?> createMenu(@RequestBody MenuDto md) {
+        menuService.createMenu(md);
 
         return R.success();
     }
 
-    @PostMapping("/modify")
-    public R<?> modifyMenu(@RequestBody MenuDto menuDto) {
-        menuService.modifyMenu(menuDto);
+    @PostMapping("/update")
+    public R<?> updateMenu(@RequestBody MenuDto md) {
+        menuService.updateMenu(md);
 
         return R.success();
     }

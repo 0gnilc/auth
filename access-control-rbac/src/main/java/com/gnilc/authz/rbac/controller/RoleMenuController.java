@@ -15,7 +15,7 @@ import java.util.List;
  * @author kyhns7
  */
 @RestController
-@RequestMapping("/ac/role-menu")
+@RequestMapping("/authz/role-menu")
 public class RoleMenuController {
     @Autowired
     private RoleMenuService roleMenuService;
@@ -27,9 +27,9 @@ public class RoleMenuController {
         return R.success(menuIds);
     }
 
-    @PostMapping("/save")
-    public R<?> saveRoleMenu(@RequestBody RoleMenuDto roleMenuDto) {
-        roleMenuService.saveRoleMenu(roleMenuDto);
+    @PostMapping("/update")
+    public R<?> updateRoleMenu(@RequestBody RoleMenuDto rmd) {
+        roleMenuService.updateRoleMenu(rmd);
 
         return R.success();
     }

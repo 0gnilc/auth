@@ -22,11 +22,11 @@ public interface RoleService extends IService<RoleBo> {
 
     List<RoleVo> getRoles(RoleQueryDto qd);
 
-    void saveRole(RoleDto roleDto);
+    void createRole(RoleDto rd);
 
-    RoleBo getRoleBySymbol(String symbol);
+    RoleBo getRoleByCode(String code);
 
-    void modifyRole(RoleDto roleDto);
+    void updateRole(RoleDto rd);
 
     void removeRole(Long id);
 

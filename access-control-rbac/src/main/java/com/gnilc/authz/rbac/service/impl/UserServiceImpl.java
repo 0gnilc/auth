@@ -6,14 +6,13 @@ import com.gnilc.authz.rbac.entity.bo.MenuBo;
 import com.gnilc.authz.rbac.entity.bo.PermissionBo;
 import com.gnilc.authz.rbac.entity.bo.RoleBo;
 import com.gnilc.authz.rbac.entity.bo.UserBo;
+import com.gnilc.authz.rbac.event.RbacAuthzEvent;
 import com.gnilc.authz.rbac.service.*;
-import com.gnilc.authz.rbac.service.*;
-import com.gnilc.authz.rbac.service.event.CrudEvent;
-import com.gnilc.authz.rbac.service.event.UserEvent;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -35,43 +34,50 @@ public class UserServiceImpl extends ServiceImpl<UserDao, UserBo> implements Use
     @Autowired
     private MenuService menuService;
 
+    @Transactional
     @Override
     public Long createUser() {
-        UserBo user = new UserBo();
-        save(user);
-        return user.getId();
+        UserBo ub = new UserBo();
+        save(ub);
+        return ub.getId();
     }
 
+    @Transactional
     @Override
     public boolean removeUser(Long userId) {
         removeById(userId);
-        publisher.publishEvent(new UserEvent(this, CrudEvent.Event.DELETE, userId));
+        publisher.publishEvent(RbacAuthzEvent.of(
+                RbacAuthzEvent.Type.USER,
+                RbacAuthzEvent.Action.DELETE,
+                userId));
         return true;
     }
 
+    @Transactional
     @Override
-    public boolean bindRole(Long userId, String roleSymbol) {
-        if (userId == null || StringUtils.isBlank(roleSymbol)) {
+    public boolean bindRole(Long userId, String roleCode) {
+        if (userId == null || StringUtils.isBlank(roleCode)) {
             return false;
         }
-        RoleBo role = roleService.getRoleBySymbol(roleSymbol);
-        if (role == null) {
+        RoleBo rb = roleService.getRoleByCode(roleCode);
+        if (rb == null) {
             return false;
         }
-        userRoleService.bindRole(userId, role.getId());
+        userRoleService.bindRole(userId, rb.getId());
         return true;
     }
 
+    @Transactional
     @Override
-    public boolean unbindRole(Long userId, String roleSymbol) {
-        if (userId == null || StringUtils.isBlank(roleSymbol)) {
+    public boolean unbindRole(Long userId, String roleCode) {
+        if (userId == null || StringUtils.isBlank(roleCode)) {
             return false;
         }
-        RoleBo role = roleService.getRoleBySymbol(roleSymbol);
-        if (role == null) {
+        RoleBo rb = roleService.getRoleByCode(roleCode);
+        if (rb == null) {
             return false;
         }
-        userRoleService.unbindRole(userId, role.getId());
+        userRoleService.unbindRole(userId, rb.getId());
         return true;
     }
 
@@ -84,12 +90,12 @@ public class UserServiceImpl extends ServiceImpl<UserDao, UserBo> implements Use
     }
 
     @Override
-    public boolean checkRole(Long userId, String roleSymbol) {
-        RoleBo role = roleService.getRoleBySymbol(roleSymbol);
-        if (role == null) {
+    public boolean checkRole(Long userId, String roleCode) {
+        RoleBo rb = roleService.getRoleByCode(roleCode);
+        if (rb == null) {
             return false;
         }
-        return userRoleService.getUserRole(userId, role.getId()) != null;
+        return userRoleService.getUserRole(userId, rb.getId()) != null;
     }
 
     @Override
@@ -106,5 +112,13 @@ public class UserServiceImpl extends ServiceImpl<UserDao, UserBo> implements Use
             return List.of();
         }
         return menuService.getMenus(userId);
+    }
+
+    @Override
+    public UserBo geUser(Long userId) {
+        if (userId == null) {
+            return null;
+        }
+        return getById(userId);
     }
 }

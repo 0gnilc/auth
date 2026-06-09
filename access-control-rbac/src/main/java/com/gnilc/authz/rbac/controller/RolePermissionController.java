@@ -15,7 +15,7 @@ import java.util.List;
  * @author kyhns7
  */
 @RestController
-@RequestMapping("/ac/role-permission")
+@RequestMapping("/authz/role-permission")
 public class RolePermissionController {
     @Autowired
     private RolePermissionService rolePermissionService;
@@ -26,9 +26,9 @@ public class RolePermissionController {
         return R.success(permissionIds);
     }
 
-    @PostMapping("/save")
-    public R<?> saveRolePermission(@RequestBody RolePermissionDto rolePermissionDto) {
-        rolePermissionService.saveRolePermission(rolePermissionDto);
+    @PostMapping("/update")
+    public R<?> updateRolePermission(@RequestBody RolePermissionDto rpd) {
+        rolePermissionService.updateRolePermission(rpd);
 
         return R.success();
     }

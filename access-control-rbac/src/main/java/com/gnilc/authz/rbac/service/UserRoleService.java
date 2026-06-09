@@ -15,7 +15,7 @@ import java.util.List;
 @Service
 public interface UserRoleService extends IService<UserRoleBo> {
 
-    void saveUserRole(UserRoleDto userRoleDto);
+    void updateUserRole(UserRoleDto urd);
 
     List<Long> getRoleIds(Long userId);
 

@@ -12,7 +12,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class RbacWebMvcConfigurer implements WebMvcConfigurer {
 
-//    @Bean("rbacCorsFilterRegistration")
+    @Bean("rbacCorsFilterRegistration")
     public FilterRegistrationBean<CorsFilter> corsFilterRegistration() {
         CorsConfiguration config = new CorsConfiguration();
         config.addAllowedOriginPattern("*");

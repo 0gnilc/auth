@@ -16,9 +16,9 @@ public class RolePageDto extends PageParams {
     /**
      * 角色标识
      */
-    private String symbol;
+    private String code;
     /**
-     * 角色名
+     * 角色名称
      */
     private String name;
 }

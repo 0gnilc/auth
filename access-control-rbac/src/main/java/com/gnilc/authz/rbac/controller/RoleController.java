@@ -19,35 +19,35 @@ import java.util.List;
  * @author kyhns7
  */
 @RestController
-@RequestMapping("/ac/role")
+@RequestMapping("/authz/role")
 public class RoleController {
     @Autowired
     private RoleService roleService;
 
     @PostMapping("/page")
-    public R<PageResult<RoleVo>> getRolePage(@RequestBody RolePageDto pd) {
-        PageResult<RoleVo> page = roleService.getRolePage(pd);
+    public R<PageResult<RoleVo>> getRolePage(@RequestBody RolePageDto rd) {
+        PageResult<RoleVo> page = roleService.getRolePage(rd);
 
         return R.success(page);
     }
 
     @PostMapping("/list")
-    public R<List<RoleVo>> getRoles(@RequestBody RoleQueryDto qd) {
-        List<RoleVo> list = roleService.getRoles(qd);
+    public R<List<RoleVo>> getRoles(@RequestBody RoleQueryDto rd) {
+        List<RoleVo> rvs = roleService.getRoles(rd);
 
-        return R.success(list);
+        return R.success(rvs);
     }
 
-    @PostMapping("/save")
-    public R<?> saveRole(@RequestBody RoleDto roleDto) {
-        roleService.saveRole(roleDto);
+    @PostMapping("/create")
+    public R<?> createRole(@RequestBody RoleDto rd) {
+        roleService.createRole(rd);
 
         return R.success();
     }
 
-    @PostMapping("/modify")
-    public R<?> modifyRole(@RequestBody RoleDto roleDto) {
-        roleService.modifyRole(roleDto);
+    @PostMapping("/update")
+    public R<?> updateRole(@RequestBody RoleDto rd) {
+        roleService.updateRole(rd);
 
         return R.success();
     }
