@@ -1,4 +1,4 @@
-package com.gnilc.authn.web.configuration;
+package com.gnilc.authn.web.config;
 
 import com.gnilc.authn.web.context.ServletAuthenticationContext;
 import com.gnilc.authn.web.filter.AuthenticationFilter;

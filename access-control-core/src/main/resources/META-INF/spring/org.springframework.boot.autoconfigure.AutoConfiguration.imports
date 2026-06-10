@@ -1,1 +1,1 @@
-com.gnilc.authn.web.configuration.WebAuthenticationAutoConfiguration
+com.gnilc.authn.web.config.WebAuthenticationAutoConfiguration
