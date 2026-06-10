@@ -6,8 +6,8 @@ import java.lang.annotation.*;
 
 @Target({ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
-@Import({AccessControlConfiguration.class})
+@Import({AuthorizationConfiguration.class})
 @Documented
-public @interface EnableAccessControl {
+public @interface EnableAuthorization {
 
 }

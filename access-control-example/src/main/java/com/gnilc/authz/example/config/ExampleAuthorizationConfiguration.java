@@ -14,17 +14,22 @@ import org.springframework.context.annotation.Profile;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.security.Principal;
 import java.util.Map;
 
 @Configuration
 @Profile({"dev", "localtest"})
-public class ExampleAccessControlConfiguration {
+public class ExampleAuthorizationConfiguration {
     private static final String ACCESS_USER_ID_HEADER = "X-Access-User-Id";
 
     @Bean
     @Primary
     public AccessIdentityResolver<HttpServletRequest> exampleAccessIdentityResolver() {
         return request -> {
+            Principal principal = request.getUserPrincipal();
+            if (principal != null && StringUtils.isNotBlank(principal.getName())) {
+                return new AccessIdentity(principal.getName().trim(), Map.of("principal", true));
+            }
             String userId = request.getHeader(ACCESS_USER_ID_HEADER);
             if (StringUtils.isBlank(userId)) {
                 return new AccessIdentity(null, Map.of("anonymous", true));

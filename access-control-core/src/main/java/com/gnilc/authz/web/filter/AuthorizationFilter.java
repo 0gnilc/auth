@@ -13,11 +13,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 
 /**
- * 权限控制过滤器。
+ * 授权过滤器。
  * <p>
- * 过滤器只负责连接 Servlet 环境和授权核心：构造访问上下文、执行决策、分派拒绝处理。
+ * 过滤器只负责连接 Servlet 环境和授权核心：构造访问上下文、执行授权决策、分派拒绝处理。
  */
-public class AccessControlFilter implements Filter {
+public class AuthorizationFilter implements Filter {
     public static final int REGISTRATION_ORDER = Integer.MAX_VALUE;
     public static final int REGISTRATION_ORDER_PREVIOUS = REGISTRATION_ORDER - 1;
     /**
@@ -34,13 +34,13 @@ public class AccessControlFilter implements Filter {
     private final AccessDeniedHandler<FilterDeniedContext> accessDeniedHandler;
 
     /**
-     * 创建权限控制过滤器。
+     * 创建授权过滤器。
      *
      * @param accessContextAdapter 访问上下文适配器
      * @param accessDecision       访问决策器
      * @param accessDeniedHandler  访问拒绝处理器
      */
-    public AccessControlFilter(final AccessContextAdapter<HttpServletRequest> accessContextAdapter,
+    public AuthorizationFilter(final AccessContextAdapter<HttpServletRequest> accessContextAdapter,
                                final AccessDecision accessDecision,
                                final AccessDeniedHandler<FilterDeniedContext> accessDeniedHandler) {
         Preconditions.checkArgument(accessContextAdapter != null, "accessContextAdapter == null!");

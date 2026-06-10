@@ -15,7 +15,7 @@ import static org.springframework.http.HttpStatus.OK;
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("localtest")
-class RbacAccessControlFlowIT extends RbacHttpTestSupport {
+class RbacAuthorizationFlowIT extends RbacHttpTestSupport {
 
     /**
      * Verifies protected RBAC grants, public access, and revoke behavior.

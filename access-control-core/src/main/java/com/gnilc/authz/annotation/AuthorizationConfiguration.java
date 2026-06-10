@@ -18,7 +18,7 @@ import java.util.Set;
 
 @AutoConfigureOrder(Ordered.HIGHEST_PRECEDENCE)
 @Configuration(proxyBeanMethods = false)
-public class AccessControlConfiguration {
+public class AuthorizationConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(AccessDecision.class)

@@ -1,10 +1,10 @@
 package com.gnilc.authz.example;
 
-import com.gnilc.authz.rbac.annotation.EnableWebRbacAccessControl;
+import com.gnilc.authz.rbac.annotation.EnableWebRbacAuthorization;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-@EnableWebRbacAccessControl
+@EnableWebRbacAuthorization
 @SpringBootApplication
 public class RbacExampleApplication {
     public static void main(String[] args) {

@@ -1,7 +1,7 @@
 package com.gnilc.authz.web.annotation;
 
 
-import com.gnilc.authz.annotation.AccessControlConfiguration;
+import com.gnilc.authz.annotation.AuthorizationConfiguration;
 import com.gnilc.authz.context.AccessContextAdapter;
 import com.gnilc.authz.context.AccessIdentityResolver;
 import com.gnilc.authz.decision.AccessDecision;
@@ -9,7 +9,7 @@ import com.gnilc.authz.denied.AccessDeniedHandler;
 import com.gnilc.authz.web.context.FilterDeniedContext;
 import com.gnilc.authz.web.context.ServletAccessContextAdapter;
 import com.gnilc.authz.web.context.ServletAccessIdentityResolver;
-import com.gnilc.authz.web.filter.AccessControlFilter;
+import com.gnilc.authz.web.filter.AuthorizationFilter;
 import jakarta.servlet.Filter;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
@@ -32,8 +32,8 @@ import org.springframework.web.servlet.DispatcherServlet;
         type = ConditionalOnWebApplication.Type.SERVLET
 )
 @ConditionalOnClass(DispatcherServlet.class)
-@AutoConfigureAfter({DispatcherServletAutoConfiguration.class, AccessControlConfiguration.class})
-public class AccessControlWebConfiguration {
+@AutoConfigureAfter({DispatcherServletAutoConfiguration.class, AuthorizationConfiguration.class})
+public class WebAuthorizationConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
@@ -56,15 +56,15 @@ public class AccessControlWebConfiguration {
     }
 
     @Bean
-    public FilterRegistrationBean<Filter> accessControlFilterRegistration(AccessContextAdapter<HttpServletRequest> accessContextAdapter,
-                                                                          AccessDecision accessDecision,
-                                                                          AccessDeniedHandler<FilterDeniedContext> accessDeniedHandler) {
+    public FilterRegistrationBean<Filter> authorizationFilterRegistration(AccessContextAdapter<HttpServletRequest> accessContextAdapter,
+                                                                         AccessDecision accessDecision,
+                                                                         AccessDeniedHandler<FilterDeniedContext> accessDeniedHandler) {
         FilterRegistrationBean<Filter> registration = new FilterRegistrationBean<>();
-        AccessControlFilter accessControlFilter = new AccessControlFilter(accessContextAdapter, accessDecision, accessDeniedHandler);
-        registration.setFilter(accessControlFilter);
+        AuthorizationFilter authorizationFilter = new AuthorizationFilter(accessContextAdapter, accessDecision, accessDeniedHandler);
+        registration.setFilter(authorizationFilter);
         registration.addUrlPatterns("/*");
-        registration.setName(AccessControlFilter.class.getName());
-        registration.setOrder(AccessControlFilter.REGISTRATION_ORDER);
+        registration.setName(AuthorizationFilter.class.getName());
+        registration.setOrder(AuthorizationFilter.REGISTRATION_ORDER);
         return registration;
     }
 }

@@ -1,15 +1,15 @@
 package com.gnilc.authz.rbac.annotation;
 
-import com.gnilc.authz.annotation.EnableAccessControl;
+import com.gnilc.authz.annotation.EnableAuthorization;
 import org.springframework.context.annotation.Import;
 
 import java.lang.annotation.*;
 
 @Target({ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
-@EnableAccessControl
-@Import({WebRbacAccessControlConfiguration.class})
+@EnableAuthorization
+@Import({WebRbacAuthorizationConfiguration.class})
 @Documented
-public @interface EnableWebRbacAccessControl {
+public @interface EnableWebRbacAuthorization {
 
 }

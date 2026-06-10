@@ -14,7 +14,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class AccessControlFilterTest {
+class AuthorizationFilterTest {
 
     // 授权通过时，filter 只负责继续执行后续链路。
     @Test
@@ -22,7 +22,7 @@ class AccessControlFilterTest {
         AccessContext context = accessContext();
         AtomicBoolean chainContinued = new AtomicBoolean(false);
         AtomicBoolean deniedHandled = new AtomicBoolean(false);
-        AccessControlFilter filter = new AccessControlFilter(
+        AuthorizationFilter filter = new AuthorizationFilter(
                 request -> context,
                 candidate -> true,
                 (candidate, deniedContext) -> deniedHandled.set(true)
@@ -43,7 +43,7 @@ class AccessControlFilterTest {
         AtomicReference<FilterDeniedContext> handledDeniedContext = new AtomicReference<>();
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
-        AccessControlFilter filter = new AccessControlFilter(
+        AuthorizationFilter filter = new AuthorizationFilter(
                 candidate -> context,
                 candidate -> false,
                 (candidate, deniedContext) -> {

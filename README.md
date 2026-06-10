@@ -2,15 +2,21 @@
 
 [中文文档](README.zh-CN.md)
 
-Access Control is a Java/Spring-based access control project. It is organized as a multi-module Maven project and provides core authorization abstractions plus an RBAC-oriented implementation.
+Access Control is a Java/Spring-based access control project. It is organized as a multi-module Maven project and provides core authorization abstractions, optional Servlet authentication support, and an RBAC-oriented implementation.
 
-This README is intentionally brief for the initial project setup. More detailed documentation will be added later.
+The Maven `groupId` is `com.gnilc.auth` because the project contains both authentication and authorization capabilities. Java packages remain purpose-specific: `com.gnilc.authn.*` is authentication, and `com.gnilc.authz.*` is authorization. This is not a package-wide rename of existing authorization APIs.
 
 ## Modules
 
-- `access-control-core`: core access control annotations, decision interfaces, permission providers, and web filter support.
+- `access-control-core`: core access control annotations, decision interfaces, permission providers, optional Servlet authentication filter support, and web authorization filter support.
 - `access-control-rbac`: RBAC-related cache, entities, controllers, services, and permission providers.
 - `access-control-example`: example module for demonstrating project usage.
+
+## Optional Servlet authentication
+
+Applications can opt in to the authentication filter by defining one or more `AuthenticationHandler` beans. If no handler bean exists, the authentication filter is not registered.
+
+Multiple handlers are ordered by Spring order. A handler that does not support the current request is skipped; if no handler supports the request, the filter chain continues and authorization decides whether anonymous access is allowed. A failed authentication stops the chain and returns 401 by default. Authorization failures remain separate and are handled by the existing access-denied path.
 
 ## Requirements
 
