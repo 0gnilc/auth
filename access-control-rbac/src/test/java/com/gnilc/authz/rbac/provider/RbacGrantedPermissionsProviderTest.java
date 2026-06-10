@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -66,6 +67,19 @@ class RbacGrantedPermissionsProviderTest {
 
         assertThat(granted).containsExactly(new Permission("public:access"));
         verify(cache, never()).loadUserPermissions(null);
+    }
+
+    /**
+     * 非数字身份不是合法 RBAC user_id，不应读取用户权限，但仍可获得公开访问权限。
+     */
+    @Test
+    void provideOnlyPublicAccessPermissionsForNonNumericIdentity() {
+        when(cache.loadPublicAccessPermissions()).thenReturn(List.of(new Permission("public:access")));
+
+        List<Permission> granted = provider.provide(accessContext("ADMIN:1001"));
+
+        assertThat(granted).containsExactly(new Permission("public:access"));
+        verify(cache, never()).loadUserPermissions(anyLong());
     }
 
     /**

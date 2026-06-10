@@ -5,8 +5,11 @@ import com.gnilc.authz.context.AccessContextAdapter;
 import com.gnilc.authz.context.AccessIdentity;
 import com.gnilc.authz.context.AccessIdentityResolver;
 import com.gnilc.authz.context.AccessTarget;
+import com.google.common.collect.Maps;
 import jakarta.servlet.http.HttpServletRequest;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -37,7 +40,9 @@ public class ServletAccessContextAdapter implements AccessContextAdapter<HttpSer
                 "contextPath", contextPath,
                 "method", request.getMethod()
         ));
-        return new AccessContext(identity, target, Map.of("source", "servlet"));
+        Map<String, Object> attributes = Maps.newHashMap();
+        attributes.put("source", "servlet");
+        return new AccessContext(identity, target, attributes);
     }
 
     /**
