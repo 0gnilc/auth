@@ -13,7 +13,8 @@
     <modules>
         <module>access-control-core</module>
         <module>access-control-rbac</module>
-        <module>access-control-example</module>
+        <module>access-control-system</module>
+        <module>access-control-bootstrap</module>
     </modules>
 
     <properties>

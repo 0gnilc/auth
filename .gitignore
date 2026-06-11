@@ -12,7 +12,7 @@ target/
 *.log
 
 # AI tooling (developer-specific)
-.claude/
+.claude
 CLAUDE.md
 CLAUDE.me
 CONTEXT.md
