@@ -43,13 +43,20 @@ jobs:
           fi
 
           failed=0
-          while IFS= read -r header; do
+          while IFS= read -r entry; do
+            commit="${entry%% *}"
+            header="${entry#* }"
             [[ -z "$header" ]] && continue
+
+            if git rev-parse --verify --quiet "${commit}^2" >/dev/null 2>&1 && [[ "$header" =~ ^Merge\ pull\ request\ #[0-9]+\ from\ .+ ]]; then
+              continue
+            fi
+
             if ! [[ "$header" =~ $pattern ]]; then
               echo "Invalid commit message: $header"
               failed=1
             fi
-          done < <(git log --format=%s "$range")
+          done < <(git log --format='%H %s' "$range")
 
           if [[ "$failed" -ne 0 ]]; then
             echo
