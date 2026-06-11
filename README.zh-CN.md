@@ -10,7 +10,7 @@ Access Control 是一个基于 Java/Spring 的访问控制项目。项目采用 
 
 - `access-control-core`：访问控制核心注解、决策接口、权限提供者、可选 Servlet 认证过滤器支持和 Web 授权过滤器支持。
 - `access-control-rbac`：RBAC 相关缓存、实体、控制器、服务和权限提供者。
-- `access-control-example`：用于演示项目使用方式的示例模块。
+- `access-control-system`：系统应用模块，用于接入并初始化访问控制能力。
 
 ## 可选 Servlet 认证
 

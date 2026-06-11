@@ -10,7 +10,7 @@ The Maven `groupId` is `com.gnilc.auth` because the project contains both authen
 
 - `access-control-core`: core access control annotations, decision interfaces, permission providers, optional Servlet authentication filter support, and web authorization filter support.
 - `access-control-rbac`: RBAC-related cache, entities, controllers, services, and permission providers.
-- `access-control-example`: example module for demonstrating project usage.
+- `access-control-system`: system application module for bootstrapping access control integration.
 
 ## Optional Servlet authentication
 
