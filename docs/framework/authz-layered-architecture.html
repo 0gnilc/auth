@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>com.gnilc.auth.authz 分层架构图</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: "neutral",
+      securityLevel: "loose",
+      flowchart: {
+        htmlLabels: true,
+        curve: "basis",
+        nodeSpacing: 78,
+        rankSpacing: 96,
+        padding: 24
+      },
+      themeVariables: {
+        fontFamily: "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+        fontSize: "22px",
+        edgeLabelBackground: "#ffffff"
+      }
+    });
+  </script>
+  <style>
+    body { font-feature-settings: "tnum" 1; }
+    .code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    .diagram-card { overflow-x: auto; }
+    .layer-diagram { min-width: 980px; }
+    .layer-card { border-radius: 1.5rem; border: 1px solid; overflow: hidden; box-shadow: 0 1px 2px rgba(15,23,42,.04); }
+    .layer-card.core { border-color: #cbd5e1; background: #f8fafc; }
+    .layer-card.servlet { border-color: #bfdbfe; background: #eff6ff; }
+    .layer-card.rbac { border-color: #ddd6fe; background: #f5f3ff; }
+    .layer-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: 1.25rem 1.5rem; color: white; }
+    .layer-card.core .layer-heading { background: #0f172a; }
+    .layer-card.servlet .layer-heading { background: #075985; }
+    .layer-card.rbac .layer-heading { background: #581c87; }
+    .layer-title { font-size: 1.35rem; font-weight: 700; letter-spacing: -.01em; }
+    .layer-subtitle { margin-top: .35rem; font-size: .95rem; line-height: 1.6; opacity: .88; }
+    .layer-tag { flex: none; border-radius: 999px; border: 1px solid rgba(255,255,255,.35); padding: .35rem .75rem; font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: rgba(255,255,255,.9); }
+    .component-list { padding: 1rem; display: grid; gap: .65rem; }
+    .component-row { display: grid; grid-template-columns: minmax(300px, 38%) 1fr; gap: 1rem; align-items: stretch; border: 1px solid rgba(148,163,184,.45); border-radius: 1rem; background: rgba(255,255,255,.86); padding: .85rem 1rem; }
+    .component-name { font-weight: 700; color: #0f172a; line-height: 1.55; }
+    .component-role { color: #475569; line-height: 1.65; }
+    .layer-arrow { display: flex; justify-content: center; align-items: center; gap: .75rem; color: #64748b; font-size: .95rem; margin: .75rem 0; }
+    .layer-arrow::before,
+    .layer-arrow::after { content: ""; display: block; width: 4rem; border-top: 1px dashed #94a3b8; }
+    @media (max-width: 900px) {
+      .layer-diagram { min-width: 0; }
+      .component-row { grid-template-columns: 1fr; gap: .35rem; }
+      .layer-heading { flex-direction: column; }
+    }
+    .gradient-title { background: linear-gradient(135deg, #0f172a, #1e293b); }
+    .card { border: 1px solid #e2e8f0; background: white; border-radius: 1rem; box-shadow: 0 1px 2px rgba(15,23,42,.04); }
+  </style>
+</head>
+<body class="bg-stone-50 text-slate-900">
+  <main class="max-w-7xl mx-auto px-6 py-10 space-y-10">
+    <header class="space-y-6">
+      <div class="gradient-title rounded-3xl px-8 py-8 text-white shadow-sm">
+        <p class="text-sm uppercase tracking-[0.28em] text-slate-300">Authorization architecture</p>
+        <h1 class="mt-3 text-4xl font-semibold tracking-tight">com.gnilc.auth.authz 分层架构图</h1>
+        <p class="mt-4 max-w-4xl text-slate-200 leading-7">
+          范围：仅展开 <span class="code">com.gnilc.auth.authz</span> 相关结构，包括 core 授权抽象、Servlet 适配层与 RBAC 业务实现层。
+          本文档用于统一预览当前 authz 模块的分层边界、组件职责、子组件关系与运行时主链路。
+        </p>
+      </div>
+
+      <div class="grid md:grid-cols-3 gap-4">
+        <div class="card p-5">
+          <p class="text-xs font-semibold tracking-[0.18em] text-slate-500 uppercase">Layer 1</p>
+          <h2 class="mt-2 font-semibold text-lg">核心抽象层</h2>
+          <p class="mt-2 text-sm leading-6 text-slate-600">定义授权判断最小闭环：访问上下文、权限 provider、授权决策与拒绝处理，不关心 Servlet 或 RBAC 细节。</p>
+        </div>
+        <div class="card p-5">
+          <p class="text-xs font-semibold tracking-[0.18em] text-blue-500 uppercase">Layer 2</p>
+          <h2 class="mt-2 font-semibold text-lg">Servlet 适配层</h2>
+          <p class="mt-2 text-sm leading-6 text-slate-600">把 Servlet 请求包装并翻译为核心 <span class="code">AccessContext</span>，并在拒绝时把处理动作落回 Servlet 语境。</p>
+        </div>
+        <div class="card p-5">
+          <p class="text-xs font-semibold tracking-[0.18em] text-violet-500 uppercase">Layer 3</p>
+          <h2 class="mt-2 font-semibold text-lg">RBAC 业务实现层</h2>
+          <p class="mt-2 text-sm leading-6 text-slate-600">把用户、角色、权限、菜单、缓存和事件接入核心 provider SPI，提供真实的授权数据与后台管理能力。</p>
+        </div>
+      </div>
+    </header>
+
+    <section class="card p-6">
+      <div class="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h2 class="text-2xl font-semibold">1. 全量分层架构图</h2>
+          <p class="mt-2 text-slate-600 leading-7">
+            图按从上到下阅读：最上层是最抽象的核心授权协议 / SPI，中间是 Servlet 运行环境适配层，最下层是 RBAC 业务实现层。
+            当前图只表达分层和组件职责，不展开复杂调用关系；每一行左侧是组件，右侧是该组件的简要作用。
+          </p>
+        </div>
+        <div class="grid grid-cols-2 gap-2 text-sm">
+          <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2"><span class="inline-block h-3 w-3 rounded-sm bg-slate-100 border border-slate-400 align-middle"></span> 核心抽象</div>
+          <div class="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2"><span class="inline-block h-3 w-3 rounded-sm bg-blue-100 border border-blue-400 align-middle"></span> Servlet 适配</div>
+          <div class="rounded-xl border border-violet-200 bg-violet-50 px-3 py-2"><span class="inline-block h-3 w-3 rounded-sm bg-violet-100 border border-violet-400 align-middle"></span> RBAC 实现</div>
+          <div class="rounded-xl border border-orange-200 bg-orange-50 px-3 py-2"><span class="inline-block h-3 w-3 rounded-sm bg-orange-100 border border-orange-400 align-middle"></span> 缓存 / 事件</div>
+        </div>
+      </div>
+
+      <div class="mt-6 diagram-card">
+        <div class="layer-diagram space-y-5">
+          <section class="layer-card core">
+            <div class="layer-heading">
+              <div>
+                <div class="layer-title">第一层：核心抽象层</div>
+                <div class="layer-subtitle"><span class="code">com.gnilc.auth.authz</span> · 定义授权判断最小闭环，不关心 Servlet / RBAC 细节。</div>
+              </div>
+              <div class="layer-tag">Core SPI</div>
+            </div>
+            <div class="component-list">
+              <div class="component-row"><div class="component-name code">AuthorizationAutoConfiguration</div><div class="component-role">Spring Boot 3 SPI 核心授权自动配置，按 provider 存在性注册默认决策器、拒绝处理器和 provider 聚合器。</div></div>
+              <div class="component-row"><div class="component-name code">AccessContext</div><div class="component-role">一次授权判断的统一输入，聚合访问环境、身份、目标和扩展属性。</div></div>
+              <div class="component-row"><div class="component-name code">AccessEnvironment</div><div class="component-role">访问环境标识，用于区分 Servlet、消息等不同执行环境。</div></div>
+              <div class="component-row"><div class="component-name code">AccessIdentity</div><div class="component-role">当前访问主体的抽象身份，核心字段是统一身份标识和身份属性。</div></div>
+              <div class="component-row"><div class="component-name code">AccessTarget</div><div class="component-role">当前受保护资源或访问点的抽象描述，承载目标标识和限定信息。</div></div>
+              <div class="component-row"><div class="component-name code">AccessContextAdapter&lt;T&gt; / AbstractAccessContextAdapter&lt;T&gt;</div><div class="component-role">把具体运行时对象转换为 <span class="code">AccessContext</span>；抽象类提供 resolver 组合模板。</div></div>
+              <div class="component-row"><div class="component-name code">AccessEnvironmentResolver&lt;T&gt;</div><div class="component-role">从运行时 source 中解析访问环境。</div></div>
+              <div class="component-row"><div class="component-name code">AccessIdentityResolver&lt;T&gt;</div><div class="component-role">从运行时 source 中解析当前访问身份。</div></div>
+              <div class="component-row"><div class="component-name code">AccessIdentityResolverHandler&lt;T&gt;</div><div class="component-role">身份解析的下级扩展点，通过 <span class="code">supports / handle</span> 表达可处理条件和处理逻辑。</div></div>
+              <div class="component-row"><div class="component-name code">DelegatingAccessIdentityResolver&lt;T&gt;</div><div class="component-role">身份解析 handler 组合器，按顺序选择首个支持当前 source 的 handler，未命中时走 fallback。</div></div>
+              <div class="component-row"><div class="component-name code">AccessTargetResolver&lt;T&gt;</div><div class="component-role">从运行时 source 中解析当前访问目标。</div></div>
+              <div class="component-row"><div class="component-name code">Permission</div><div class="component-role">授权比较使用的最小权限值对象。</div></div>
+              <div class="component-row"><div class="component-name code">GrantedPermissionsProvider / DelegatingGrantedPermissionsProvider</div><div class="component-role">提供当前身份已拥有的权限；delegating 实现负责聚合多个来源。</div></div>
+              <div class="component-row"><div class="component-name code">RequiredPermissionsProvider / DelegatingRequiredPermissionsProvider</div><div class="component-role">提供访问当前目标所需的权限；delegating 实现负责聚合多个来源。</div></div>
+              <div class="component-row"><div class="component-name code">AccessDecision / AbstractAccessDecision / AffirmativeAccessDecision</div><div class="component-role">授权决策策略；默认肯定式策略是 required 为空放行，否则命中任一 required permission 即放行。</div></div>
+              <div class="component-row"><div class="component-name code">AccessDenied / AccessDeniedContext / AccessDeniedHandler / DefaultAccessDenied</div><div class="component-role">统一拒绝访问出口；根据 denied context 分发给匹配的拒绝处理器。</div></div>
+            </div>
+          </section>
+
+          <div class="layer-arrow">向下由运行环境适配核心协议</div>
+
+          <section class="layer-card servlet">
+            <div class="layer-heading">
+              <div>
+                <div class="layer-title">第二层：Servlet 适配层</div>
+                <div class="layer-subtitle"><span class="code">com.gnilc.auth.authz.servlet</span> · 把 Servlet 请求适配为核心 <span class="code">AccessContext</span>，并把拒绝处理落回 Servlet 语境。</div>
+              </div>
+              <div class="layer-tag">Servlet Adapter</div>
+            </div>
+            <div class="component-list">
+              <div class="component-row"><div class="component-name code">ServletAuthorizationAutoConfiguration</div><div class="component-role">Spring Boot 3 SPI Servlet 授权自动配置，注册默认 identity resolver、target resolver、context adapter、filter 和 registration。</div></div>
+              <div class="component-row"><div class="component-name code">ServletAuthorizationFilter</div><div class="component-role">Servlet 授权入口，负责创建请求上下文、调用授权决策，并根据结果放行或拒绝。</div></div>
+              <div class="component-row"><div class="component-name code">ServletRequestContext</div><div class="component-role">轻量包装 <span class="code">ServletRequest</span>、<span class="code">ServletResponse</span> 和 <span class="code">FilterChain</span>，不承载业务语义。</div></div>
+              <div class="component-row"><div class="component-name code">ServletAccessContextAdapter / DefaultServletAccessContextAdapter</div><div class="component-role">把 <span class="code">ServletRequestContext</span> 转换为核心 <span class="code">AccessContext</span>，固定环境为 <span class="code">SERVLET</span>。</div></div>
+              <div class="component-row"><div class="component-name code">ServletAccessIdentityResolver / DefaultServletAccessIdentityResolver</div><div class="component-role">解析 Servlet 请求身份；默认实现组合 handler，未命中时返回匿名身份。</div></div>
+              <div class="component-row"><div class="component-name code">ServletAccessIdentityResolverHandler</div><div class="component-role">Servlet 身份解析扩展点，供认证模块或业务应用接入具体用户体系。</div></div>
+              <div class="component-row"><div class="component-name code">ServletAccessTargetResolver / DefaultServletAccessTargetResolver</div><div class="component-role">从 HTTP URI 和 Method 解析访问目标，供后续 required permission 匹配。</div></div>
+              <div class="component-row"><div class="component-name code">ServletAccessDeniedContext</div><div class="component-role">Servlet 拒绝访问上下文，继承 <span class="code">ServletRequestContext</span> 并实现 <span class="code">AccessDeniedContext</span>。</div></div>
+            </div>
+          </section>
+
+          <div class="layer-arrow">向下由业务模块提供授权数据实现</div>
+
+          <section class="layer-card rbac">
+            <div class="layer-heading">
+              <div>
+                <div class="layer-title">第三层：RBAC 业务实现层</div>
+                <div class="layer-subtitle"><span class="code">com.gnilc.auth.authz.rbac</span> · 把用户、角色、权限、菜单、缓存和事件接入核心授权模型。</div>
+              </div>
+              <div class="layer-tag">RBAC Implementation</div>
+            </div>
+            <div class="component-list">
+              <div class="component-row"><div class="component-name code">ServletRbacAuthorizationAutoConfiguration</div><div class="component-role">Spring Boot 3 SPI RBAC + Servlet 自动配置入口，扫描 RBAC 组件并注册 mapper 与支撑配置。</div></div>
+              <div class="component-row"><div class="component-name code">MybatisPlusConfiguration / MyMetaObjectHandler / RbacJacksonConfiguration / RbacServletMvcConfigurer</div><div class="component-role">RBAC 基础设施配置，覆盖 MyBatis-Plus、字段填充、JSON 和 MVC 行为。</div></div>
+              <div class="component-row"><div class="component-name code">RbacGrantedPermissionsProvider</div><div class="component-role">实现 granted provider，把 <span class="code">AccessIdentity.identifier</span> 映射为当前用户已拥有权限。</div></div>
+              <div class="component-row"><div class="component-name code">RbacRequiredPermissionsProvider</div><div class="component-role">实现 required provider，把 <span class="code">AccessTarget.identifier</span> 映射为访问目标所需权限。</div></div>
+              <div class="component-row"><div class="component-name code">TargetPermission</div><div class="component-role">RBAC 授权运行时使用的目标到权限读模型。</div></div>
+              <div class="component-row"><div class="component-name code">PermissionCache / PermissionCacheLoader</div><div class="component-role">provider 读取权限数据的缓存门面和加载接口。</div></div>
+              <div class="component-row"><div class="component-name code">DatabasePermissionCacheLoader / DefaultPermissionCache / LocalPermissionCache</div><div class="component-role">从服务层装配权限读模型，并提供直通缓存和本地缓存实现。</div></div>
+              <div class="component-row"><div class="component-name code">RbacAuthzEvent</div><div class="component-role">描述会影响授权结果的 RBAC 数据变更。</div></div>
+              <div class="component-row"><div class="component-name code">PermissionCacheResetCommand / Policy / Executor / EventListener</div><div class="component-role">把 RBAC 数据变更转换为缓存失效命令，并在事务提交后执行失效。</div></div>
+              <div class="component-row"><div class="component-name code">PermissionCacheRedisConfiguration / PermissionCacheRedisResetTransport / PermissionCacheResetRedisMessage</div><div class="component-role">通过 Redis 在多节点间传播权限缓存重置命令。</div></div>
+              <div class="component-row"><div class="component-name code">PermissionService / RoleService / UserService / MenuService</div><div class="component-role">RBAC 主业务服务，负责权限、角色、用户聚合和菜单查询。</div></div>
+              <div class="component-row"><div class="component-name code">UserRoleService / RolePermissionService / RoleMenuService</div><div class="component-role">维护用户-角色、角色-权限、角色-菜单等授权关系。</div></div>
+              <div class="component-row"><div class="component-name code">PermissionDao / RoleDao / UserDao / MenuDao / UserRoleDao / RolePermissionDao / RoleMenusDao</div><div class="component-role">RBAC 持久化访问层。</div></div>
+              <div class="component-row"><div class="component-name code">PermissionController / RoleController / MenuController / UserRoleController / RolePermissionController / RoleMenuController</div><div class="component-role">RBAC 后台管理 API，负责权限、角色、菜单和绑定关系维护。</div></div>
+              <div class="component-row"><div class="component-name code">entity.bo / entity.dto / entity.vo / entity.enums.MenuType</div><div class="component-role">RBAC 数据库对象、请求对象、响应对象和枚举模型。</div></div>
+              <div class="component-row"><div class="component-name code">common / exception / exception.advice</div><div class="component-role">公共返回、分页、校验、业务异常和控制器异常处理。</div></div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid lg:grid-cols-3 gap-5">
+      <div class="card p-5">
+        <h2 class="text-xl font-semibold">2. 核心抽象层组件</h2>
+        <ul class="mt-4 space-y-3 text-sm leading-6 text-slate-700">
+          <li><span class="font-semibold code">AccessContext</span>：一次授权判断的统一事实载体。</li>
+          <li><span class="font-semibold code">AccessIdentity</span>：当前访问主体的抽象身份。</li>
+          <li><span class="font-semibold code">AccessTarget</span>：当前受保护资源或访问点。</li>
+          <li><span class="font-semibold code">AccessContextAdapter&lt;T&gt;</span>：把具体运行时对象翻译成授权核心输入。</li>
+          <li><span class="font-semibold code">DelegatingAccessIdentityResolver&lt;T&gt;</span>：按顺序挑选合适 handler 解析身份。</li>
+          <li><span class="font-semibold code">GrantedPermissionsProvider</span>：提供“当前身份拥有什么权限”。</li>
+          <li><span class="font-semibold code">RequiredPermissionsProvider</span>：提供“访问当前目标需要什么权限”。</li>
+          <li><span class="font-semibold code">AccessDecision</span>：根据上下文、已授权限和所需权限决定放行或拒绝。</li>
+          <li><span class="font-semibold code">AccessDenied</span>：统一拒绝访问出口。</li>
+        </ul>
+      </div>
+
+      <div class="card p-5">
+        <h2 class="text-xl font-semibold">3. Servlet 适配层组件</h2>
+        <ul class="mt-4 space-y-3 text-sm leading-6 text-slate-700">
+          <li><span class="font-semibold code">ServletAuthorizationFilter</span>：Servlet 世界进入授权核心的桥接入口。</li>
+          <li><span class="font-semibold code">ServletRequestContext</span>：包装 request / response / chain 的轻量对象。</li>
+          <li><span class="font-semibold code">DefaultServletAccessContextAdapter</span>：固定 environment 为 <span class="code">SERVLET</span> 并组装身份和目标。</li>
+          <li><span class="font-semibold code">DefaultServletAccessIdentityResolver</span>：使用 handler 链解析身份，兜底 anonymous。</li>
+          <li><span class="font-semibold code">DefaultServletAccessTargetResolver</span>：从 URI 与 Method 构造访问目标。</li>
+          <li><span class="font-semibold code">ServletAccessDeniedContext</span>：拒绝访问时把 request / response / chain 交给 denied handler。</li>
+        </ul>
+      </div>
+
+      <div class="card p-5">
+        <h2 class="text-xl font-semibold">4. RBAC 业务实现层组件</h2>
+        <ul class="mt-4 space-y-3 text-sm leading-6 text-slate-700">
+          <li><span class="font-semibold code">RbacGrantedPermissionsProvider</span>：把用户身份映射为已授权限。</li>
+          <li><span class="font-semibold code">RbacRequiredPermissionsProvider</span>：把访问目标映射为所需权限。</li>
+          <li><span class="font-semibold code">PermissionCache</span>：provider 读取权限数据的缓存门面。</li>
+          <li><span class="font-semibold code">DatabasePermissionCacheLoader</span>：从服务层装配授权读模型。</li>
+          <li><span class="font-semibold code">RbacAuthzEvent</span>：描述影响授权结果的数据变更。</li>
+          <li><span class="font-semibold code">PermissionCacheResetEventListener</span>：事务提交后触发缓存失效。</li>
+          <li><span class="font-semibold code">Controller / Service / Dao / Entity</span>：提供 RBAC 后台管理与持久化能力。</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="grid lg:grid-cols-2 gap-5">
+      <div class="card p-5">
+        <h2 class="text-xl font-semibold">5. 授权运行时主链路</h2>
+        <ol class="mt-4 list-decimal list-inside space-y-2 text-sm leading-6 text-slate-700">
+          <li><span class="code">ServletAuthorizationFilter</span> 接收 Servlet 请求。</li>
+          <li>构造 <span class="code">ServletRequestContext</span>。</li>
+          <li><span class="code">DefaultServletAccessContextAdapter</span> 解析出 <span class="code">AccessContext</span>。</li>
+          <li><span class="code">AccessDecision</span> 读取 granted / required 权限。</li>
+          <li>core 的 delegating provider 聚合 RBAC provider 结果。</li>
+          <li>RBAC provider 通过 <span class="code">PermissionCache</span> 读取授权读模型。</li>
+          <li>决策通过则继续 filter chain，失败则进入 <span class="code">AccessDenied</span>。</li>
+        </ol>
+      </div>
+
+      <div class="card p-5">
+        <h2 class="text-xl font-semibold">6. RBAC 数据变更与缓存失效链路</h2>
+        <ol class="mt-4 list-decimal list-inside space-y-2 text-sm leading-6 text-slate-700">
+          <li>后台管理 API 调用 RBAC service 修改权限、角色、用户关系或菜单关系。</li>
+          <li>service 发布 <span class="code">RbacAuthzEvent</span>。</li>
+          <li><span class="code">PermissionCacheResetEventListener</span> 在事务提交后处理事件。</li>
+          <li><span class="code">PermissionCacheResetPolicy</span> 推导缓存影响面。</li>
+          <li><span class="code">PermissionCacheResetExecutor</span> 执行本地缓存失效。</li>
+          <li>存在 Redis transport 时，通过 Redis 广播到其他节点并触发远端失效。</li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="card p-6">
+      <h2 class="text-2xl font-semibold">7. 分层边界速记</h2>
+      <div class="mt-4 grid md:grid-cols-3 gap-4 text-sm leading-6">
+        <div class="rounded-2xl bg-slate-50 p-4">
+          <p class="font-semibold">核心层只定义机制</p>
+          <p class="mt-2 text-slate-600">核心层不关心请求来自 Servlet、MQ 还是其他环境，也不关心权限数据来自 RBAC、ACL 或外部系统。</p>
+        </div>
+        <div class="rounded-2xl bg-blue-50 p-4">
+          <p class="font-semibold">Servlet 层只做适配</p>
+          <p class="mt-2 text-slate-600">Servlet 层把 request 翻译成 <span class="code">AccessContext</span>，把拒绝处理翻译回 response，不承载 RBAC 业务规则。</p>
+        </div>
+        <div class="rounded-2xl bg-violet-50 p-4">
+          <p class="font-semibold">RBAC 层只提供数据实现</p>
+          <p class="mt-2 text-slate-600">RBAC 层实现 provider SPI，负责用户、角色、权限、菜单、缓存、事件与管理 API。</p>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
