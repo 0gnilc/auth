@@ -5,17 +5,15 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.gnilc.auth</groupId>
-    <artifactId>gnilc-auth</artifactId>
+    <artifactId>gnilc-auth-parent</artifactId>
     <version>1.0.0</version>
     <packaging>pom</packaging>
-    <name>Gnilc Auth</name>
 
     <modules>
-        <module>gnilc-auth-core</module>
-        <module>gnilc-auth-rbac</module>
-        <module>gnilc-auth-system</module>
-        <module>gnilc-auth-test</module>
-        <module>gnilc-auth-bootstrap</module>
+        <module>gnilc-common</module>
+        <module>gnilc-auth</module>
+        <module>gnilc-system</module>
+        <module>gnilc-bootstrap</module>
     </modules>
 
     <properties>
