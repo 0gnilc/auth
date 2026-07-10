@@ -1,6 +1,5 @@
 package com.gnilc.auth.authz.servlet.config;
 
-import com.gnilc.auth.FilterRegistrationOrder;
 import com.gnilc.auth.authn.context.DefaultAccessPrincipal;
 import com.gnilc.auth.authz.config.AuthorizationAutoConfiguration;
 import com.gnilc.auth.authz.context.AccessContext;
@@ -66,7 +65,7 @@ class ServletAuthorizationAutoConfigurationTest {
             assertThat(registrations).containsKey("servletAuthorizationFilterRegistration");
             FilterRegistrationBean<Filter> registration = registrations.get("servletAuthorizationFilterRegistration");
             assertThat(registration.getFilter()).isSameAs(context.getBean(ServletAuthorizationFilter.class));
-            assertThat(registration.getOrder()).isEqualTo(FilterRegistrationOrder.SERVLET_AUTHORIZATION_FILTER_ORDER);
+            assertThat(registration.getOrder()).isEqualTo(ServletAuthorizationAutoConfiguration.AUTHORIZATION_FILTER_ORDER);
             assertThat(registration.getUrlPatterns()).containsExactly("/*");
         });
     }

@@ -6,7 +6,6 @@ import com.gnilc.auth.authn.servlet.context.ServletAuthenticationContext;
 import com.gnilc.auth.authn.servlet.filter.ServletAuthenticationFilter;
 import com.gnilc.auth.authn.servlet.handler.ServletAuthenticationFailureHandler;
 import com.gnilc.auth.authn.servlet.handler.ServletAuthenticationHandler;
-import com.gnilc.auth.FilterRegistrationOrder;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
@@ -44,7 +43,7 @@ class ServletAuthenticationAutoConfigurationTest {
                     FilterRegistrationBean registration = registrations.values().iterator().next();
                     assertThat(registration.getFilter()).isInstanceOf(ServletAuthenticationFilter.class);
                     assertThat(registration.getUrlPatterns()).containsExactly("/*");
-                    assertThat(registration.getOrder()).isEqualTo(FilterRegistrationOrder.SERVLET_AUTHENTICATION_FILTER_ORDER);
+                    assertThat(registration.getOrder()).isEqualTo(ServletAuthenticationAutoConfiguration.AUTHENTICATION_FILTER_ORDER);
                 });
     }
 

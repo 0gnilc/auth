@@ -1,6 +1,5 @@
 package com.gnilc.auth.authz.servlet.config;
 
-import com.gnilc.auth.FilterRegistrationOrder;
 import com.gnilc.auth.authz.config.AuthorizationAutoConfiguration;
 import com.gnilc.auth.authz.decision.AccessDecision;
 import com.gnilc.auth.authz.denied.AccessDenied;
@@ -32,6 +31,8 @@ import java.util.List;
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 @ConditionalOnClass({DispatcherServlet.class, Filter.class})
 public class ServletAuthorizationAutoConfiguration {
+
+    public static final int AUTHORIZATION_FILTER_ORDER = Integer.MAX_VALUE;
 
     /**
      * 创建默认 Servlet 访问身份解析处理器。
@@ -100,7 +101,7 @@ public class ServletAuthorizationAutoConfiguration {
         registration.setFilter(authorizationFilter);
         registration.addUrlPatterns("/*");
         registration.setName(ServletAuthorizationFilter.class.getName());
-        registration.setOrder(FilterRegistrationOrder.SERVLET_AUTHORIZATION_FILTER_ORDER);
+        registration.setOrder(AUTHORIZATION_FILTER_ORDER);
         return registration;
     }
 }

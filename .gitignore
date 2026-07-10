@@ -13,8 +13,3 @@ target/
 
 # AI tooling (developer-specific)
 .claude
-CLAUDE.md
-CLAUDE.me
-CONTEXT.md
-docs/agent/
-docs/agents/

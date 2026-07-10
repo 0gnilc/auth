@@ -4,7 +4,6 @@ import com.gnilc.auth.authn.servlet.filter.ServletAuthenticationFilter;
 import com.gnilc.auth.authn.servlet.handler.DefaultServletAuthenticationFailureHandler;
 import com.gnilc.auth.authn.servlet.handler.ServletAuthenticationFailureHandler;
 import com.gnilc.auth.authn.servlet.handler.ServletAuthenticationHandler;
-import com.gnilc.auth.FilterRegistrationOrder;
 import jakarta.servlet.Filter;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -33,6 +32,8 @@ import org.springframework.web.servlet.DispatcherServlet;
 @AutoConfigureAfter(DispatcherServletAutoConfiguration.class)
 public class ServletAuthenticationAutoConfiguration {
 
+    public static final int AUTHENTICATION_FILTER_ORDER = Integer.MAX_VALUE - 1;
+
     @Bean
     @ConditionalOnMissingBean
     public ServletAuthenticationFailureHandler authenticationFailureHandler() {
@@ -53,7 +54,7 @@ public class ServletAuthenticationAutoConfiguration {
         registration.setFilter(authenticationFilter);
         registration.addUrlPatterns("/*");
         registration.setName(ServletAuthenticationFilter.class.getName());
-        registration.setOrder(FilterRegistrationOrder.SERVLET_AUTHENTICATION_FILTER_ORDER);
+        registration.setOrder(AUTHENTICATION_FILTER_ORDER);
         return registration;
     }
 }
