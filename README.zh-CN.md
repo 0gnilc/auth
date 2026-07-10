@@ -4,13 +4,17 @@
 
 Gnilc Auth 是一个面向 Java/Spring 应用的认证与授权框架，提供 RBAC 访问控制能力。项目采用 Maven 多模块结构，提供核心授权抽象、可选 Servlet 认证支持以及面向 RBAC 的实现。
 
-项目 Maven `groupId` 与 Java 主包名统一使用 `com.gnilc.auth`，因为项目同时包含认证和授权能力。主包名下继续按职责区分：`com.gnilc.auth.authn.*` 表示认证，`com.gnilc.auth.authz.*` 表示授权，`com.gnilc.auth.system.*` 表示系统后台管理模块，用于编排认证、授权和 RBAC 资源。`com.gnilc.auth.system.auth.*` 放置系统后台管理 auth adapter，用于后台管理员会话认证和系统访问拒绝响应。
+Java 包按职责区分：`com.gnilc.auth.authn.*` 表示认证，`com.gnilc.auth.authz.*` 表示授权，`com.gnilc.system.*` 表示编排认证、授权和 RBAC 资源的系统后台管理模块。`com.gnilc.system.auth.*` 放置后台管理员会话认证和系统访问拒绝响应等 auth adapter。
 
 ## 模块
 
-- `gnilc-auth-core`：访问控制核心注解、决策接口、权限提供者、可选 Servlet 认证过滤器支持和 Servlet 授权过滤器支持。
-- `gnilc-auth-rbac`：RBAC 相关缓存、实体、控制器、服务和权限提供者。
-- `gnilc-auth-system`：系统应用模块，用于接入并初始化访问控制能力。
+- `gnilc-common`：common 模块的 parent/aggregator。
+- `gnilc-common/gnilc-test-support`（`gnilc-test-support`）：无业务语义的共享测试容器、清理和测试工具。
+- `gnilc-auth`：认证与授权模块的 parent/aggregator。
+- `gnilc-auth/auth-core`（`auth-core`）：访问控制核心注解、决策、权限提供者以及可选 Servlet 认证/授权 adapter。
+- `gnilc-auth/auth-rbac`（`auth-rbac`）：RBAC 实体、Mapper、服务、Controller、权限提供者和缓存行为。
+- `gnilc-system`：后台管理员资料、会话和系统级 auth 编排。
+- `gnilc-bootstrap`：可执行应用和全应用集成边界。
 
 ## 授权核心
 
@@ -39,11 +43,21 @@ Gnilc Auth 是一个面向 Java/Spring 应用的认证与授权框架，提供 R
 - JDK 17+
 - Maven 3.8+
 
-## 构建
+## 构建与测试
 
 ```bash
+# Surefire 快速测试：*Test 和 *ControllerTest
+mvn test
+
+# 完整验证：Surefire 加 Failsafe *IT/*MapperIT/*CacheIT/*ApiIT
+# Testcontainers MySQL 8 和 Redis 8 需要 Docker。
+mvn verify
+
+# 验证后构建整个 reactor
 mvn clean package
 ```
+
+所有测试都放在所属模块的 `src/test` 下，不使用 `src/intg-test` source set。集成测试只使用一次性的 Testcontainers 服务，不使用 H2、本地服务或共享服务。测试命名、模块选择、数据清理和 HTTP 断言规则见必须遵循的[测试指南](docs/test/testing-guide.md)。
 
 ## 提交规范
 

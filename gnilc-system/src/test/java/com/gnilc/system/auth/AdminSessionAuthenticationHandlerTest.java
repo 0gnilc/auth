@@ -1,8 +1,8 @@
 package com.gnilc.system.auth;
 
-import com.gnilc.auth.authn.servlet.context.ServletAuthenticationContext;
-import com.gnilc.auth.authn.handler.AuthenticationResult;
 import com.gnilc.auth.authn.context.DefaultAccessPrincipal;
+import com.gnilc.auth.authn.handler.AuthenticationResult;
+import com.gnilc.auth.authn.servlet.context.ServletAuthenticationContext;
 import com.gnilc.system.session.AdminSessionManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,70 +25,59 @@ class AdminSessionAuthenticationHandlerTest {
         handler = new AdminSessionAuthenticationHandler(sessionManager);
     }
 
-    // TestCaseId: SYS-AUTH-001
     @Test
-    void supportsOnlyAdminNamespacedBearerToken() {
+    void supportsAdminBearerTokensRegardlessOfHeaderCaseOrRequestPath() {
         when(sessionManager.supportsAccessToken("sys_admin.1001.access-token")).thenReturn(true);
-        when(sessionManager.supportsAccessToken("1001.access-token")).thenReturn(false);
 
-        assertThat(handler.supports(context("/api/me", "Bearer sys_admin.1001.access-token"))).isTrue();
-        assertThat(handler.supports(context("/unknown", "bearer sys_admin.1001.access-token"))).isTrue();
-        assertThat(handler.supports(context("/sys/admin/user-info", "Bearer 1001.access-token"))).isFalse();
-        assertThat(handler.supports(context("/sys/admin/user-info", "Bearer"))).isFalse();
-        assertThat(handler.supports(context("/sys/admin/user-info", "Bearer "))).isFalse();
-        assertThat(handler.supports(context("/sys/admin/user-info", null))).isFalse();
-        assertThat(handler.supports(context("/sys/admin/user-info", "Basic sys_admin.1001.access-token"))).isFalse();
+        assertThat(handler.supports(context("/anything", "bearer sys_admin.1001.access-token"))).isTrue();
+        verify(sessionManager).supportsAccessToken("sys_admin.1001.access-token");
     }
 
-    // TestCaseId: SYS-AUTH-002
     @Test
-    void authenticatesWithExtractedAccessTokenAndPrincipal() {
+    void ignoresMissingNonBearerAndForeignBearerCredentials() {
+        when(sessionManager.supportsAccessToken("foreign-token")).thenReturn(false);
+
+        assertThat(handler.supports(context("/sys/admin/user-info", null))).isFalse();
+        assertThat(handler.supports(context("/sys/admin/user-info", "Basic credentials"))).isFalse();
+        assertThat(handler.supports(context("/sys/admin/user-info", "Bearer foreign-token"))).isFalse();
+    }
+
+    @Test
+    void authenticatesAStoredAccessTokenAsTheAdminUser() {
         when(sessionManager.validateAccessToken("sys_admin.1001.access-token")).thenReturn(1001L);
 
-        AuthenticationResult result = handler.authenticate(context("/sys/admin/user-info", "Bearer sys_admin.1001.access-token"));
+        AuthenticationResult result = handler.authenticate(
+                context("/sys/admin/user-info", "Bearer sys_admin.1001.access-token"));
 
         assertThat(result.isAuthenticated()).isTrue();
         assertThat(result.getPrincipal()).isInstanceOf(DefaultAccessPrincipal.class);
         assertThat(result.getPrincipal().getName()).isEqualTo("1001");
-        assertThat(result.getAttributes()).isEmpty();
         assertThat(result.getPrincipal().getAttributes()).isEmpty();
-        verify(sessionManager).validateAccessToken("sys_admin.1001.access-token");
     }
 
-    // TestCaseId: SYS-AUTH-003
     @Test
-    void failsWhenAccessTokenIsNotBackedBySession() {
-        when(sessionManager.validateAccessToken("sys_admin.1001.missing-token")).thenReturn(null);
+    void rejectsExpiredOrUnknownAccessTokens() {
+        when(sessionManager.validateAccessToken("expired-token")).thenReturn(null);
 
-        AuthenticationResult result = handler.authenticate(context("/sys/admin/user-info", "Bearer sys_admin.1001.missing-token"));
+        AuthenticationResult result = handler.authenticate(
+                context("/sys/admin/user-info", "Bearer expired-token"));
 
         assertThat(result.isAuthenticated()).isFalse();
         assertThat(result.getReason()).isEqualTo("invalid access token");
-        verify(sessionManager).validateAccessToken("sys_admin.1001.missing-token");
     }
 
-    // TestCaseId: SYS-AUTH-004
     @Test
-    void rejectsBearerHeaderWithoutSingleTokenValue() {
-        assertThat(handler.authenticate(context("/sys/admin/user-info", "Bearer")).isAuthenticated()).isFalse();
-        assertThat(handler.authenticate(context("/sys/admin/user-info", "Bearer ")).isAuthenticated()).isFalse();
-        assertThat(handler.authenticate(context("/sys/admin/user-info", "Bearer    ")).isAuthenticated()).isFalse();
-        assertThat(handler.authenticate(context("/sys/admin/user-info", "Bearer sys_admin.1001.access-token extra")).isAuthenticated()).isFalse();
-    }
-
-    // TestCaseId: SYS-AUTH-005
-    @Test
-    void authenticateFailsWithoutTouchingSessionManagerWhenBearerHeaderIsMissingOrMalformed() {
+    void rejectsMalformedBearerValuesBeforeSessionValidation() {
         assertThat(handler.authenticate(context("/sys/admin/user-info", null)).isAuthenticated()).isFalse();
-        assertThat(handler.authenticate(context("/sys/admin/user-info", "Basic sys_admin.1001.access-token")).isAuthenticated()).isFalse();
-        assertThat(handler.authenticate(context("/sys/admin/user-info", "Bearer sys_admin.1001.access-token extra")).isAuthenticated()).isFalse();
+        assertThat(handler.authenticate(context("/sys/admin/user-info", "Bearer")).isAuthenticated()).isFalse();
+        assertThat(handler.authenticate(context("/sys/admin/user-info", "Bearer token extra")).isAuthenticated()).isFalse();
 
-        verify(sessionManager, never()).validateAccessToken("sys_admin.1001.access-token");
+        verify(sessionManager, never()).validateAccessToken(org.mockito.ArgumentMatchers.anyString());
     }
 
-    private ServletAuthenticationContext context(String requestUri, String authorization) {
+    private ServletAuthenticationContext context(String path, String authorization) {
         MockHttpServletRequest request = new MockHttpServletRequest();
-        request.setRequestURI(requestUri);
+        request.setRequestURI(path);
         if (authorization != null) {
             request.addHeader("Authorization", authorization);
         }

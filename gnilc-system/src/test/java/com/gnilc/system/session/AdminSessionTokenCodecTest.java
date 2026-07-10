@@ -8,50 +8,42 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class AdminSessionTokenCodecTest {
     private final AdminSessionTokenCodec tokenCodec = new AdminSessionTokenCodec();
 
-    // TestCaseId: SYS-TOKEN-001
     @Test
-    void createsUserIdPrefixedUrlSafeTokenWithThirtyTwoRandomBytes() {
-        String token = tokenCodec.issue(1001L);
-
-        assertThat(token).startsWith("sys_admin.1001.");
-        String randomPart = token.substring("sys_admin.1001.".length());
-        assertThat(randomPart).hasSize(43);
-        assertThat(randomPart).doesNotContain("+").doesNotContain("/").doesNotContain("=");
-    }
-
-    // TestCaseId: SYS-TOKEN-002
-    @Test
-    void createsDifferentTokensForConcurrentLogins() {
+    void issuesDistinctUrlSafeTokensContainingTheAdminUserId() {
         String first = tokenCodec.issue(1001L);
         String second = tokenCodec.issue(1001L);
 
-        assertThat(first).isNotEqualTo(second);
+        assertThat(first).startsWith("sys_admin.1001.").isNotEqualTo(second);
+        assertThat(first.substring("sys_admin.1001.".length()))
+                .hasSize(43)
+                .doesNotContain("+", "/", "=");
+        assertThat(tokenCodec.resolve(first)).isEqualTo(1001L);
     }
 
-    // TestCaseId: SYS-TOKEN-003
     @Test
-    void resolvesUserIdFromToken() {
-        Long userId = tokenCodec.resolve("sys_admin.1001.abcdefghijklmnopqrstuvwxyzABCDEFGHI");
-
-        assertThat(userId).isEqualTo(1001L);
-    }
-
-    // TestCaseId: SYS-TOKEN-004
-    @Test
-    void matchesOnlyAdminNamespacedTokens() {
+    void recognizesOnlyTheAdminTokenNamespace() {
         assertThat(tokenCodec.matches("sys_admin.1001.random")).isTrue();
         assertThat(tokenCodec.matches("1001.random")).isFalse();
         assertThat(tokenCodec.matches(null)).isFalse();
     }
 
-    // TestCaseId: SYS-TOKEN-005
     @Test
-    void rejectsMalformedTokens() {
+    void rejectsMissingUserIdsMalformedUserIdsAndMissingRandomValues() {
         assertThatThrownBy(() -> tokenCodec.resolve("sys_admin"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Invalid admin token");
-        assertThatThrownBy(() -> tokenCodec.resolve("1001.random"))
+        assertThatThrownBy(() -> tokenCodec.resolve("sys_admin.user.random"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Invalid admin token");
+        assertThatThrownBy(() -> tokenCodec.resolve("sys_admin.1001."))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Invalid admin token");
+    }
+
+    @Test
+    void rejectsNullUserIdsWhenIssuingTokens() {
+        assertThatThrownBy(() -> tokenCodec.issue(null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("userId == null");
     }
 }

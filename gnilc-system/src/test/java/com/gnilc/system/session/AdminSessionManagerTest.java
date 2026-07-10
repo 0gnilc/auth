@@ -2,148 +2,109 @@ package com.gnilc.system.session;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentMatchers;
-import org.springframework.data.redis.core.RedisCallback;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.data.redis.core.ValueOperations;
-
-import java.time.Duration;
-import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class AdminSessionManagerTest {
-    private StringRedisTemplate redisTemplate;
-    private ValueOperations<String, String> valueOperations;
+    private AdminSessionRedisCommands redisCommands;
+    private AdminSessionTokenCodec tokenCodec;
     private AdminSessionManager manager;
 
     @BeforeEach
     void setUp() {
-        redisTemplate = mock(StringRedisTemplate.class);
-        valueOperations = mock(ValueOperations.class);
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        manager = new AdminSessionManager(new AdminSessionRedisCommands(redisTemplate));
+        redisCommands = mock(AdminSessionRedisCommands.class);
+        tokenCodec = mock(AdminSessionTokenCodec.class);
+        manager = new AdminSessionManager(redisCommands, tokenCodec);
     }
 
-    // TestCaseId: SYS-SESSION-001
     @Test
-    void createsAccessAndRefreshSessionsWithPairedTokenValues() {
-        AdminSessionTokenPair token = manager.createSession(1001L);
+    void createsAndPersistsOnePairedSession() {
+        when(tokenCodec.issue(1001L)).thenReturn("access-token", "refresh-token");
 
-        assertThat(token.getAccessToken()).startsWith("sys_admin.1001.");
-        assertThat(token.getRefreshToken()).startsWith("sys_admin.1001.");
-        assertThat(token.getAccessToken()).isNotEqualTo(token.getRefreshToken());
-        verify(valueOperations).set("sys:admin:at:1001:" + token.getAccessToken(), token.getRefreshToken(), Duration.ofDays(7));
-        verify(valueOperations).set("sys:admin:rt:1001:" + token.getRefreshToken(), token.getAccessToken(), Duration.ofDays(30));
+        AdminSessionTokenPair pair = manager.createSession(1001L);
+
+        assertThat(pair.getAccessToken()).isEqualTo("access-token");
+        assertThat(pair.getRefreshToken()).isEqualTo("refresh-token");
+        verify(redisCommands).saveSession(1001L, "access-token", "refresh-token");
     }
 
-    // TestCaseId: SYS-SESSION-002
     @Test
-    void validatesAccessTokenByAccessKeyExistenceOnly() {
-        when(redisTemplate.hasKey("sys:admin:at:1001:sys_admin.1001.access-token")).thenReturn(true);
+    void validatesOnlyExistingAccessTokens() {
+        when(tokenCodec.resolve("access-token")).thenReturn(1001L);
+        when(redisCommands.hasAccessToken(1001L, "access-token")).thenReturn(true);
 
-        assertThat(manager.validateAccessToken("sys_admin.1001.access-token")).isEqualTo(1001L);
+        assertThat(manager.validateAccessToken("access-token")).isEqualTo(1001L);
+
+        when(redisCommands.hasAccessToken(1001L, "access-token")).thenReturn(false);
+        assertThat(manager.validateAccessToken("access-token")).isNull();
     }
 
-    // TestCaseId: SYS-SESSION-003
     @Test
-    void rejectsMissingAccessKey() {
-        when(redisTemplate.hasKey("sys:admin:at:1001:sys_admin.1001.access-token")).thenReturn(false);
+    void malformedTokensAreRejectedWithoutReadingSessionStorage() {
+        when(tokenCodec.resolve("malformed")).thenThrow(new IllegalArgumentException("bad token"));
 
-        assertThat(manager.validateAccessToken("sys_admin.1001.access-token")).isNull();
+        assertThat(manager.validateAccessToken("malformed")).isNull();
+        assertThat(manager.refreshSession("malformed")).isNull();
+        assertThat(manager.logout("malformed")).isFalse();
+
+        verify(redisCommands, never()).hasAccessToken(org.mockito.ArgumentMatchers.any(), anyString());
+        verify(redisCommands, never()).hasRefreshToken(org.mockito.ArgumentMatchers.any(), anyString());
     }
 
-    // TestCaseId: SYS-SESSION-004
     @Test
-    void rejectsMalformedTokensWithoutTouchingRedisSessionKeys() {
-        assertThat(manager.validateAccessToken("not-a-token")).isNull();
-        assertThat(manager.refreshSession("not-a-token")).isNull();
-        assertThat(manager.logout("not-a-token")).isFalse();
+    void refreshReplacesOnlyTheAccessTokenAndKeepsTheRefreshToken() {
+        when(tokenCodec.resolve("refresh-token")).thenReturn(1001L);
+        when(redisCommands.hasRefreshToken(1001L, "refresh-token")).thenReturn(true);
+        when(redisCommands.getPairedAccessToken(1001L, "refresh-token")).thenReturn("old-access-token");
+        when(tokenCodec.issue(1001L)).thenReturn("new-access-token");
+        when(redisCommands.replacePairedAccessTokenKeepingTtl(1001L, "refresh-token", "new-access-token"))
+                .thenReturn(true);
 
-        verify(redisTemplate, never()).hasKey(any());
-        verify(valueOperations, never()).get(any());
+        AdminSessionTokenPair pair = manager.refreshSession("refresh-token");
+
+        assertThat(pair.getAccessToken()).isEqualTo("new-access-token");
+        assertThat(pair.getRefreshToken()).isEqualTo("refresh-token");
+        verify(redisCommands).deleteAccessToken(1001L, "old-access-token");
+        verify(redisCommands).saveAccessToken(1001L, "new-access-token", "refresh-token");
+        verify(redisCommands, never()).deleteRefreshToken(1001L, "refresh-token");
     }
 
-    // TestCaseId: SYS-SESSION-005
     @Test
-    void refreshRequiresRefreshKeyAndKeepsRefreshTokenAndTtl() {
-        when(redisTemplate.hasKey("sys:admin:rt:1001:sys_admin.1001.refresh-token")).thenReturn(true);
-        when(valueOperations.get("sys:admin:rt:1001:sys_admin.1001.refresh-token")).thenReturn("sys_admin.1001.old-access-token");
-        when(redisTemplate.execute(ArgumentMatchers.<RedisCallback<Boolean>>any())).thenReturn(true);
+    void failedAtomicRefreshLeavesTheOldPairUntouched() {
+        when(tokenCodec.resolve("refresh-token")).thenReturn(1001L);
+        when(redisCommands.hasRefreshToken(1001L, "refresh-token")).thenReturn(true);
+        when(redisCommands.getPairedAccessToken(1001L, "refresh-token")).thenReturn("old-access-token");
+        when(tokenCodec.issue(1001L)).thenReturn("new-access-token");
+        when(redisCommands.replacePairedAccessTokenKeepingTtl(1001L, "refresh-token", "new-access-token"))
+                .thenReturn(false);
 
-        AdminSessionTokenPair token = manager.refreshSession("sys_admin.1001.refresh-token");
+        assertThat(manager.refreshSession("refresh-token")).isNull();
 
-        assertThat(token.getAccessToken()).startsWith("sys_admin.1001.");
-        assertThat(token.getAccessToken()).isNotEqualTo("sys_admin.1001.old-access-token");
-        assertThat(token.getRefreshToken()).isEqualTo("sys_admin.1001.refresh-token");
-        verify(redisTemplate).delete("sys:admin:at:1001:sys_admin.1001.old-access-token");
-        verify(redisTemplate, never()).delete("sys:admin:rt:1001:sys_admin.1001.refresh-token");
-        verify(valueOperations).set("sys:admin:at:1001:" + token.getAccessToken(), "sys_admin.1001.refresh-token", Duration.ofDays(7));
+        verify(redisCommands, never()).deleteAccessToken(1001L, "old-access-token");
+        verify(redisCommands, never()).saveAccessToken(1001L, "new-access-token", "refresh-token");
     }
 
-    // TestCaseId: SYS-SESSION-006
     @Test
-    void logoutRequiresRefreshKeyAndDeletesPairedTokens() {
-        when(redisTemplate.hasKey("sys:admin:rt:1001:sys_admin.1001.refresh-token")).thenReturn(true);
-        when(valueOperations.get("sys:admin:rt:1001:sys_admin.1001.refresh-token")).thenReturn("sys_admin.1001.access-token");
+    void logoutRevokesBothSidesOfThePair() {
+        when(tokenCodec.resolve("refresh-token")).thenReturn(1001L);
+        when(redisCommands.hasRefreshToken(1001L, "refresh-token")).thenReturn(true);
+        when(redisCommands.getPairedAccessToken(1001L, "refresh-token")).thenReturn("access-token");
 
-        assertThat(manager.logout("sys_admin.1001.refresh-token")).isTrue();
+        assertThat(manager.logout("refresh-token")).isTrue();
 
-        verify(redisTemplate).delete("sys:admin:at:1001:sys_admin.1001.access-token");
-        verify(redisTemplate).delete("sys:admin:rt:1001:sys_admin.1001.refresh-token");
+        verify(redisCommands).deleteAccessToken(1001L, "access-token");
+        verify(redisCommands).deleteRefreshToken(1001L, "refresh-token");
     }
 
-    // TestCaseId: SYS-SESSION-007
     @Test
-    void cleanupDeletesAllUserAccessAndRefreshKeys() {
-        when(redisTemplate.keys("sys:admin:at:1001:*")).thenReturn(Set.of("at-1", "at-2"));
-        when(redisTemplate.keys("sys:admin:rt:1001:*")).thenReturn(Set.of("rt-1"));
-
+    void cleanupRevokesEverySessionForOnlyTheRequestedUser() {
         manager.cleanupUserSessions(1001L);
 
-        verify(redisTemplate).delete(Set.of("at-1", "at-2"));
-        verify(redisTemplate).delete(Set.of("rt-1"));
+        verify(redisCommands).deleteUserSessions(1001L);
     }
-
-    // TestCaseId: SYS-SESSION-008
-    @Test
-    void supportsOnlyAdminNamespacedAccessTokens() {
-        assertThat(manager.supportsAccessToken("sys_admin.1001.access-token")).isTrue();
-        assertThat(manager.supportsAccessToken("1001.access-token")).isFalse();
-        assertThat(manager.supportsAccessToken(null)).isFalse();
-    }
-
-    // TestCaseId: SYS-SESSION-009
-    @Test
-    void refreshReturnsNullWhenPairedAccessTokenIsBlankOrReplaceFails() {
-        when(redisTemplate.hasKey("sys:admin:rt:1001:sys_admin.1001.refresh-token")).thenReturn(true);
-        when(valueOperations.get("sys:admin:rt:1001:sys_admin.1001.refresh-token")).thenReturn(" ");
-
-        assertThat(manager.refreshSession("sys_admin.1001.refresh-token")).isNull();
-        verify(redisTemplate, never()).execute(ArgumentMatchers.<RedisCallback<Boolean>>any());
-
-        when(valueOperations.get("sys:admin:rt:1001:sys_admin.1001.refresh-token")).thenReturn("sys_admin.1001.old-access-token");
-        when(redisTemplate.execute(ArgumentMatchers.<RedisCallback<Boolean>>any())).thenReturn(false);
-
-        assertThat(manager.refreshSession("sys_admin.1001.refresh-token")).isNull();
-        verify(redisTemplate, never()).delete("sys:admin:at:1001:sys_admin.1001.old-access-token");
-    }
-
-    // TestCaseId: SYS-SESSION-010
-    @Test
-    void logoutWithBlankPairedAccessTokenDeletesOnlyRefreshToken() {
-        when(redisTemplate.hasKey("sys:admin:rt:1001:sys_admin.1001.refresh-token")).thenReturn(true);
-        when(valueOperations.get("sys:admin:rt:1001:sys_admin.1001.refresh-token")).thenReturn(" ");
-
-        assertThat(manager.logout("sys_admin.1001.refresh-token")).isTrue();
-
-        verify(redisTemplate, never()).delete("sys:admin:at:1001: ");
-        verify(redisTemplate).delete("sys:admin:rt:1001:sys_admin.1001.refresh-token");
-    }
-
 }

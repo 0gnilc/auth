@@ -74,11 +74,11 @@ Servlet 授权命名遵循两层语言：`Web*` 用于功能/配置入口，`Ser
 
 ### 系统 Auth 组合包（System Auth Composition）
 
-`com.gnilc.auth.system.auth.*` 是后台管理系统 auth 组合包，放置后台管理员会话认证和系统访问拒绝响应等系统专属 concrete adapter。它属于 `com.gnilc.auth.system.*` 的编排能力，不属于纯 `com.gnilc.auth.authn.*` 或纯 `com.gnilc.auth.authz.*` 核心包。
+`com.gnilc.system.auth.*` 是后台管理系统 auth 组合包，放置后台管理员会话认证和系统访问拒绝响应等系统专属 concrete adapter。它属于 `com.gnilc.system.*` 的编排能力，不属于纯 `com.gnilc.auth.authn.*` 或纯 `com.gnilc.auth.authz.*` 核心包。
 
 ## 认证与授权边界
 
-项目 Maven `groupId` 与 Java 主包名统一使用 `com.gnilc.auth`，表示项目覆盖认证与授权能力。主包名下继续按职责区分：`com.gnilc.auth.authn.*` 表示认证（authentication），`com.gnilc.auth.authz.*` 表示授权（authorization）。`com.gnilc.auth.system.*` 表示后台管理系统能力，它可以编排认证、授权和 RBAC 资源，但不归属于纯认证或纯授权包。
+项目 Maven `groupId` 与 Java 主包名统一使用 `com.gnilc.auth`，表示项目覆盖认证与授权能力。主包名下继续按职责区分：`com.gnilc.auth.authn.*` 表示认证（authentication），`com.gnilc.auth.authz.*` 表示授权（authorization）。`com.gnilc.system.*` 表示后台管理系统能力，它可以编排认证、授权和 RBAC 资源，但不归属于纯认证或纯授权包。
 
 认证负责验证凭证并形成当前执行环境可读取的主体事实；授权负责基于访问身份、访问目标和权限集合做允许/拒绝判断。认证失败通常由认证失败处理返回 401；授权失败由访问拒绝处理返回 403 或执行环境约定的拒绝动作。
 

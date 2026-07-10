@@ -21,6 +21,10 @@
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spring-boot.version>3.2.12</spring-boot.version>
+        <mybatis-plus.version>3.5.14</mybatis-plus.version>
+        <mysql.test.image>mysql:8.4.0</mysql.test.image>
+        <redis.test.image>redis:8-alpine</redis.test.image>
+        <rest-assured.version>5.5.6</rest-assured.version>
     </properties>
 
     <dependencyManagement>
@@ -36,9 +40,21 @@
             <dependency>
                 <groupId>com.baomidou</groupId>
                 <artifactId>mybatis-plus-bom</artifactId>
-                <version>3.5.14</version>
+                <version>${mybatis-plus.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>com.gnilc.auth</groupId>
+                <artifactId>gnilc-test-support</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>io.rest-assured</groupId>
+                <artifactId>rest-assured</artifactId>
+                <version>${rest-assured.version}</version>
             </dependency>
 
             <dependency>
@@ -94,11 +110,23 @@
                 <artifactId>fastjson</artifactId>
                 <version>2.0.17</version>
             </dependency>
-
         </dependencies>
     </dependencyManagement>
 
     <build>
+        <testResources>
+            <testResource>
+                <directory>src/test/resources</directory>
+            </testResource>
+            <testResource>
+                <directory>${maven.multiModuleProjectDirectory}/deploy/sql</directory>
+                <targetPath>sql/schema</targetPath>
+                <includes>
+                    <include>*.sql</include>
+                </includes>
+            </testResource>
+        </testResources>
+
         <pluginManagement>
             <plugins>
                 <plugin>
@@ -116,11 +144,6 @@
                     <artifactId>maven-failsafe-plugin</artifactId>
                     <version>3.2.5</version>
                 </plugin>
-                <plugin>
-                    <groupId>org.codehaus.mojo</groupId>
-                    <artifactId>build-helper-maven-plugin</artifactId>
-                    <version>3.6.0</version>
-                </plugin>
             </plugins>
         </pluginManagement>
 
@@ -129,64 +152,45 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <includes>
+                        <include>**/*Test.java</include>
+                    </includes>
+                    <excludes>
+                        <exclude>**/*IT.java</exclude>
+                    </excludes>
+                    <systemPropertyVariables>
+                        <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration>
+                    <includes>
+                        <include>**/*IT.java</include>
+                    </includes>
+                    <forkCount>1</forkCount>
+                    <reuseForks>true</reuseForks>
+                    <systemPropertyVariables>
+                        <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                        <app.test.mysql.image>${mysql.test.image}</app.test.mysql.image>
+                        <app.test.redis.image>${redis.test.image}</app.test.redis.image>
+                    </systemPropertyVariables>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
-    <profiles>
-        <profile>
-            <id>integration</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>build-helper-maven-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>add-integration-test-sources</id>
-                                <phase>generate-test-sources</phase>
-                                <goals>
-                                    <goal>add-test-source</goal>
-                                </goals>
-                                <configuration>
-                                    <sources>
-                                        <source>src/intg-test/java</source>
-                                    </sources>
-                                </configuration>
-                            </execution>
-                            <execution>
-                                <id>add-integration-test-resources</id>
-                                <phase>generate-test-resources</phase>
-                                <goals>
-                                    <goal>add-test-resource</goal>
-                                </goals>
-                                <configuration>
-                                    <resources>
-                                        <resource>
-                                            <directory>src/intg-test/resources</directory>
-                                        </resource>
-                                    </resources>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-failsafe-plugin</artifactId>
-                        <configuration>
-                            <includes>
-                                <include>**/*IT.java</include>
-                            </includes>
-                        </configuration>
-                        <executions>
-                            <execution>
-                                <goals>
-                                    <goal>integration-test</goal>
-                                    <goal>verify</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
 </project>

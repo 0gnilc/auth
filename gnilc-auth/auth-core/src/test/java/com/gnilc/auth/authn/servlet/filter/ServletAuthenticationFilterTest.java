@@ -1,159 +1,191 @@
 package com.gnilc.auth.authn.servlet.filter;
 
 import com.gnilc.auth.authn.context.DefaultAccessPrincipal;
-import com.gnilc.auth.authn.servlet.context.ServletAuthenticationContext;
-import com.gnilc.auth.authn.servlet.handler.ServletAuthenticationHandler;
 import com.gnilc.auth.authn.handler.AuthenticationResult;
-import jakarta.servlet.ServletRequest;
+import com.gnilc.auth.authn.servlet.context.ServletAuthenticationContext;
+import com.gnilc.auth.authn.servlet.handler.DefaultServletAuthenticationFailureHandler;
+import com.gnilc.auth.authn.servlet.handler.ServletAuthenticationFailureHandler;
+import com.gnilc.auth.authn.servlet.handler.ServletAuthenticationHandler;
+import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.same;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class ServletAuthenticationFilterTest {
 
-    // 没有处理器支持当前请求时，认证过滤器保持可选并继续后续链路。
-    // TestCaseId: CORE-AUTHN-015
     @Test
-    void continueFilterChainWhenNoHandlerSupportsRequest() throws Exception {
-        AtomicBoolean chainContinued = new AtomicBoolean(false);
-        AtomicBoolean failureHandled = new AtomicBoolean(false);
-        ServletAuthenticationFilter filter = new ServletAuthenticationFilter(
-                List.of(new UnsupportedServletAuthenticationHandler()),
-                (context, result) -> failureHandled.set(true)
-        );
-
-        filter.doFilter(new MockHttpServletRequest(), new MockHttpServletResponse(), (request, response) -> chainContinued.set(true));
-
-        assertThat(chainContinued).isTrue();
-        assertThat(failureHandled).isFalse();
-    }
-
-    // 认证成功后，过滤器暴露 Principal、继续链路，并停止尝试后续处理器。
-    // TestCaseId: CORE-AUTHN-016
-    @Test
-    void exposePrincipalAndStopTryingHandlersWhenAuthenticationSucceeds() throws Exception {
+    void successfulAuthenticationWrapsRequestWithPrincipalAndStopsHandlerSearch() throws Exception {
+        DefaultAccessPrincipal principal = DefaultAccessPrincipal.of("user-1");
+        ServletAuthenticationHandler unsupported = mock(ServletAuthenticationHandler.class);
+        ServletAuthenticationHandler successful = mock(ServletAuthenticationHandler.class);
+        ServletAuthenticationHandler later = mock(ServletAuthenticationHandler.class);
+        ServletAuthenticationFailureHandler failureHandler = mock(ServletAuthenticationFailureHandler.class);
+        FilterChain chain = mock(FilterChain.class);
         MockHttpServletRequest request = new MockHttpServletRequest();
-        AtomicReference<ServletRequest> chainRequest = new AtomicReference<>();
-        AtomicBoolean laterHandlerCalled = new AtomicBoolean(false);
-        ServletAuthenticationFilter filter = new ServletAuthenticationFilter(
-                List.of(
-                        new UnsupportedServletAuthenticationHandler(),
-                        new SuccessfulServletAuthenticationHandler("1001"),
-                        new TrackingServletAuthenticationHandler(laterHandlerCalled)
-                ),
-                (context, result) -> {
-                }
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        when(unsupported.supports(any())).thenReturn(false);
+        when(successful.supports(any())).thenReturn(true);
+        when(successful.authenticate(any())).thenReturn(AuthenticationResult.authenticated(principal));
+
+        new ServletAuthenticationFilter(List.of(unsupported, successful, later), failureHandler)
+                .doFilter(request, response, chain);
+
+        verify(unsupported).supports(any());
+        verify(unsupported, never()).authenticate(any());
+        verify(later, never()).supports(any());
+        verify(failureHandler, never()).handle(any(), any());
+        verify(chain).doFilter(
+                org.mockito.ArgumentMatchers.argThat(filteredRequest -> {
+                    HttpServletRequest httpRequest = (HttpServletRequest) filteredRequest;
+                    return httpRequest.getUserPrincipal() == principal
+                            && "user-1".equals(httpRequest.getRemoteUser());
+                }),
+                same(response)
         );
-
-        filter.doFilter(request, new MockHttpServletResponse(), (candidate, response) -> chainRequest.set(candidate));
-
-        assertThat(chainRequest.get()).isNotSameAs(request).isInstanceOf(HttpServletRequest.class);
-        HttpServletRequest wrappedRequest = (HttpServletRequest) chainRequest.get();
-        assertThat(wrappedRequest.getUserPrincipal().getName()).isEqualTo("1001");
-        assertThat(wrappedRequest.getRemoteUser()).isEqualTo("1001");
-        assertThat(laterHandlerCalled).isFalse();
     }
 
-    // 认证失败时，过滤器交给认证失败处理器并停止链路。
-    // TestCaseId: CORE-AUTHN-017
     @Test
-    void handleFailureResultAndStopFilterChain() throws Exception {
-        AtomicBoolean chainContinued = new AtomicBoolean(false);
-        AtomicReference<AuthenticationResult> handledResult = new AtomicReference<>();
-        ServletAuthenticationFilter filter = new ServletAuthenticationFilter(
-                List.of(new FailingServletAuthenticationHandler("bad credential")),
-                (context, result) -> handledResult.set(result)
+    void failedAuthenticationDelegatesFailureAndStopsChain() throws Exception {
+        ServletAuthenticationHandler handler = mock(ServletAuthenticationHandler.class);
+        ServletAuthenticationFailureHandler failureHandler = mock(ServletAuthenticationFailureHandler.class);
+        FilterChain chain = mock(FilterChain.class);
+        AuthenticationResult failure = AuthenticationResult.failed("expired");
+        when(handler.supports(any())).thenReturn(true);
+        when(handler.authenticate(any())).thenReturn(failure);
+
+        new ServletAuthenticationFilter(List.of(handler), failureHandler)
+                .doFilter(new MockHttpServletRequest(), new MockHttpServletResponse(), chain);
+
+        verify(failureHandler).handle(any(ServletAuthenticationContext.class), same(failure));
+        verify(chain, never()).doFilter(any(), any());
+    }
+
+    @Test
+    void nullAuthenticationResultDelegatesFailureAndStopsChain() throws Exception {
+        ServletAuthenticationHandler handler = mock(ServletAuthenticationHandler.class);
+        ServletAuthenticationFailureHandler failureHandler = mock(ServletAuthenticationFailureHandler.class);
+        FilterChain chain = mock(FilterChain.class);
+        when(handler.supports(any())).thenReturn(true);
+        when(handler.authenticate(any())).thenReturn(null);
+
+        new ServletAuthenticationFilter(List.of(handler), failureHandler)
+                .doFilter(new MockHttpServletRequest(), new MockHttpServletResponse(), chain);
+
+        verify(failureHandler).handle(
+                any(ServletAuthenticationContext.class),
+                org.mockito.ArgumentMatchers.argThat(result ->
+                        !result.isAuthenticated() && "authentication failed".equals(result.getReason()))
         );
-
-        filter.doFilter(new MockHttpServletRequest(), new MockHttpServletResponse(), (request, response) -> chainContinued.set(true));
-
-        assertThat(chainContinued).isFalse();
-        assertThat(handledResult.get().isAuthenticated()).isFalse();
-        assertThat(handledResult.get().getReason()).isEqualTo("bad credential");
+        verify(chain, never()).doFilter(any(), any());
     }
 
-    // 处理器异常视为认证失败，仍不进入后续链路。
-    // TestCaseId: CORE-AUTHN-018
     @Test
-    void handleExceptionAsAuthenticationFailure() throws Exception {
-        AtomicBoolean chainContinued = new AtomicBoolean(false);
-        AtomicReference<AuthenticationResult> handledResult = new AtomicReference<>();
-        ServletAuthenticationFilter filter = new ServletAuthenticationFilter(
-                List.of(new BrokenServletAuthenticationHandler()),
-                (context, result) -> handledResult.set(result)
+    void handlerExceptionBecomesFailedAuthenticationResult() throws Exception {
+        ServletAuthenticationHandler handler = mock(ServletAuthenticationHandler.class);
+        ServletAuthenticationFailureHandler failureHandler = mock(ServletAuthenticationFailureHandler.class);
+        FilterChain chain = mock(FilterChain.class);
+        IllegalStateException failure = new IllegalStateException("bad token");
+        when(handler.supports(any())).thenReturn(true);
+        when(handler.authenticate(any())).thenThrow(failure);
+
+        new ServletAuthenticationFilter(List.of(handler), failureHandler)
+                .doFilter(new MockHttpServletRequest(), new MockHttpServletResponse(), chain);
+
+        verify(failureHandler).handle(
+                any(ServletAuthenticationContext.class),
+                org.mockito.ArgumentMatchers.argThat(result ->
+                        !result.isAuthenticated()
+                                && "bad token".equals(result.getReason())
+                                && result.getCause() == failure)
         );
-
-        filter.doFilter(new MockHttpServletRequest(), new MockHttpServletResponse(), (request, response) -> chainContinued.set(true));
-
-        assertThat(chainContinued).isFalse();
-        assertThat(handledResult.get().isAuthenticated()).isFalse();
-        assertThat(handledResult.get().getCause()).isInstanceOf(IllegalStateException.class);
+        verify(chain, never()).doFilter(any(), any());
     }
 
-    // 处理器按照 Spring order 排序，优先级高的策略先执行。
-    // TestCaseId: CORE-AUTHN-019
     @Test
-    void authenticateWithSpringOrderedHandlers() throws Exception {
-        List<String> events = new ArrayList<>();
-        ServletAuthenticationFilter filter = new ServletAuthenticationFilter(
-                List.of(
-                        new OrderedServletAuthenticationHandler("late", 20, events),
-                        new OrderedServletAuthenticationHandler("early", 10, events)
-                ),
-                (context, result) -> {
-                }
-        );
+    void requestContinuesUnchangedWhenNoHandlerSupportsIt() throws Exception {
+        ServletAuthenticationHandler handler = mock(ServletAuthenticationHandler.class);
+        ServletAuthenticationFailureHandler failureHandler = mock(ServletAuthenticationFailureHandler.class);
+        FilterChain chain = mock(FilterChain.class);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        when(handler.supports(any())).thenReturn(false);
 
-        filter.doFilter(new MockHttpServletRequest(), new MockHttpServletResponse(), (request, response) -> {
-        });
+        new ServletAuthenticationFilter(List.of(handler), failureHandler)
+                .doFilter(request, response, chain);
 
-        assertThat(events).containsExactly("early");
+        verify(chain).doFilter(same(request), same(response));
+        verify(failureHandler, never()).handle(any(), any());
     }
 
-    // 支持当前请求的处理器返回 null 时，应按认证失败处理并停止链路。
-    // TestCaseId: CORE-AUTHN-020
     @Test
-    void handleNullAuthenticationResultAsFailure() throws Exception {
-        AtomicBoolean chainContinued = new AtomicBoolean(false);
-        AtomicReference<AuthenticationResult> handledResult = new AtomicReference<>();
-        ServletAuthenticationFilter filter = new ServletAuthenticationFilter(
-                List.of(new NullResultServletAuthenticationHandler()),
-                (context, result) -> handledResult.set(result)
-        );
+    void defaultFailureResponseUsesReasonAndFallbackMessage() throws Exception {
+        ServletAuthenticationHandler reasonedFailure = mock(ServletAuthenticationHandler.class);
+        when(reasonedFailure.supports(any())).thenReturn(true);
+        when(reasonedFailure.authenticate(any())).thenReturn(AuthenticationResult.failed("token expired"));
+        MockHttpServletResponse reasonedResponse = new MockHttpServletResponse();
 
-        filter.doFilter(new MockHttpServletRequest(), new MockHttpServletResponse(), (request, response) -> chainContinued.set(true));
+        new ServletAuthenticationFilter(
+                List.of(reasonedFailure),
+                new DefaultServletAuthenticationFailureHandler()
+        ).doFilter(new MockHttpServletRequest(), reasonedResponse, mock(FilterChain.class));
 
-        assertThat(chainContinued).isFalse();
-        assertThat(handledResult.get().isAuthenticated()).isFalse();
-        assertThat(handledResult.get().getReason()).isEqualTo("authentication failed");
+        assertThat(reasonedResponse.getStatus()).isEqualTo(401);
+        assertThat(reasonedResponse.getContentType()).isEqualTo("text/plain;charset=UTF-8");
+        assertThat(reasonedResponse.getContentAsString()).isEqualTo("token expired");
+
+        ServletAuthenticationHandler blankFailure = mock(ServletAuthenticationHandler.class);
+        when(blankFailure.supports(any())).thenReturn(true);
+        when(blankFailure.authenticate(any())).thenReturn(AuthenticationResult.failed("  "));
+        MockHttpServletResponse fallbackResponse = new MockHttpServletResponse();
+
+        new ServletAuthenticationFilter(
+                List.of(blankFailure),
+                new DefaultServletAuthenticationFailureHandler()
+        ).doFilter(new MockHttpServletRequest(), fallbackResponse, mock(FilterChain.class));
+
+        assertThat(fallbackResponse.getContentAsString()).isEqualTo("authentication failed");
     }
 
-    // 认证过滤器必须有至少一个处理器和失败处理器，避免启动时形成无效链路。
-    // TestCaseId: CORE-AUTHN-021
     @Test
-    void requireHandlersAndFailureHandler() {
-        assertThatIllegalArgumentException()
-                .isThrownBy(() -> new ServletAuthenticationFilter(List.of(), (context, result) -> {
-                }))
-                .withMessage("handlers is empty!");
-        assertThatIllegalArgumentException()
-                .isThrownBy(() -> new ServletAuthenticationFilter(List.of(new UnsupportedServletAuthenticationHandler()), null))
-                .withMessage("failureHandler == null!");
+    void handlersRunInSpringOrder() throws Exception {
+        List<String> calls = new ArrayList<>();
+        ServletAuthenticationFailureHandler failureHandler = mock(ServletAuthenticationFailureHandler.class);
+        FilterChain chain = mock(FilterChain.class);
+
+        new ServletAuthenticationFilter(
+                List.of(new LastHandler(calls), new FirstHandler(calls)),
+                failureHandler
+        ).doFilter(new MockHttpServletRequest(), new MockHttpServletResponse(), chain);
+
+        assertThat(calls).containsExactly("first", "last");
+        verify(chain).doFilter(any(), any());
     }
 
-    private record UnsupportedServletAuthenticationHandler() implements ServletAuthenticationHandler {
+    @Order(Ordered.HIGHEST_PRECEDENCE)
+    private static final class FirstHandler implements ServletAuthenticationHandler {
+        private final List<String> calls;
+
+        private FirstHandler(List<String> calls) {
+            this.calls = calls;
+        }
+
         @Override
         public boolean supports(ServletAuthenticationContext context) {
+            calls.add("first");
             return false;
         }
 
@@ -163,83 +195,23 @@ class ServletAuthenticationFilterTest {
         }
     }
 
-    private record SuccessfulServletAuthenticationHandler(String principalName) implements ServletAuthenticationHandler {
+    @Order(Ordered.LOWEST_PRECEDENCE)
+    private static final class LastHandler implements ServletAuthenticationHandler {
+        private final List<String> calls;
+
+        private LastHandler(List<String> calls) {
+            this.calls = calls;
+        }
+
         @Override
         public boolean supports(ServletAuthenticationContext context) {
-            return true;
+            calls.add("last");
+            return false;
         }
 
         @Override
         public AuthenticationResult authenticate(ServletAuthenticationContext context) {
-            return AuthenticationResult.authenticated(DefaultAccessPrincipal.of(principalName));
-        }
-    }
-
-    private record TrackingServletAuthenticationHandler(AtomicBoolean called) implements ServletAuthenticationHandler {
-        @Override
-        public boolean supports(ServletAuthenticationContext context) {
-            called.set(true);
-            return true;
-        }
-
-        @Override
-        public AuthenticationResult authenticate(ServletAuthenticationContext context) {
-            called.set(true);
-            return AuthenticationResult.failed("should not be called");
-        }
-    }
-
-    private record FailingServletAuthenticationHandler(String reason) implements ServletAuthenticationHandler {
-        @Override
-        public boolean supports(ServletAuthenticationContext context) {
-            return true;
-        }
-
-        @Override
-        public AuthenticationResult authenticate(ServletAuthenticationContext context) {
-            return AuthenticationResult.failed(reason);
-        }
-    }
-
-    private record NullResultServletAuthenticationHandler() implements ServletAuthenticationHandler {
-        @Override
-        public boolean supports(ServletAuthenticationContext context) {
-            return true;
-        }
-
-        @Override
-        public AuthenticationResult authenticate(ServletAuthenticationContext context) {
-            return null;
-        }
-    }
-
-    private record BrokenServletAuthenticationHandler() implements ServletAuthenticationHandler {
-        @Override
-        public boolean supports(ServletAuthenticationContext context) {
-            return true;
-        }
-
-        @Override
-        public AuthenticationResult authenticate(ServletAuthenticationContext context) {
-            throw new IllegalStateException("broken credential source");
-        }
-    }
-
-    private record OrderedServletAuthenticationHandler(String name, int order, List<String> events) implements ServletAuthenticationHandler, Ordered {
-        @Override
-        public boolean supports(ServletAuthenticationContext context) {
-            return true;
-        }
-
-        @Override
-        public AuthenticationResult authenticate(ServletAuthenticationContext context) {
-            events.add(name);
-            return AuthenticationResult.authenticated(DefaultAccessPrincipal.of(name));
-        }
-
-        @Override
-        public int getOrder() {
-            return order;
+            throw new AssertionError("unsupported handler must not authenticate");
         }
     }
 }

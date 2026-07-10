@@ -1,11 +1,13 @@
 package com.gnilc.auth.authn.servlet.config;
 
-import com.gnilc.auth.authn.context.DefaultAccessPrincipal;
 import com.gnilc.auth.authn.handler.AuthenticationResult;
 import com.gnilc.auth.authn.servlet.context.ServletAuthenticationContext;
 import com.gnilc.auth.authn.servlet.filter.ServletAuthenticationFilter;
+import com.gnilc.auth.authn.servlet.handler.DefaultServletAuthenticationFailureHandler;
 import com.gnilc.auth.authn.servlet.handler.ServletAuthenticationFailureHandler;
 import com.gnilc.auth.authn.servlet.handler.ServletAuthenticationHandler;
+import com.gnilc.auth.authz.servlet.config.ServletAuthorizationAutoConfiguration;
+import jakarta.servlet.Filter;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
@@ -13,83 +15,101 @@ import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import java.util.Map;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 class ServletAuthenticationAutoConfigurationTest {
     private final WebApplicationContextRunner contextRunner = new WebApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(ServletAuthenticationAutoConfiguration.class));
 
-    // 没有认证处理器时，不注册认证过滤器，保持认证能力可选。
-    // TestCaseId: CORE-AUTHN-008
     @Test
-    void doesNotRegisterServletAuthenticationFilterWithoutServletAuthenticationHandler() {
+    void backsOffEntireAuthenticationFlowWithoutHandler() {
         contextRunner.run(context -> {
             assertThat(context).doesNotHaveBean(ServletAuthenticationFilter.class);
-            assertThat(authenticationFilterRegistrations(context.getBeansOfType(FilterRegistrationBean.class))).isEmpty();
+            assertThat(context).doesNotHaveBean(ServletAuthenticationFailureHandler.class);
+            assertThat(context).doesNotHaveBean("authenticationFilterRegistration");
         });
     }
 
-    // 存在认证处理器时，自动注册认证过滤器并放在授权过滤器之前。
-    // TestCaseId: CORE-AUTHN-009
     @Test
-    void registerServletAuthenticationFilterWhenServletAuthenticationHandlerExists() {
-        contextRunner.withUserConfiguration(ServletAuthenticationHandlerConfiguration.class)
+    void registersDefaultFailureHandlerFilterAndOrderedRegistration() {
+        contextRunner
+                .withUserConfiguration(HandlerConfiguration.class)
                 .run(context -> {
                     assertThat(context).hasSingleBean(ServletAuthenticationFilter.class);
-                    Map<String, FilterRegistrationBean> registrations = authenticationFilterRegistrations(context.getBeansOfType(FilterRegistrationBean.class));
-                    assertThat(registrations).hasSize(1);
-                    FilterRegistrationBean registration = registrations.values().iterator().next();
-                    assertThat(registration.getFilter()).isInstanceOf(ServletAuthenticationFilter.class);
+                    assertThat(context).getBean(ServletAuthenticationFailureHandler.class)
+                            .isInstanceOf(DefaultServletAuthenticationFailureHandler.class);
+                    FilterRegistrationBean<?> registration = context.getBean(
+                            "authenticationFilterRegistration",
+                            FilterRegistrationBean.class
+                    );
+                    assertThat(registration.getFilter()).isSameAs(context.getBean(ServletAuthenticationFilter.class));
+                    assertThat(registration.getOrder())
+                            .isEqualTo(ServletAuthenticationAutoConfiguration.AUTHENTICATION_FILTER_ORDER);
                     assertThat(registration.getUrlPatterns()).containsExactly("/*");
-                    assertThat(registration.getOrder()).isEqualTo(ServletAuthenticationAutoConfiguration.AUTHENTICATION_FILTER_ORDER);
+                    assertThat(registration.getFilterName()).isEqualTo(ServletAuthenticationFilter.class.getName());
                 });
     }
 
-    // 应用提供认证失败处理器时，默认处理器让位。
-    // TestCaseId: CORE-AUTHN-010
     @Test
-    void customServletAuthenticationFailureHandlerOverridesDefaultHandler() {
-        contextRunner.withUserConfiguration(ServletAuthenticationHandlerConfiguration.class, CustomFailureHandlerConfiguration.class)
-                .run(context -> assertThat(context).hasSingleBean(CustomServletAuthenticationFailureHandler.class));
+    void authenticationRegistrationRunsBeforeAuthorizationRegistration() {
+        assertThat(ServletAuthenticationAutoConfiguration.AUTHENTICATION_FILTER_ORDER)
+                .isLessThan(ServletAuthorizationAutoConfiguration.AUTHORIZATION_FILTER_ORDER);
     }
 
-    private Map<String, FilterRegistrationBean> authenticationFilterRegistrations(Map<String, FilterRegistrationBean> registrations) {
-        return registrations.entrySet().stream()
-                .filter(entry -> entry.getValue().getFilter() instanceof ServletAuthenticationFilter)
-                .collect(java.util.stream.Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    @Test
+    void backsOffUserProvidedBeans() {
+        contextRunner
+                .withUserConfiguration(CustomAuthenticationConfiguration.class)
+                .run(context -> {
+                    assertThat(context).getBean(ServletAuthenticationFailureHandler.class)
+                            .isSameAs(context.getBean("customFailureHandler"));
+                    assertThat(context).getBean(ServletAuthenticationFilter.class)
+                            .isSameAs(context.getBean("customAuthenticationFilter"));
+                    assertThat(context).getBean(
+                                    "authenticationFilterRegistration",
+                                    FilterRegistrationBean.class
+                            )
+                            .extracting(FilterRegistrationBean::getOrder)
+                            .isEqualTo(Integer.MAX_VALUE);
+                });
     }
 
     @Configuration(proxyBeanMethods = false)
-    static class ServletAuthenticationHandlerConfiguration {
+    static class HandlerConfiguration {
         @Bean
         ServletAuthenticationHandler authenticationHandler() {
             return new ServletAuthenticationHandler() {
                 @Override
                 public boolean supports(ServletAuthenticationContext context) {
-                    return true;
+                    return false;
                 }
 
                 @Override
                 public AuthenticationResult authenticate(ServletAuthenticationContext context) {
-                    return AuthenticationResult.authenticated(DefaultAccessPrincipal.of("1001"));
+                    throw new AssertionError("unsupported handler must not authenticate");
                 }
             };
         }
     }
 
     @Configuration(proxyBeanMethods = false)
-    static class CustomFailureHandlerConfiguration {
+    static class CustomAuthenticationConfiguration extends HandlerConfiguration {
         @Bean
-        CustomServletAuthenticationFailureHandler authenticationFailureHandler() {
-            return new CustomServletAuthenticationFailureHandler();
+        ServletAuthenticationFailureHandler customFailureHandler() {
+            return (context, result) -> { };
         }
-    }
 
-    static class CustomServletAuthenticationFailureHandler implements ServletAuthenticationFailureHandler {
-        @Override
-        public void handle(ServletAuthenticationContext context, AuthenticationResult result) {
+        @Bean
+        ServletAuthenticationFilter customAuthenticationFilter(ServletAuthenticationHandler handler,
+                                                                ServletAuthenticationFailureHandler failureHandler) {
+            return new ServletAuthenticationFilter(java.util.List.of(handler), failureHandler);
+        }
+
+        @Bean(name = "authenticationFilterRegistration")
+        FilterRegistrationBean<Filter> customAuthenticationFilterRegistration(
+                ServletAuthenticationFilter filter
+        ) {
+            return new FilterRegistrationBean<>(filter);
         }
     }
 }

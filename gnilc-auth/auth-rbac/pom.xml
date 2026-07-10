@@ -66,6 +66,18 @@
             <scope>test</scope>
         </dependency>
 
+        <dependency>
+            <groupId>com.gnilc.auth</groupId>
+            <artifactId>gnilc-test-support</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-spring-boot3-starter-test</artifactId>
+            <version>${mybatis-plus.version}</version>
+            <scope>test</scope>
+        </dependency>
 
     </dependencies>
 

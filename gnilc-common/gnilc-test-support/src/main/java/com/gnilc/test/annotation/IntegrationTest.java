@@ -1,7 +1,8 @@
 package com.gnilc.test.annotation;
 
-import org.springframework.boot.test.context.SpringBootTest;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
@@ -14,7 +15,7 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 @Inherited
-@SpringBootTest(properties = "spring.profiles.active=test")
+@ExtendWith(SpringExtension.class)
 @ActiveProfiles("test")
 public @interface IntegrationTest {
 }

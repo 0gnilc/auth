@@ -4,13 +4,17 @@
 
 Gnilc Auth is a Java/Spring authentication and authorization framework with RBAC-based access control support. It is organized as a multi-module Maven project and provides core authorization abstractions, optional Servlet authentication support, and an RBAC-oriented implementation.
 
-The Maven `groupId` and Java package root are both `com.gnilc.auth` because the project contains both authentication and authorization capabilities. Packages remain purpose-specific below that root: `com.gnilc.auth.authn.*` is authentication, `com.gnilc.auth.authz.*` is authorization, and `com.gnilc.auth.system.*` is the system administration module that coordinates authentication, authorization, and RBAC resources. `com.gnilc.auth.system.auth.*` contains the system-administration auth adapters for admin-session authentication and system access-denied responses.
+Packages remain purpose-specific: `com.gnilc.auth.authn.*` is authentication, `com.gnilc.auth.authz.*` is authorization, and `com.gnilc.system.*` is the system administration module that coordinates authentication, authorization, and RBAC resources. `com.gnilc.system.auth.*` contains the system-administration auth adapters for admin-session authentication and system access-denied responses.
 
 ## Modules
 
-- `gnilc-auth-core`: core access control annotations, decision interfaces, permission providers, optional Servlet authentication filter support, and web authorization filter support.
-- `gnilc-auth-rbac`: RBAC-related cache, entities, controllers, services, and permission providers.
-- `gnilc-auth-system`: system application module for bootstrapping access control integration.
+- `gnilc-common`: parent/aggregator for common modules.
+- `gnilc-common/gnilc-test-support` (`gnilc-test-support`): behavior-neutral shared test containers, cleanup, and test utilities.
+- `gnilc-auth`: parent/aggregator for authentication and authorization modules.
+- `gnilc-auth/auth-core` (`auth-core`): core access-control annotations, decisions, permission providers, and optional Servlet authentication/authorization adapters.
+- `gnilc-auth/auth-rbac` (`auth-rbac`): RBAC entities, mappers, services, controllers, permission providers, and cache behavior.
+- `gnilc-system`: administrator profiles, sessions, and system-level auth composition.
+- `gnilc-bootstrap`: executable application and whole-application integration boundary.
 
 ## Authorization core
 
@@ -39,11 +43,21 @@ Multiple handlers are ordered by Spring order. A handler that does not support t
 - JDK 17+
 - Maven 3.8+
 
-## Build
+## Build and test
 
 ```bash
+# Fast Surefire tests: *Test and *ControllerTest
+mvn test
+
+# Full verification: Surefire plus Failsafe *IT/*MapperIT/*CacheIT/*ApiIT
+# Docker is required for Testcontainers MySQL 8 and Redis 8.
+mvn verify
+
+# Build the reactor after verification
 mvn clean package
 ```
+
+All tests live under the owning module's `src/test`; there is no `src/intg-test` source set. Integration tests use disposable Testcontainers services, never H2, local services, or shared services. See the mandatory [testing guide](docs/test/testing-guide.md) for naming, module selection, cleanup, and HTTP assertion policy.
 
 ## Commit convention
 
