@@ -8,16 +8,25 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
+/**
+ * 清空当前 MySQL schema 中的业务表，同时保留数据库迁移工具的元数据表。
+ */
 public final class DatabaseCleaner {
     private static final Set<String> PRESERVED_TABLES = Set.of(
             "flyway_schema_history", "databasechangelog", "databasechangeloglock");
 
     private final JdbcTemplate jdbcTemplate;
 
+    /**
+     * @param jdbcTemplate 连接测试 MySQL 的 JDBC 操作入口
+     */
     public DatabaseCleaner(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    /**
+     * 暂时关闭外键检查并截断当前 schema 的全部业务表，结束前恢复外键检查。
+     */
     public void truncateBusinessTables() {
         List<String> tables = jdbcTemplate.queryForList("""
                 SELECT table_name

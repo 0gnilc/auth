@@ -3,12 +3,17 @@ package com.gnilc.test.cleanup;
 import org.springframework.test.context.TestContext;
 import org.springframework.test.context.support.AbstractTestExecutionListener;
 
+/**
+ * 在 Spring 测试方法前恢复应用基线，并在方法后执行兜底清理。
+ */
 public final class TestDataResetListener extends AbstractTestExecutionListener {
+    /** {@inheritDoc} */
     @Override
     public void beforeTestMethod(TestContext testContext) {
         manager(testContext).resetToBaseline();
     }
 
+    /** {@inheritDoc} */
     @Override
     public void afterTestMethod(TestContext testContext) {
         manager(testContext).cleanAfterTest();

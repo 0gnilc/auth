@@ -11,6 +11,9 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Arrays;
 
+/**
+ * 在执行截表或 {@code FLUSHDB} 前验证 profile、显式开关和实际容器端点。
+ */
 public final class TestEnvironmentGuard {
     private final Environment environment;
     private final DataSource dataSource;
@@ -20,6 +23,15 @@ public final class TestEnvironmentGuard {
     private final int expectedRedisPort;
     private final int expectedRedisDatabase;
 
+    /**
+     * @param environment 当前 Spring 环境
+     * @param dataSource 待清理的实际数据源
+     * @param redisConnectionFactory 待清理的实际 Redis 连接工厂
+     * @param expectedJdbcUrl 当前共享 MySQL 的 JDBC URL
+     * @param expectedRedisHost 当前共享 Redis 的主机名
+     * @param expectedRedisPort 当前共享 Redis 的映射端口
+     * @param expectedRedisDatabase 允许清理的 Redis 数据库索引
+     */
     public TestEnvironmentGuard(Environment environment,
                                 DataSource dataSource,
                                 RedisConnectionFactory redisConnectionFactory,
@@ -36,6 +48,11 @@ public final class TestEnvironmentGuard {
         this.expectedRedisDatabase = expectedRedisDatabase;
     }
 
+    /**
+     * 验证当前环境只会清理本测试 JVM 启动的 MySQL 和 Redis。
+     *
+     * @throws IllegalStateException 缺少测试开关、端点不匹配或无法检查连接时
+     */
     public void assertCleanupAllowed() {
         if (Arrays.stream(environment.getActiveProfiles()).noneMatch("test"::equals)) {
             throw new IllegalStateException("Refusing cleanup outside the test profile");
