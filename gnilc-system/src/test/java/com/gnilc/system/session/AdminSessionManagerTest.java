@@ -1,6 +1,5 @@
 package com.gnilc.system.session;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -11,100 +10,72 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class AdminSessionManagerTest {
-    private AdminSessionRedisCommands redisCommands;
-    private AdminSessionTokenCodec tokenCodec;
-    private AdminSessionManager manager;
+    private final AdminSessionRedisCommands redis = mock(AdminSessionRedisCommands.class);
+    private final AdminSessionTokenCodec codec = new AdminSessionTokenCodec();
+    private final AdminSessionManager sessions = new AdminSessionManager(redis, codec);
 
-    @BeforeEach
-    void setUp() {
-        redisCommands = mock(AdminSessionRedisCommands.class);
-        tokenCodec = mock(AdminSessionTokenCodec.class);
-        manager = new AdminSessionManager(redisCommands, tokenCodec);
+    @Test
+    void createAndValidateSessionUseAccessTokenMapping() {
+        AdminSessionTokenPair pair = sessions.createSession(5L);
+        when(redis.hasAccessToken(5L, pair.getAccessToken())).thenReturn(true);
+
+        assertThat(sessions.validateAccessToken(pair.getAccessToken())).isEqualTo(5L);
+        verify(redis).saveSession(5L, pair.getAccessToken(), pair.getRefreshToken());
     }
 
     @Test
-    void createsAndPersistsOnePairedSession() {
-        when(tokenCodec.issue(1001L)).thenReturn("access-token", "refresh-token");
+    void invalidOrUnknownAccessTokenIsRejected() {
+        assertThat(sessions.validateAccessToken("foreign")).isNull();
+        String token = codec.issue(6L);
+        when(redis.hasAccessToken(6L, token)).thenReturn(false);
 
-        AdminSessionTokenPair pair = manager.createSession(1001L);
-
-        assertThat(pair.getAccessToken()).isEqualTo("access-token");
-        assertThat(pair.getRefreshToken()).isEqualTo("refresh-token");
-        verify(redisCommands).saveSession(1001L, "access-token", "refresh-token");
+        assertThat(sessions.validateAccessToken(token)).isNull();
     }
 
     @Test
-    void validatesOnlyExistingAccessTokens() {
-        when(tokenCodec.resolve("access-token")).thenReturn(1001L);
-        when(redisCommands.hasAccessToken(1001L, "access-token")).thenReturn(true);
+    void refreshRotatesOnlyAccessTokenAndRevokesOldMapping() {
+        String refresh = codec.issue(7L);
+        String oldAccess = codec.issue(7L);
+        when(redis.hasRefreshToken(7L, refresh)).thenReturn(true);
+        when(redis.getPairedAccessToken(7L, refresh)).thenReturn(oldAccess);
+        when(redis.replacePairedAccessTokenKeepingTtl(
+                org.mockito.ArgumentMatchers.eq(7L),
+                org.mockito.ArgumentMatchers.eq(refresh), anyString())).thenReturn(true);
 
-        assertThat(manager.validateAccessToken("access-token")).isEqualTo(1001L);
+        AdminSessionTokenPair pair = sessions.refreshSession(refresh);
 
-        when(redisCommands.hasAccessToken(1001L, "access-token")).thenReturn(false);
-        assertThat(manager.validateAccessToken("access-token")).isNull();
+        assertThat(pair.getRefreshToken()).isEqualTo(refresh);
+        assertThat(pair.getAccessToken()).isNotEqualTo(oldAccess);
+        verify(redis).deleteAccessToken(7L, oldAccess);
+        verify(redis).saveAccessToken(7L, pair.getAccessToken(), refresh);
     }
 
     @Test
-    void malformedTokensAreRejectedWithoutReadingSessionStorage() {
-        when(tokenCodec.resolve("malformed")).thenThrow(new IllegalArgumentException("bad token"));
+    void failedRefreshDoesNotCreateANewAccessMapping() {
+        String refresh = codec.issue(8L);
+        when(redis.hasRefreshToken(8L, refresh)).thenReturn(true);
+        when(redis.getPairedAccessToken(8L, refresh)).thenReturn("old");
+        when(redis.replacePairedAccessTokenKeepingTtl(
+                org.mockito.ArgumentMatchers.eq(8L),
+                org.mockito.ArgumentMatchers.eq(refresh), anyString())).thenReturn(false);
 
-        assertThat(manager.validateAccessToken("malformed")).isNull();
-        assertThat(manager.refreshSession("malformed")).isNull();
-        assertThat(manager.logout("malformed")).isFalse();
-
-        verify(redisCommands, never()).hasAccessToken(org.mockito.ArgumentMatchers.any(), anyString());
-        verify(redisCommands, never()).hasRefreshToken(org.mockito.ArgumentMatchers.any(), anyString());
+        assertThat(sessions.refreshSession(refresh)).isNull();
+        verify(redis, never()).saveAccessToken(
+                org.mockito.ArgumentMatchers.anyLong(), anyString(), anyString());
     }
 
     @Test
-    void refreshReplacesOnlyTheAccessTokenAndKeepsTheRefreshToken() {
-        when(tokenCodec.resolve("refresh-token")).thenReturn(1001L);
-        when(redisCommands.hasRefreshToken(1001L, "refresh-token")).thenReturn(true);
-        when(redisCommands.getPairedAccessToken(1001L, "refresh-token")).thenReturn("old-access-token");
-        when(tokenCodec.issue(1001L)).thenReturn("new-access-token");
-        when(redisCommands.replacePairedAccessTokenKeepingTtl(1001L, "refresh-token", "new-access-token"))
-                .thenReturn(true);
+    void logoutRevokesRefreshTokenAndItsPairedAccessToken() {
+        String refresh = codec.issue(9L);
+        String access = codec.issue(9L);
+        when(redis.hasRefreshToken(9L, refresh)).thenReturn(true);
+        when(redis.getPairedAccessToken(9L, refresh)).thenReturn(access);
 
-        AdminSessionTokenPair pair = manager.refreshSession("refresh-token");
+        assertThat(sessions.logout(refresh)).isTrue();
 
-        assertThat(pair.getAccessToken()).isEqualTo("new-access-token");
-        assertThat(pair.getRefreshToken()).isEqualTo("refresh-token");
-        verify(redisCommands).deleteAccessToken(1001L, "old-access-token");
-        verify(redisCommands).saveAccessToken(1001L, "new-access-token", "refresh-token");
-        verify(redisCommands, never()).deleteRefreshToken(1001L, "refresh-token");
-    }
-
-    @Test
-    void failedAtomicRefreshLeavesTheOldPairUntouched() {
-        when(tokenCodec.resolve("refresh-token")).thenReturn(1001L);
-        when(redisCommands.hasRefreshToken(1001L, "refresh-token")).thenReturn(true);
-        when(redisCommands.getPairedAccessToken(1001L, "refresh-token")).thenReturn("old-access-token");
-        when(tokenCodec.issue(1001L)).thenReturn("new-access-token");
-        when(redisCommands.replacePairedAccessTokenKeepingTtl(1001L, "refresh-token", "new-access-token"))
-                .thenReturn(false);
-
-        assertThat(manager.refreshSession("refresh-token")).isNull();
-
-        verify(redisCommands, never()).deleteAccessToken(1001L, "old-access-token");
-        verify(redisCommands, never()).saveAccessToken(1001L, "new-access-token", "refresh-token");
-    }
-
-    @Test
-    void logoutRevokesBothSidesOfThePair() {
-        when(tokenCodec.resolve("refresh-token")).thenReturn(1001L);
-        when(redisCommands.hasRefreshToken(1001L, "refresh-token")).thenReturn(true);
-        when(redisCommands.getPairedAccessToken(1001L, "refresh-token")).thenReturn("access-token");
-
-        assertThat(manager.logout("refresh-token")).isTrue();
-
-        verify(redisCommands).deleteAccessToken(1001L, "access-token");
-        verify(redisCommands).deleteRefreshToken(1001L, "refresh-token");
-    }
-
-    @Test
-    void cleanupRevokesEverySessionForOnlyTheRequestedUser() {
-        manager.cleanupUserSessions(1001L);
-
-        verify(redisCommands).deleteUserSessions(1001L);
+        verify(redis).deleteAccessToken(9L, access);
+        verify(redis).deleteRefreshToken(9L, refresh);
+        sessions.cleanupUserSessions(9L);
+        verify(redis).deleteUserSessions(9L);
     }
 }

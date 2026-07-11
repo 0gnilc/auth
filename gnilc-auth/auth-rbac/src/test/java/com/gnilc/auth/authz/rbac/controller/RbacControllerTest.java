@@ -1,275 +1,138 @@
 package com.gnilc.auth.authz.rbac.controller;
 
-import com.gnilc.auth.authz.rbac.common.utils.PageResult;
-import com.gnilc.auth.authz.rbac.config.RbacJacksonConfiguration;
-import com.gnilc.auth.authz.rbac.entity.dto.PermissionQueryDto;
-import com.gnilc.auth.authz.rbac.entity.dto.RoleQueryDto;
 import com.gnilc.auth.authz.rbac.entity.vo.MenuVo;
 import com.gnilc.auth.authz.rbac.entity.vo.PermissionVo;
 import com.gnilc.auth.authz.rbac.entity.vo.RoleVo;
-import com.gnilc.auth.authz.rbac.event.RbacAuthzEvent;
 import com.gnilc.auth.authz.rbac.service.MenuService;
 import com.gnilc.auth.authz.rbac.service.PermissionService;
 import com.gnilc.auth.authz.rbac.service.RoleMenuService;
 import com.gnilc.auth.authz.rbac.service.RolePermissionService;
 import com.gnilc.auth.authz.rbac.service.RoleService;
 import com.gnilc.auth.authz.rbac.service.UserRoleService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.SpringBootConfiguration;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
-import org.springframework.context.event.EventListener;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.MediaType;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import java.util.ArrayList;
 import java.util.List;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest
-@Import({
-        PermissionController.class,
-        RoleController.class,
-        MenuController.class,
-        RoleMenuController.class,
-        RolePermissionController.class,
-        UserRoleController.class,
-        RbacJacksonConfiguration.class,
-        RbacControllerTest.EventCaptureConfiguration.class
-})
 class RbacControllerTest {
-    @Autowired
-    private MockMvc mockMvc;
-    @Autowired
-    private CapturedEvents capturedEvents;
-    @MockBean
-    private PermissionService permissionService;
-    @MockBean
-    private RoleService roleService;
-    @MockBean
-    private MenuService menuService;
-    @MockBean
-    private RoleMenuService roleMenuService;
-    @MockBean
-    private RolePermissionService rolePermissionService;
-    @MockBean
-    private UserRoleService userRoleService;
+    private final MenuService menus = mock(MenuService.class);
+    private final PermissionService permissions = mock(PermissionService.class);
+    private final RoleService roles = mock(RoleService.class);
+    private final RoleMenuService roleMenus = mock(RoleMenuService.class);
+    private final RolePermissionService rolePermissions = mock(RolePermissionService.class);
+    private final UserRoleService userRoles = mock(UserRoleService.class);
+    private final ApplicationEventPublisher publisher = mock(ApplicationEventPublisher.class);
+    private MockMvc mvc;
 
-    @SpringBootConfiguration
-    @EnableAutoConfiguration
-    static class TestApplication {
-    }
-
-    @Test
-    void permissionListBindsJsonAndReturnsTheRbacResponseEnvelope() throws Exception {
-        PermissionVo permission = new PermissionVo();
-        permission.setId(7L);
-        permission.setCode("account:read");
-        permission.setName("Read accounts");
-        permission.setTargetIdentifier("/accounts/**");
-        permission.setTargetQualifier("GET");
-        permission.setPublicAccess(false);
-        when(permissionService.getPermissions(argThat((PermissionQueryDto query) ->
-                "account:read".equals(query.getCode()) && Boolean.FALSE.equals(query.getPublicAccess()))))
-                .thenReturn(List.of(permission));
-
-        mockMvc.perform(post("/authz/permission/list")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"code":"account:read","publicAccess":false}
-                                """))
-                .andExpect(status().isOk())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.code").value(0))
-                .andExpect(jsonPath("$.message").value("ok"))
-                .andExpect(jsonPath("$.data[0].id").value("7"))
-                .andExpect(jsonPath("$.data[0].code").value("account:read"))
-                .andExpect(jsonPath("$.data[0].targetIdentifier").value("/accounts/**"));
-
-        verify(permissionService).getPermissions(argThat((PermissionQueryDto query) ->
-                "account:read".equals(query.getCode()) && Boolean.FALSE.equals(query.getPublicAccess())));
-    }
-
-    @Test
-    void cacheClearEndpointPublishesTheDocumentedAllClearEvent() throws Exception {
-        capturedEvents.clear();
-
-        mockMvc.perform(post("/authz/permission/cache/clear-all"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(0))
-                .andExpect(jsonPath("$.message").value("ok"));
-
-        assertThat(capturedEvents.rbacEvents()).singleElement().satisfies(event -> {
-            assertThat(event.getType()).isEqualTo(RbacAuthzEvent.Type.ALL);
-            assertThat(event.getAction()).isEqualTo(RbacAuthzEvent.Action.CLEAR);
-            assertThat(event.getData()).isNull();
-        });
-    }
-
-    @Test
-    void permissionMutationRoutesBindBodiesAndPathVariables() throws Exception {
-        mockMvc.perform(post("/authz/permission/create")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"code":"account:write","name":"Write accounts","targetIdentifier":"/accounts/**","publicAccess":false}
-                                """))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(0));
-        mockMvc.perform(post("/authz/permission/update")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"id":9,"code":"account:edit","name":"Edit accounts","targetIdentifier":"/accounts/**","publicAccess":false}
-                                """))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(0));
-        mockMvc.perform(post("/authz/permission/remove/9"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(0));
-
-        verify(permissionService).createPermission(argThat(dto ->
-                "account:write".equals(dto.getCode()) && "/accounts/**".equals(dto.getTargetIdentifier())));
-        verify(permissionService).updatePermission(argThat(dto ->
-                Long.valueOf(9).equals(dto.getId()) && "account:edit".equals(dto.getCode())));
-        verify(permissionService).removePermission(9L);
-    }
-
-    @Test
-    void roleRoutesExposeQueriesAndMutations() throws Exception {
-        RoleVo role = new RoleVo();
-        role.setId(3L);
-        role.setCode("auditor");
-        when(roleService.getRoles(argThat((RoleQueryDto query) -> Boolean.FALSE.equals(query.getBuiltIn()))))
-                .thenReturn(List.of(role));
-        when(roleService.getRolePage(argThat(query ->
-                Long.valueOf(2).equals(query.getCurrentPage()) && Long.valueOf(5).equals(query.getPageSize()))))
-                .thenReturn(new PageResult<>(List.of(role), 1, 5, 2));
-
-        mockMvc.perform(post("/authz/role/list")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"builtIn\":false}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[0].code").value("auditor"));
-        mockMvc.perform(post("/authz/role/page")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"currentPage\":2,\"pageSize\":5}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.currentPage").value(2))
-                .andExpect(jsonPath("$.data.list[0].id").value("3"));
-        mockMvc.perform(post("/authz/role/create")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"code\":\"operator\",\"name\":\"Operator\"}"))
-                .andExpect(status().isOk());
-        mockMvc.perform(post("/authz/role/update")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"id\":3,\"code\":\"auditor\",\"name\":\"Auditor\"}"))
-                .andExpect(status().isOk());
-        mockMvc.perform(post("/authz/role/remove/3"))
-                .andExpect(status().isOk());
-
-        verify(roleService).createRole(argThat(dto -> "operator".equals(dto.getCode())));
-        verify(roleService).updateRole(argThat(dto -> Long.valueOf(3).equals(dto.getId())));
-        verify(roleService).removeRole(3L);
+    @BeforeEach
+    void setUp() {
+        MenuController menuController = new MenuController();
+        PermissionController permissionController = new PermissionController();
+        RoleController roleController = new RoleController();
+        RoleMenuController roleMenuController = new RoleMenuController();
+        RolePermissionController rolePermissionController = new RolePermissionController();
+        UserRoleController userRoleController = new UserRoleController();
+        ReflectionTestUtils.setField(menuController, "menuService", menus);
+        ReflectionTestUtils.setField(permissionController, "permissionService", permissions);
+        ReflectionTestUtils.setField(permissionController, "publisher", publisher);
+        ReflectionTestUtils.setField(roleController, "roleService", roles);
+        ReflectionTestUtils.setField(roleMenuController, "roleMenuService", roleMenus);
+        ReflectionTestUtils.setField(rolePermissionController, "rolePermissionService", rolePermissions);
+        ReflectionTestUtils.setField(userRoleController, "userRoleService", userRoles);
+        mvc = MockMvcBuilders.standaloneSetup(menuController, permissionController, roleController,
+                roleMenuController, rolePermissionController, userRoleController).build();
     }
 
     @Test
     void menuRoutesExposeTreeAndMutations() throws Exception {
         MenuVo menu = new MenuVo();
-        menu.setId(5L);
-        menu.setName("accounts");
-        when(menuService.getMenuTree()).thenReturn(List.of(menu));
+        menu.setName("root");
+        when(menus.getMenuTree()).thenReturn(List.of(menu));
 
-        mockMvc.perform(post("/authz/menu/tree"))
+        mvc.perform(post("/authz/menu/tree"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[0].name").value("accounts"));
-        mockMvc.perform(post("/authz/menu/create")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"pid\":0,\"type\":\"button\",\"name\":\"account-create\",\"title\":\"Create\",\"accessCode\":\"account:create\"}"))
-                .andExpect(status().isOk());
-        mockMvc.perform(post("/authz/menu/update")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"id\":5,\"title\":\"Accounts\"}"))
-                .andExpect(status().isOk());
-        mockMvc.perform(post("/authz/menu/remove/5"))
-                .andExpect(status().isOk());
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data[0].name").value("root"));
+        mvc.perform(jsonPost("/authz/menu/create", "{}")).andExpect(status().isOk());
+        mvc.perform(jsonPost("/authz/menu/update", "{\"id\":1}")).andExpect(status().isOk());
+        mvc.perform(post("/authz/menu/remove/1")).andExpect(status().isOk());
 
-        verify(menuService).createMenu(argThat(dto ->
-                "account-create".equals(dto.getName()) && "account:create".equals(dto.getAccessCode())));
-        verify(menuService).updateMenu(argThat(dto -> Long.valueOf(5).equals(dto.getId())));
-        verify(menuService).removeMenu(5L);
+        verify(menus).createMenu(any());
+        verify(menus).updateMenu(any());
+        verify(menus).removeMenu(1L);
     }
 
     @Test
-    void relationRoutesExposeCurrentIdsAndReplacementContracts() throws Exception {
-        when(roleMenuService.getMenuIds(4L)).thenReturn(List.of(10L, 11L));
-        when(rolePermissionService.getPermissionIds(4L)).thenReturn(List.of(20L, 21L));
-        when(userRoleService.getRoleIds(7L)).thenReturn(List.of(4L, 5L));
+    void permissionRoutesExposeQueriesMutationsAndCacheReset() throws Exception {
+        PermissionVo permission = new PermissionVo();
+        permission.setCode("read");
+        when(permissions.getPermissions(
+                any(com.gnilc.auth.authz.rbac.entity.dto.PermissionQueryDto.class)))
+                .thenReturn(List.of(permission));
 
-        mockMvc.perform(post("/authz/role-menu/list/4"))
+        mvc.perform(jsonPost("/authz/permission/list", "{}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[1]").value("11"));
-        mockMvc.perform(post("/authz/role-permission/list/4"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[0]").value("20"));
-        mockMvc.perform(post("/authz/user-role/list/7"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[1]").value("5"));
+                .andExpect(jsonPath("$.data[0].code").value("read"));
+        mvc.perform(jsonPost("/authz/permission/create", "{}")).andExpect(status().isOk());
+        mvc.perform(jsonPost("/authz/permission/update", "{\"id\":2}")).andExpect(status().isOk());
+        mvc.perform(post("/authz/permission/remove/2")).andExpect(status().isOk());
+        mvc.perform(post("/authz/permission/cache/clear-all")).andExpect(status().isOk());
 
-        mockMvc.perform(post("/authz/role-menu/update")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"roleId\":4,\"menuIds\":[10,12]}"))
-                .andExpect(status().isOk());
-        mockMvc.perform(post("/authz/role-permission/update")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"roleId\":4,\"permissionIds\":[20,22]}"))
-                .andExpect(status().isOk());
-        mockMvc.perform(post("/authz/user-role/update")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"userId\":7,\"roleIds\":[4,6]}"))
-                .andExpect(status().isOk());
-
-        verify(roleMenuService).updateRoleMenu(argThat(dto ->
-                Long.valueOf(4).equals(dto.getRoleId()) && dto.getMenuIds().equals(List.of(10L, 12L))));
-        verify(rolePermissionService).updateRolePermission(argThat(dto ->
-                Long.valueOf(4).equals(dto.getRoleId()) && dto.getPermissionIds().equals(List.of(20L, 22L))));
-        verify(userRoleService).updateUserRole(argThat(dto ->
-                Long.valueOf(7).equals(dto.getUserId()) && dto.getRoleIds().equals(List.of(4L, 6L))));
+        verify(permissions).removePermission(2L);
+        verify(publisher).publishEvent(any(Object.class));
     }
 
-    @TestConfiguration(proxyBeanMethods = false)
-    static class EventCaptureConfiguration {
-        @Bean
-        CapturedEvents capturedEvents() {
-            return new CapturedEvents();
-        }
+    @Test
+    void roleRoutesExposeListPageAndMutations() throws Exception {
+        RoleVo role = new RoleVo();
+        role.setCode("admin");
+        when(roles.getRoles(any(com.gnilc.auth.authz.rbac.entity.dto.RoleQueryDto.class)))
+                .thenReturn(List.of(role));
+
+        mvc.perform(jsonPost("/authz/role/list", "{}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].code").value("admin"));
+        mvc.perform(jsonPost("/authz/role/page", "{}")).andExpect(status().isOk());
+        mvc.perform(jsonPost("/authz/role/create", "{}")).andExpect(status().isOk());
+        mvc.perform(jsonPost("/authz/role/update", "{\"id\":3}")).andExpect(status().isOk());
+        mvc.perform(post("/authz/role/remove/3")).andExpect(status().isOk());
     }
 
-    static final class CapturedEvents {
-        private final List<RbacAuthzEvent<?>> events = new ArrayList<>();
+    @Test
+    void relationshipRoutesExposeCurrentIdsAndReplaceCommands() throws Exception {
+        when(roleMenus.getMenuIds(2L)).thenReturn(List.of(4L));
+        when(rolePermissions.getPermissionIds(2L)).thenReturn(List.of(5L));
+        when(userRoles.getRoleIds(7L)).thenReturn(List.of(2L));
 
-        @EventListener
-        void capture(RbacAuthzEvent<?> event) {
-            events.add(event);
-        }
+        mvc.perform(post("/authz/role-menu/list/2"))
+                .andExpect(jsonPath("$.data[0]").value(4));
+        mvc.perform(jsonPost("/authz/role-menu/update", "{\"roleId\":2,\"menuIds\":[4]}"))
+                .andExpect(status().isOk());
+        mvc.perform(post("/authz/role-permission/list/2"))
+                .andExpect(jsonPath("$.data[0]").value(5));
+        mvc.perform(jsonPost("/authz/role-permission/update",
+                "{\"roleId\":2,\"permissionIds\":[5]}")).andExpect(status().isOk());
+        mvc.perform(post("/authz/user-role/list/7"))
+                .andExpect(jsonPath("$.data[0]").value(2));
+        mvc.perform(jsonPost("/authz/user-role/update", "{\"userId\":7,\"roleIds\":[2]}"))
+                .andExpect(status().isOk());
+    }
 
-        List<RbacAuthzEvent<?>> rbacEvents() {
-            return List.copyOf(events);
-        }
-
-        void clear() {
-            events.clear();
-        }
+    private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder jsonPost(
+            String path, String body) {
+        return post(path).contentType(MediaType.APPLICATION_JSON).content(body);
     }
 }

@@ -1,71 +1,78 @@
 package com.gnilc.bootstrap;
 
-import com.gnilc.bootstrap.support.AppBaselineDataSeeder;
+import com.gnilc.bootstrap.support.AdminApiTestSupport;
 import com.gnilc.bootstrap.support.BootstrapContainerContextInitializer;
 import com.gnilc.bootstrap.support.BootstrapTestConfiguration;
 import com.gnilc.test.annotation.ApiTest;
-import com.gnilc.test.api.ApiTestSupport;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ContextConfiguration;
 
+import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasItem;
 
 @ApiTest
 @Import(BootstrapTestConfiguration.class)
 @ContextConfiguration(initializers = BootstrapContainerContextInitializer.class)
-class AuthorizationApiIT extends ApiTestSupport {
-    @LocalServerPort
-    private int port;
-
+class AuthorizationApiIT extends AdminApiTestSupport {
     @Test
-    void distinguishesAnonymousInvalidAndInsufficientCredentials() {
-        requestSpecification(port)
-                .when().post("/sys/admin/refresh")
-                .then().statusCode(401)
-                .body("code", equalTo(20002));
-
-        requestSpecification(port)
-                .when().get("/sys/admin/user-info")
-                .then().statusCode(403)
-                .body("code", equalTo(20003));
-
-        requestSpecification(port)
-                .header("Authorization", "Bearer sys_admin.999.invalid")
-                .when().get("/sys/admin/user-info")
-                .then().statusCode(401)
-                .contentType("text/plain;charset=UTF-8")
-                .body(equalTo("invalid access token"));
-
-        String limitedToken = login(
-                AppBaselineDataSeeder.LIMITED_USERNAME,
-                AppBaselineDataSeeder.LIMITED_PASSWORD);
-        requestSpecification(port)
-                .header("Authorization", "Bearer " + limitedToken)
-                .when().get("/sys/admin/user-info")
-                .then().statusCode(403)
-                .body("code", equalTo(20003));
-
-        String adminToken = login(
-                AppBaselineDataSeeder.ADMIN_USERNAME,
-                AppBaselineDataSeeder.ADMIN_PASSWORD);
-        requestSpecification(port)
-                .header("Authorization", "Bearer " + adminToken)
-                .when().get("/sys/admin/user-info")
-                .then().statusCode(200)
-                .body("code", equalTo(0));
+    void anonymousProtectedRequestIsForbiddenWithJsonContract() {
+        given()
+                .when()
+                .get("/api/sys/admin/user-info")
+                .then()
+                .statusCode(403)
+                .contentType("application/json;charset=UTF-8")
+                .body("code", equalTo(20003))
+                .body("error", equalTo("access denied"));
     }
 
-    private String login(String username, String password) {
-        return requestSpecification(port)
-                .contentType("application/json")
-                .body("""
-                        {"username":"%s","password":"%s"}
-                        """.formatted(username, password))
-                .when().post("/sys/admin/login")
-                .then().statusCode(200)
-                .body("code", equalTo(0))
-                .extract().path("data.accessToken");
+    @Test
+    void authenticatedAdminReceivesRolesAndButtonAccessCodes() {
+        TokenPair pair = loginAsDefaultAdmin();
+
+        given()
+                .header("Authorization", bearer(pair.accessToken()))
+                .when()
+                .get("/api/sys/admin/role-codes")
+                .then()
+                .statusCode(200)
+                .body("data", hasItem("admin"));
+        given()
+                .header("Authorization", bearer(pair.accessToken()))
+                .when()
+                .get("/api/sys/admin/menu/access-codes")
+                .then()
+                .statusCode(200)
+                .body("data", hasItem("admin:manage"));
+    }
+
+    @Test
+    void authenticatedUserWithoutRequiredPermissionIsForbidden() {
+        TokenPair pair = loginAsLimitedAdmin();
+
+        given()
+                .header("Authorization", bearer(pair.accessToken()))
+                .when()
+                .get("/api/sys/admin/user-info")
+                .then()
+                .statusCode(403)
+                .body("code", equalTo(20003));
+    }
+
+    @Test
+    void revokedNamespacedAccessTokenReturns401BeforeAuthorization() {
+        TokenPair pair = loginAsDefaultAdmin();
+        given().header("X-Refresh-Token", pair.refreshToken())
+                .post("/api/sys/admin/logout")
+                .then().statusCode(200);
+
+        given()
+                .header("Authorization", bearer(pair.accessToken()))
+                .when()
+                .get("/api/sys/admin/user-info")
+                .then()
+                .statusCode(401);
     }
 }

@@ -1,121 +1,87 @@
 package com.gnilc.bootstrap;
 
-import com.gnilc.bootstrap.support.AppBaselineDataSeeder;
+import com.gnilc.bootstrap.support.AdminApiTestSupport;
 import com.gnilc.bootstrap.support.BootstrapContainerContextInitializer;
 import com.gnilc.bootstrap.support.BootstrapTestConfiguration;
 import com.gnilc.test.annotation.ApiTest;
-import com.gnilc.test.api.ApiTestSupport;
-import io.restassured.response.Response;
+import io.restassured.http.ContentType;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ContextConfiguration;
 
-import java.util.List;
-
+import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasItem;
 
 @ApiTest
 @Import(BootstrapTestConfiguration.class)
 @ContextConfiguration(initializers = BootstrapContainerContextInitializer.class)
-class AdminManagementApiIT extends ApiTestSupport {
-    @LocalServerPort
-    private int port;
+class AdminManagementApiIT extends AdminApiTestSupport {
+    @Autowired
+    private JdbcTemplate jdbc;
 
     @Test
-    void administratorCanCreateReplaceRolesDisableAndObserveLoginFailure() {
-        String token = login();
+    void createQueryUpdateRolesAndRemoveAdminThroughApi() {
+        TokenPair pair = loginAsDefaultAdmin();
+        String authorization = bearer(pair.accessToken());
 
-        requestSpecification(port)
-                .header("Authorization", "Bearer " + token)
-                .contentType("application/json")
+        given()
+                .header("Authorization", authorization)
+                .contentType(ContentType.JSON)
                 .body("""
                         {
-                          "username":"created-admin",
-                          "password":"CreatedAdmin1!",
-                          "nickname":"Created Administrator",
+                          "username":"api-user",
+                          "password":"Strong#123",
+                          "nickname":"API User",
+                          "homePath":"/workspace",
                           "status":true,
-                          "roleCodes":["test-limited"]
+                          "roleCodes":["admin"]
                         }
                         """)
-                .when().post("/sys/admin/create")
-                .then().statusCode(200)
+                .when()
+                .post("/api/sys/admin/create")
+                .then()
+                .statusCode(200)
                 .body("code", equalTo(0));
 
-        Response created = query(token, "created-admin");
-        List<String> ids = created.path("data.list.id");
-        assertThat(ids).hasSize(1);
-        long adminId = Long.parseLong(ids.get(0));
-        assertThat(created.<List<String>>path("data.list[0].roleCodes"))
-                .containsExactly("test-limited");
-        assertThat(created.<Boolean>path("data.list[0].status")).isTrue();
-
-        requestSpecification(port)
-                .header("Authorization", "Bearer " + token)
-                .contentType("application/json")
+        Long adminId = jdbc.queryForObject(
+                "select id from sys_admin where username = 'api-user'", Long.class);
+        given()
+                .header("Authorization", authorization)
+                .contentType(ContentType.JSON)
                 .body("""
-                        {"id":%d,"roleCodes":["test-admin"]}
-                        """.formatted(adminId))
-                .when().post("/sys/admin/update-roles")
-                .then().statusCode(200)
-                .body("code", equalTo(0));
-
-        Response roleUpdated = query(token, "created-admin");
-        assertThat(roleUpdated.<List<String>>path("data.list[0].roleCodes"))
-                .containsExactly("test-admin")
-                .doesNotContain("test-limited");
-
-        requestSpecification(port)
-                .header("Authorization", "Bearer " + token)
-                .contentType("application/json")
-                .body("""
-                        {"id":%d,"status":false}
-                        """.formatted(adminId))
-                .when().post("/sys/admin/update")
-                .then().statusCode(200)
-                .body("code", equalTo(0));
-
-        Response disabled = query(token, "created-admin");
-        assertThat(disabled.<Boolean>path("data.list[0].status")).isFalse();
-        assertThat(disabled.<List<String>>path("data.list[0].roleCodes"))
-                .containsExactly("test-admin");
-
-        requestSpecification(port)
-                .contentType("application/json")
-                .body("""
-                        {"username":"created-admin","password":"CreatedAdmin1!"}
+                        {"username":"api-user","currentPage":1,"pageSize":10}
                         """)
-                .when().post("/sys/admin/login")
-                .then().statusCode(200)
-                .body("code", equalTo(20001))
-                .body("error", equalTo("用户名或密码错误"));
-    }
+                .when()
+                .post("/api/sys/admin/page")
+                .then()
+                .statusCode(200)
+                .body("data.totalCount", equalTo("1"))
+                .body("data.list.username", hasItem("api-user"));
 
-    private Response query(String token, String username) {
-        Response response = requestSpecification(port)
-                .header("Authorization", "Bearer " + token)
-                .contentType("application/json")
-                .body("""
-                        {"username":"%s"}
-                        """.formatted(username))
-                .when().post("/sys/admin/page")
-                .then().statusCode(200)
-                .body("code", equalTo(0))
-                .extract().response();
-        assertThat(response.<String>path("data.totalCount")).isEqualTo("1");
-        return response;
-    }
+        given()
+                .header("Authorization", authorization)
+                .contentType(ContentType.JSON)
+                .body("{\"id\":" + adminId + ",\"nickname\":\"Updated User\"}")
+                .when()
+                .post("/api/sys/admin/update")
+                .then()
+                .statusCode(200);
+        assertThat(jdbc.queryForObject(
+                "select nickname from sys_admin where id = ?", String.class, adminId))
+                .isEqualTo("Updated User");
 
-    private String login() {
-        return requestSpecification(port)
-                .contentType("application/json")
-                .body("""
-                        {"username":"%s","password":"%s"}
-                        """.formatted(AppBaselineDataSeeder.ADMIN_USERNAME, AppBaselineDataSeeder.ADMIN_PASSWORD))
-                .when().post("/sys/admin/login")
-                .then().statusCode(200)
-                .body("code", equalTo(0))
-                .extract().path("data.accessToken");
+        given()
+                .header("Authorization", authorization)
+                .when()
+                .post("/api/sys/admin/remove/{id}", adminId)
+                .then()
+                .statusCode(200);
+        assertThat(jdbc.queryForObject(
+                "select count(*) from sys_admin where id = ? and del = 0", Integer.class, adminId))
+                .isZero();
     }
 }

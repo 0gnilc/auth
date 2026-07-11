@@ -1,4 +1,4 @@
-package com.gnilc.bootstrap.support;
+package com.gnilc.system.support;
 
 import com.gnilc.test.container.FullStackContainerContextInitializer;
 import com.gnilc.test.container.SharedTestContainers;
@@ -6,7 +6,7 @@ import org.springframework.boot.test.util.TestPropertyValues;
 import org.springframework.context.ApplicationContextInitializer;
 import org.springframework.context.ConfigurableApplicationContext;
 
-public final class BootstrapContainerContextInitializer
+public final class SystemContainerContextInitializer
         implements ApplicationContextInitializer<ConfigurableApplicationContext> {
     @Override
     public void initialize(ConfigurableApplicationContext context) {

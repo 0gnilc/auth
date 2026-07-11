@@ -3,18 +3,20 @@ package com.gnilc.test.container;
 import org.springframework.boot.test.util.TestPropertyValues;
 import org.springframework.context.ApplicationContextInitializer;
 import org.springframework.context.ConfigurableApplicationContext;
-import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.MySQLContainer;
 
-public final class RedisContainerContextInitializer
+public final class MySqlContainerContextInitializer
         implements ApplicationContextInitializer<ConfigurableApplicationContext> {
 
     @Override
     public void initialize(ConfigurableApplicationContext context) {
-        GenericContainer<?> redis = SharedTestContainers.redis();
+        MySQLContainer<?> mysql = SharedTestContainers.mysql();
         TestPropertyValues.of(
-                "spring.data.redis.host=" + redis.getHost(),
-                "spring.data.redis.port=" + redis.getMappedPort(6379),
-                "spring.data.redis.database=0",
+                "spring.datasource.url=" + mysql.getJdbcUrl(),
+                "spring.datasource.username=" + mysql.getUsername(),
+                "spring.datasource.password=" + mysql.getPassword(),
+                "spring.datasource.driver-class-name=" + mysql.getDriverClassName(),
+                "spring.sql.init.mode=never",
                 "app.test.cleanup.enabled=true"
         ).applyTo(context);
     }

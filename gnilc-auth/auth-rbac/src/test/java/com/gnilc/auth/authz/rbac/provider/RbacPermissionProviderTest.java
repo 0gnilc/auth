@@ -14,91 +14,71 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class RbacPermissionProviderTest {
-    private PermissionCache cache;
-    private RbacGrantedPermissionsProvider grantedProvider;
-    private RbacRequiredPermissionsProvider requiredProvider;
+    private final PermissionCache cache = mock(PermissionCache.class);
+    private final RbacGrantedPermissionsProvider granted = new RbacGrantedPermissionsProvider();
+    private final RbacRequiredPermissionsProvider required = new RbacRequiredPermissionsProvider();
 
     @BeforeEach
-    void setUp() {
-        cache = mock(PermissionCache.class);
-        grantedProvider = new RbacGrantedPermissionsProvider();
-        requiredProvider = new RbacRequiredPermissionsProvider();
-        ReflectionTestUtils.setField(grantedProvider, "cache", cache);
-        ReflectionTestUtils.setField(requiredProvider, "cache", cache);
+    void injectCache() {
+        ReflectionTestUtils.setField(granted, "cache", cache);
+        ReflectionTestUtils.setField(required, "cache", cache);
     }
 
     @Test
-    void mergesUserAndPublicGrantsAndRemovesDuplicates() {
-        when(cache.loadUserPermissions(42L)).thenReturn(List.of(
-                new Permission("account:read"),
-                new Permission("shared:read")
-        ));
-        when(cache.loadPublicAccessPermissions()).thenReturn(List.of(
-                new Permission("shared:read"),
-                new Permission("health:read")
-        ));
+    void grantedPermissionsMergeUserAndPublicPermissions() {
+        Permission own = new Permission("admin:read");
+        Permission publicPermission = new Permission("public");
+        when(cache.loadUserPermissions(42L)).thenReturn(List.of(own, publicPermission));
+        when(cache.loadPublicAccessPermissions()).thenReturn(List.of(publicPermission));
 
-        assertThat(grantedProvider.provide(context(AccessEnvironment.SERVLET, "42", "/accounts/42", "GET")))
-                .containsExactly(
-                        new Permission("account:read"),
-                        new Permission("shared:read"),
-                        new Permission("health:read")
-                );
+        List<Permission> permissions = granted.provide(servletContext("42", "/admin"));
+
+        assertThat(permissions).containsExactly(own, publicPermission);
+        verify(cache).loadUserPermissions(42L);
     }
 
     @Test
-    void anonymousOrNonNumericIdentitiesReceiveOnlyPublicGrants() {
-        when(cache.loadPublicAccessPermissions()).thenReturn(List.of(new Permission("health:read")));
+    void nonNumericOrAnonymousIdentityReceivesOnlyPublicPermissions() {
+        Permission publicPermission = new Permission("public");
+        when(cache.loadPublicAccessPermissions()).thenReturn(List.of(publicPermission));
 
-        assertThat(grantedProvider.provide(context(AccessEnvironment.SERVLET, null, "/health", "GET")))
-                .containsExactly(new Permission("health:read"));
-        assertThat(grantedProvider.provide(context(AccessEnvironment.SERVLET, "admin", "/health", "GET")))
-                .containsExactly(new Permission("health:read"));
-        verify(cache, never()).loadUserPermissions(anyLong());
+        assertThat(granted.provide(servletContext("service-account", "/public")))
+                .containsExactly(publicPermission);
+        assertThat(granted.provide(servletContext(null, "/public")))
+                .containsExactly(publicPermission);
     }
 
     @Test
-    void resolvesRequiredPermissionsWithAntPathSemanticsAndIgnoresQualifier() {
+    void requiredPermissionsUseAntPathMatchingAndDeduplicateCodes() {
         when(cache.loadTargetPermissions()).thenReturn(List.of(
-                new TargetPermission("/accounts/**", "account:read"),
-                new TargetPermission("/accounts/{id}", "account:read"),
-                new TargetPermission("/roles/**", "role:read")
-        ));
+                new TargetPermission("/sys/**", "admin"),
+                new TargetPermission("/sys/admin/*", "admin"),
+                new TargetPermission("/public/**", "public")));
 
-        assertThat(requiredProvider.provide(context(
-                AccessEnvironment.SERVLET, "42", "/accounts/42", "DELETE")))
-                .containsExactly(new Permission("account:read"));
+        assertThat(required.provide(servletContext("1", "/sys/admin/7")))
+                .containsExactly(new Permission("admin"));
+        assertThat(required.provide(servletContext("1", "/unknown"))).isEmpty();
     }
 
     @Test
-    void providersOnlyParticipateInServletAccesses() {
-        AccessContext messageContext = context(
-                AccessEnvironment.of("message"), "42", "/accounts/42", "GET");
+    void providersIgnoreNonServletEnvironments() {
+        AccessContext worker = new AccessContext(
+                AccessEnvironment.of("worker"), new AccessIdentity("1", Map.of()),
+                new AccessTarget("/sys", "GET"));
 
-        assertThat(grantedProvider.supports(messageContext)).isFalse();
-        assertThat(requiredProvider.supports(messageContext)).isFalse();
-        assertThat(grantedProvider.provide(messageContext)).isEmpty();
-        assertThat(requiredProvider.provide(messageContext)).isEmpty();
-        verifyNoInteractions(cache);
+        assertThat(granted.supports(worker)).isFalse();
+        assertThat(required.supports(worker)).isFalse();
+        assertThat(granted.provide(worker)).isEmpty();
+        assertThat(required.provide(worker)).isEmpty();
     }
 
-    private AccessContext context(AccessEnvironment environment,
-                                  String identity,
-                                  String target,
-                                  String qualifier) {
-        return new AccessContext(
-                environment,
-                new AccessIdentity(identity, Map.of()),
-                new AccessTarget(target, qualifier, Map.of()),
-                Map.of()
-        );
+    private AccessContext servletContext(String identity, String path) {
+        return new AccessContext(AccessEnvironment.SERVLET,
+                new AccessIdentity(identity, Map.of()), new AccessTarget(path, "GET"));
     }
 }

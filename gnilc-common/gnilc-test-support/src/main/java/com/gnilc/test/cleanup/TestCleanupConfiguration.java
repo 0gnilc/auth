@@ -1,28 +1,38 @@
 package com.gnilc.test.cleanup;
 
+import com.gnilc.test.container.SharedTestContainers;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.Environment;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.MySQLContainer;
 
 import javax.sql.DataSource;
-import java.util.List;
 
-/**
- * 同时使用 MySQL 与 Redis 的集成测试清理配置。
- * <p>
- * 业务模块可以额外提供多个 {@link BaselineDataSeeder}，由重置管理器在清理后统一执行。
- */
 @TestConfiguration(proxyBeanMethods = false)
 public class TestCleanupConfiguration {
     @Bean
-    TestEnvironmentGuard testEnvironmentGuard() {
-        return new TestEnvironmentGuard();
+    TestEnvironmentGuard testEnvironmentGuard(Environment environment,
+                                              DataSource dataSource,
+                                              RedisConnectionFactory redisConnectionFactory) {
+        MySQLContainer<?> mysql = SharedTestContainers.mysql();
+        GenericContainer<?> redis = SharedTestContainers.redis();
+        return new TestEnvironmentGuard(
+                environment,
+                dataSource,
+                redisConnectionFactory,
+                mysql.getJdbcUrl(),
+                redis.getHost(),
+                redis.getMappedPort(6379),
+                0);
     }
 
     @Bean
-    DatabaseCleaner databaseCleaner(DataSource dataSource) {
-        return new DatabaseCleaner(dataSource);
+    DatabaseCleaner databaseCleaner(JdbcTemplate jdbcTemplate) {
+        return new DatabaseCleaner(jdbcTemplate);
     }
 
     @Bean
@@ -31,13 +41,10 @@ public class TestCleanupConfiguration {
     }
 
     @Bean
-    TestDataResetManager testDataResetManager(Environment environment,
-                                              DataSource dataSource,
+    TestDataResetManager testDataResetManager(TestEnvironmentGuard guard,
                                               DatabaseCleaner databaseCleaner,
                                               RedisCleaner redisCleaner,
-                                              TestEnvironmentGuard guard,
-                                              List<BaselineDataSeeder> seeders) {
-        return new TestDataResetManager(environment, dataSource,
-                databaseCleaner, redisCleaner, guard, seeders);
+                                              ObjectProvider<BaselineDataSeeder> seeders) {
+        return new TestDataResetManager(guard, databaseCleaner, redisCleaner, seeders.orderedStream().toList());
     }
 }

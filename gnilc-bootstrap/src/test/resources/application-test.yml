@@ -1,29 +1,12 @@
 spring:
-  application:
-    name: gnilc-auth-system-test
-  datasource:
-    name: druidDataSource
-    type: com.alibaba.druid.pool.DruidDataSource
-    druid:
-      initial-size: 1
-      min-idle: 1
-      max-active: 8
-  data:
-    redis:
-      database: 0
-
-mybatis-plus:
-  configuration:
-    map-underscore-to-camel-case: true
-    cache-enabled: false
-  global-config:
-    db-config:
-      logic-delete-field: del
-      logic-delete-value: true
-      logic-not-delete-value: false
-      id-type: auto
-
-app:
-  test:
-    cleanup:
-      enabled: true
+  main:
+    banner-mode: "off"
+  sql:
+    init:
+      mode: never
+logging:
+  level:
+    root: warn
+    org.testcontainers: info
+    com.gnilc: info
+    com.gnilc.auth.authz.rbac.dao: warn

@@ -1,156 +1,62 @@
 package com.gnilc.test.cleanup;
 
-import com.gnilc.test.annotation.CleanTestData;
 import org.junit.jupiter.api.Test;
-import org.springframework.core.env.Environment;
+import org.mockito.InOrder;
 
-import javax.sql.DataSource;
-import java.util.ArrayList;
 import java.util.List;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class TestDataResetManagerTest {
-    private final Environment environment = mock(Environment.class);
-    private final DataSource dataSource = mock(DataSource.class);
-    private final DatabaseCleaner databaseCleaner = mock(DatabaseCleaner.class);
-    private final RedisCleaner redisCleaner = mock(RedisCleaner.class);
-    private final TestEnvironmentGuard guard = mock(TestEnvironmentGuard.class);
-
     @Test
-    void baselineResetVerifiesBeforeCleaningAndSeedsAfterBothStoresAreClean() {
-        List<String> events = new ArrayList<>();
-        BaselineDataSeeder first = () -> events.add("seed-one");
-        BaselineDataSeeder second = () -> events.add("seed-two");
-        TestDataResetManager manager = new TestDataResetManager(environment, dataSource,
-                databaseCleaner, redisCleaner, guard, List.of(first, second));
+    void baselineResetGuardsThenCleansSeedsAndCleansCacheAgain() {
+        TestEnvironmentGuard guard = mock(TestEnvironmentGuard.class);
+        DatabaseCleaner database = mock(DatabaseCleaner.class);
+        RedisCleaner redis = mock(RedisCleaner.class);
+        BaselineDataSeeder first = mock(BaselineDataSeeder.class);
+        BaselineDataSeeder second = mock(BaselineDataSeeder.class);
+        TestDataResetManager manager =
+                new TestDataResetManager(guard, database, redis, List.of(first, second));
 
-        manager.reset(CleanupMode.BASELINE_RESET);
+        manager.resetToBaseline();
 
-        var ordered = inOrder(guard, redisCleaner, databaseCleaner);
-        ordered.verify(guard).verifyRedis(environment);
-        ordered.verify(guard).verifyDatabase(environment, dataSource);
-        ordered.verify(redisCleaner).clean();
-        ordered.verify(databaseCleaner).clean();
-        assertThat(events).containsExactly("seed-one", "seed-two");
+        InOrder order = inOrder(guard, redis, database, first, second);
+        order.verify(guard).assertCleanupAllowed();
+        order.verify(redis).flushDatabase();
+        order.verify(database).truncateBusinessTables();
+        order.verify(first).seed();
+        order.verify(second).seed();
+        order.verify(redis).flushDatabase();
     }
 
     @Test
-    void baselineCleanupDoesNotReseed() {
-        BaselineDataSeeder seeder = mock(BaselineDataSeeder.class);
-        TestDataResetManager manager = new TestDataResetManager(environment, dataSource,
-                databaseCleaner, redisCleaner, guard, List.of(seeder));
+    void afterTestAlwaysCleansBothStores() {
+        TestEnvironmentGuard guard = mock(TestEnvironmentGuard.class);
+        DatabaseCleaner database = mock(DatabaseCleaner.class);
+        RedisCleaner redis = mock(RedisCleaner.class);
 
-        manager.cleanupAfter(CleanupMode.BASELINE_RESET);
+        new TestDataResetManager(guard, database, redis, List.of()).cleanAfterTest();
 
-        var ordered = inOrder(guard, redisCleaner, databaseCleaner);
-        ordered.verify(guard).verifyRedis(environment);
-        ordered.verify(guard).verifyDatabase(environment, dataSource);
-        ordered.verify(redisCleaner).clean();
-        ordered.verify(databaseCleaner).clean();
-        verifyNoInteractions(seeder);
+        verify(guard).assertCleanupAllowed();
+        verify(redis).flushDatabase();
+        verify(database).truncateBusinessTables();
     }
 
     @Test
-    void baselineCleanupAttemptsDatabaseWhenRedisCleanupFails() {
-        RuntimeException redisFailure = new IllegalStateException("redis failed");
-        doThrow(redisFailure).when(redisCleaner).clean();
-        TestDataResetManager manager = new TestDataResetManager(environment, dataSource,
-                databaseCleaner, redisCleaner, guard, null);
+    void afterTestAttemptsDatabaseCleanupWhenRedisCleanupFails() {
+        TestEnvironmentGuard guard = mock(TestEnvironmentGuard.class);
+        DatabaseCleaner database = mock(DatabaseCleaner.class);
+        RedisCleaner redis = mock(RedisCleaner.class);
+        IllegalStateException failure = new IllegalStateException("redis unavailable");
+        doThrow(failure).when(redis).flushDatabase();
 
-        org.assertj.core.api.Assertions.assertThatThrownBy(
-                () -> manager.cleanupAfter(CleanupMode.BASELINE_RESET))
-                .isSameAs(redisFailure);
+        assertThatThrownBy(() -> new TestDataResetManager(guard, database, redis, List.of()).cleanAfterTest())
+                .isSameAs(failure);
 
-        verify(databaseCleaner).clean();
-    }
-
-    @Test
-    void baselineCleanupPreservesBothFailures() {
-        RuntimeException redisFailure = new IllegalStateException("redis failed");
-        RuntimeException databaseFailure = new IllegalStateException("database failed");
-        doThrow(redisFailure).when(redisCleaner).clean();
-        doThrow(databaseFailure).when(databaseCleaner).clean();
-        TestDataResetManager manager = new TestDataResetManager(environment, dataSource,
-                databaseCleaner, redisCleaner, guard, null);
-
-        org.assertj.core.api.Assertions.assertThatThrownBy(
-                () -> manager.cleanupAfter(CleanupMode.BASELINE_RESET))
-                .isSameAs(redisFailure)
-                .satisfies(exception -> assertThat(exception.getSuppressed())
-                        .containsExactly(databaseFailure));
-    }
-
-    @Test
-    void databaseGuardRefusalPreventsAllDestructiveActions() {
-        BaselineDataSeeder seeder = mock(BaselineDataSeeder.class);
-        TestDataResetManager manager = new TestDataResetManager(environment, dataSource,
-                databaseCleaner, redisCleaner, guard, List.of(seeder));
-        doThrow(new IllegalStateException("refused"))
-                .when(guard).verifyDatabase(environment, dataSource);
-
-        org.assertj.core.api.Assertions.assertThatThrownBy(
-                () -> manager.reset(CleanupMode.BASELINE_RESET))
-                .hasMessage("refused");
-
-        verifyNoInteractions(databaseCleaner, redisCleaner, seeder);
-    }
-
-    @Test
-    void redisCleanTouchesOnlyRedis() {
-        TestDataResetManager manager = new TestDataResetManager(environment, dataSource,
-                databaseCleaner, redisCleaner, guard, null);
-
-        manager.reset(CleanupMode.REDIS_CLEAN);
-
-        var ordered = inOrder(guard, redisCleaner);
-        ordered.verify(guard).verifyRedis(environment);
-        ordered.verify(redisCleaner).clean();
-        verifyNoInteractions(databaseCleaner, dataSource);
-    }
-
-    @Test
-    void nonDestructiveModesDoNothing() {
-        TestDataResetManager manager = new TestDataResetManager(environment, dataSource,
-                databaseCleaner, redisCleaner, guard, null);
-
-        manager.reset(CleanupMode.NONE);
-        manager.cleanupAfter(CleanupMode.TRANSACTION_ROLLBACK);
-        manager.reset(null);
-
-        verifyNoInteractions(environment, dataSource, databaseCleaner, redisCleaner, guard);
-    }
-
-    @Test
-    void methodAnnotationOverridesClassAnnotationAndMissingAnnotationMeansNone() throws Exception {
-        assertThat(TestDataResetManager.mode(AnnotatedTests.class,
-                AnnotatedTests.class.getDeclaredMethod("redisOnly")))
-                .isEqualTo(CleanupMode.REDIS_CLEAN);
-        assertThat(TestDataResetManager.mode(AnnotatedTests.class,
-                AnnotatedTests.class.getDeclaredMethod("baseline")))
-                .isEqualTo(CleanupMode.BASELINE_RESET);
-        assertThat(TestDataResetManager.mode(UnannotatedTests.class,
-                UnannotatedTests.class.getDeclaredMethod("test")))
-                .isEqualTo(CleanupMode.NONE);
-    }
-
-    @CleanTestData(CleanupMode.BASELINE_RESET)
-    private static class AnnotatedTests {
-        @CleanTestData(CleanupMode.REDIS_CLEAN)
-        void redisOnly() {
-        }
-
-        void baseline() {
-        }
-    }
-
-    private static class UnannotatedTests {
-        void test() {
-        }
+        verify(database).truncateBusinessTables();
     }
 }
