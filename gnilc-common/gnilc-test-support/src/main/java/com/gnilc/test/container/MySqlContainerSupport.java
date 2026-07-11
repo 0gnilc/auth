@@ -8,7 +8,6 @@ import org.testcontainers.utility.DockerImageName;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.function.BiConsumer;
@@ -25,6 +24,8 @@ public final class MySqlContainerSupport {
     private static final String USERNAME = "test";
     private static final String PASSWORD = "test";
     private static final String MARKER_PROPERTY = "app.test.container.owned";
+    // 进程级单例由 Testcontainers 的 Ryuk 在 JVM 退出后回收，不能在单次调用后关闭。
+    @SuppressWarnings("resource")
     private static final MySQLContainer<?> CONTAINER = new MySQLContainer<>(mysqlImage())
             .withDatabaseName(DATABASE_NAME)
             .withUsername(USERNAME)
@@ -41,9 +42,7 @@ public final class MySqlContainerSupport {
      * @return 已启动的 MySQL 测试容器
      */
     public static synchronized MySQLContainer<?> container() {
-        if (!CONTAINER.isRunning()) {
-            CONTAINER.start();
-        }
+        startContainer();
         return CONTAINER;
     }
 
@@ -53,9 +52,10 @@ public final class MySqlContainerSupport {
      * @param properties 属性键值接收器
      */
     public static void applyProperties(BiConsumer<String, Object> properties) {
-        MySQLContainer<?> mysql = container();
-        applyProperties(properties, mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword(),
-                mysql.getDriverClassName(), mysql.getHost(), mysql.getMappedPort(MySQLContainer.MYSQL_PORT));
+        startContainer();
+        applyProperties(properties, CONTAINER.getJdbcUrl(), CONTAINER.getUsername(), CONTAINER.getPassword(),
+                CONTAINER.getDriverClassName(), CONTAINER.getHost(),
+                CONTAINER.getMappedPort(MySQLContainer.MYSQL_PORT));
     }
 
     /**
@@ -89,10 +89,10 @@ public final class MySqlContainerSupport {
      * @throws org.springframework.jdbc.datasource.init.ScriptException SQL 脚本读取或执行失败时抛出
      */
     public static synchronized void initializeSchema(String... classpathScripts) {
-        container();
+        startContainer();
         try (Connection connection = DriverManager.getConnection(
                 CONTAINER.getJdbcUrl(), CONTAINER.getUsername(), CONTAINER.getPassword())) {
-            for (String script : Arrays.asList(classpathScripts)) {
+            for (String script : classpathScripts) {
                 if (INITIALIZED_SCRIPTS.contains(script)) {
                     continue;
                 }
@@ -101,6 +101,12 @@ public final class MySqlContainerSupport {
             }
         } catch (SQLException e) {
             throw new IllegalStateException("Failed to initialize MySQL test schema", e);
+        }
+    }
+
+    private static synchronized void startContainer() {
+        if (!CONTAINER.isRunning()) {
+            CONTAINER.start();
         }
     }
 

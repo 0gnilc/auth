@@ -14,6 +14,8 @@ import java.util.function.BiConsumer;
 public final class RedisContainerSupport {
     /** Redis 容器内部服务端口。 */
     public static final int REDIS_PORT = 6379;
+    // 进程级单例由 Testcontainers 的 Ryuk 在 JVM 退出后回收，不能在单次调用后关闭。
+    @SuppressWarnings("resource")
     private static final GenericContainer<?> CONTAINER = new GenericContainer<>(redisImage())
             .withExposedPorts(REDIS_PORT)
             .withReuse(false);
@@ -27,9 +29,7 @@ public final class RedisContainerSupport {
      * @return 已启动的 Redis 测试容器
      */
     public static synchronized GenericContainer<?> container() {
-        if (!CONTAINER.isRunning()) {
-            CONTAINER.start();
-        }
+        startContainer();
         return CONTAINER;
     }
 
@@ -39,8 +39,8 @@ public final class RedisContainerSupport {
      * @param properties 属性键值接收器
      */
     public static void applyProperties(BiConsumer<String, Object> properties) {
-        GenericContainer<?> redis = container();
-        applyProperties(properties, redis.getHost(), redis.getMappedPort(REDIS_PORT));
+        startContainer();
+        applyProperties(properties, CONTAINER.getHost(), CONTAINER.getMappedPort(REDIS_PORT));
     }
 
     /**
@@ -54,6 +54,12 @@ public final class RedisContainerSupport {
         properties.accept("app.test.container.owned", true);
         properties.accept("app.test.container.redis.host", host);
         properties.accept("app.test.container.redis.port", port);
+    }
+
+    private static synchronized void startContainer() {
+        if (!CONTAINER.isRunning()) {
+            CONTAINER.start();
+        }
     }
 
     private static DockerImageName redisImage() {
