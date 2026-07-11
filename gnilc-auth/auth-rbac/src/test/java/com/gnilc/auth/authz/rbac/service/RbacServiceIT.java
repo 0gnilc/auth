@@ -25,7 +25,7 @@ import com.gnilc.auth.authz.rbac.service.impl.RoleServiceImpl;
 import com.gnilc.auth.authz.rbac.service.impl.UserRoleServiceImpl;
 import com.gnilc.auth.authz.rbac.service.impl.UserServiceImpl;
 import com.gnilc.test.annotation.IntegrationTest;
-import com.gnilc.test.container.MySqlContainerContextInitializer;
+import com.gnilc.auth.authz.rbac.support.RbacMySqlContainerContextInitializer;
 import org.junit.jupiter.api.Test;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,7 +53,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
                 "mybatis-plus.global-config.db-config.id-type=auto"
         }
 )
-@ContextConfiguration(initializers = MySqlContainerContextInitializer.class)
+@ContextConfiguration(initializers = RbacMySqlContainerContextInitializer.class)
 @Transactional
 class RbacServiceIT {
     @Autowired

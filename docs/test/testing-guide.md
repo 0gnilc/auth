@@ -4,7 +4,7 @@ This is the mandatory repository-specific policy for writing, reviewing, and run
 
 ## Layout, names, and Maven phases
 
-All tests and test resources live under the owning module's `src/test`; do not create or restore an `src/intg-test` source set.
+All test-owned code, fixtures, and resources live under the owning module's `src/test`; do not create or restore an `src/intg-test` source set. Production deployment SQL remains under root `deploy/sql` and may be copied to the test classpath as a shared input so integration tests can verify the real deployment schema. Module-owned test initializers decide which deployment scripts their tests execute.
 
 | Suffix | Purpose | Maven plugin and command |
 | --- | --- | --- |

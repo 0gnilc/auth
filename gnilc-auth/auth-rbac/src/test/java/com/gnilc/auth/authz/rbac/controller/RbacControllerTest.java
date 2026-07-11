@@ -1,7 +1,7 @@
 package com.gnilc.auth.authz.rbac.controller;
 
-import com.gnilc.auth.authz.rbac.config.ServletRbacAuthorizationAutoConfiguration;
 import com.gnilc.auth.authz.rbac.common.utils.PageResult;
+import com.gnilc.auth.authz.rbac.config.RbacJacksonConfiguration;
 import com.gnilc.auth.authz.rbac.entity.dto.PermissionQueryDto;
 import com.gnilc.auth.authz.rbac.entity.dto.RoleQueryDto;
 import com.gnilc.auth.authz.rbac.entity.vo.MenuVo;
@@ -15,13 +15,10 @@ import com.gnilc.auth.authz.rbac.service.RolePermissionService;
 import com.gnilc.auth.authz.rbac.service.RoleService;
 import com.gnilc.auth.authz.rbac.service.UserRoleService;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Bean;
@@ -42,13 +39,18 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest(
-        classes = RbacControllerContractTest.TestApplication.class,
-        properties = "spring.main.web-application-type=servlet"
-)
-@AutoConfigureMockMvc
-@Import(RbacControllerContractTest.EventCaptureConfiguration.class)
-class RbacControllerContractTest {
+@WebMvcTest
+@Import({
+        PermissionController.class,
+        RoleController.class,
+        MenuController.class,
+        RoleMenuController.class,
+        RolePermissionController.class,
+        UserRoleController.class,
+        RbacJacksonConfiguration.class,
+        RbacControllerTest.EventCaptureConfiguration.class
+})
+class RbacControllerTest {
     @Autowired
     private MockMvc mockMvc;
     @Autowired
@@ -65,6 +67,11 @@ class RbacControllerContractTest {
     private RolePermissionService rolePermissionService;
     @MockBean
     private UserRoleService userRoleService;
+
+    @SpringBootConfiguration
+    @EnableAutoConfiguration
+    static class TestApplication {
+    }
 
     @Test
     void permissionListBindsJsonAndReturnsTheRbacResponseEnvelope() throws Exception {
@@ -88,7 +95,7 @@ class RbacControllerContractTest {
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.message").value("ok"))
-                .andExpect(jsonPath("$.data[0].id").value(7))
+                .andExpect(jsonPath("$.data[0].id").value("7"))
                 .andExpect(jsonPath("$.data[0].code").value("account:read"))
                 .andExpect(jsonPath("$.data[0].targetIdentifier").value("/accounts/**"));
 
@@ -160,7 +167,7 @@ class RbacControllerContractTest {
                         .content("{\"currentPage\":2,\"pageSize\":5}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.currentPage").value(2))
-                .andExpect(jsonPath("$.data.list[0].id").value(3));
+                .andExpect(jsonPath("$.data.list[0].id").value("3"));
         mockMvc.perform(post("/authz/role/create")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"code\":\"operator\",\"name\":\"Operator\"}"))
@@ -212,13 +219,13 @@ class RbacControllerContractTest {
 
         mockMvc.perform(post("/authz/role-menu/list/4"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[1]").value(11));
+                .andExpect(jsonPath("$.data[1]").value("11"));
         mockMvc.perform(post("/authz/role-permission/list/4"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[0]").value(20));
+                .andExpect(jsonPath("$.data[0]").value("20"));
         mockMvc.perform(post("/authz/user-role/list/7"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[1]").value(5));
+                .andExpect(jsonPath("$.data[1]").value("5"));
 
         mockMvc.perform(post("/authz/role-menu/update")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -239,43 +246,6 @@ class RbacControllerContractTest {
                 Long.valueOf(4).equals(dto.getRoleId()) && dto.getPermissionIds().equals(List.of(20L, 22L))));
         verify(userRoleService).updateUserRole(argThat(dto ->
                 Long.valueOf(7).equals(dto.getUserId()) && dto.getRoleIds().equals(List.of(4L, 6L))));
-    }
-
-    @SpringBootConfiguration
-    @EnableAutoConfiguration(exclude = {
-            ServletRbacAuthorizationAutoConfiguration.class,
-            DataSourceAutoConfiguration.class
-    })
-    static class TestApplication {
-        @Bean
-        PermissionController permissionController() {
-            return new PermissionController();
-        }
-
-        @Bean
-        RoleController roleController() {
-            return new RoleController();
-        }
-
-        @Bean
-        MenuController menuController() {
-            return new MenuController();
-        }
-
-        @Bean
-        RoleMenuController roleMenuController() {
-            return new RoleMenuController();
-        }
-
-        @Bean
-        RolePermissionController rolePermissionController() {
-            return new RolePermissionController();
-        }
-
-        @Bean
-        UserRoleController userRoleController() {
-            return new UserRoleController();
-        }
     }
 
     @TestConfiguration(proxyBeanMethods = false)

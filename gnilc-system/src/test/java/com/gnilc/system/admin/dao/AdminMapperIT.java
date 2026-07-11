@@ -9,7 +9,7 @@ import com.baomidou.mybatisplus.test.autoconfigure.MybatisPlusTest;
 import com.gnilc.auth.authz.rbac.config.MyMetaObjectHandler;
 import com.gnilc.system.admin.entity.bo.AdminBo;
 import com.gnilc.test.annotation.IntegrationTest;
-import com.gnilc.test.container.MySqlContainerContextInitializer;
+import com.gnilc.system.support.SystemMySqlContainerContextInitializer;
 import org.junit.jupiter.api.Test;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,7 +36,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ContextConfiguration(
         classes = AdminMapperIT.MapperTestConfiguration.class,
-        initializers = MySqlContainerContextInitializer.class
+        initializers = SystemMySqlContainerContextInitializer.class
 )
 @ImportAutoConfiguration(MybatisPlusAutoConfiguration.class)
 class AdminMapperIT {

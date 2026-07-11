@@ -19,7 +19,7 @@ import com.gnilc.system.admin.service.impl.AdminServiceImpl;
 import com.gnilc.system.session.AdminSessionManager;
 import com.gnilc.system.session.AdminSessionTokenPair;
 import com.gnilc.test.annotation.IntegrationTest;
-import com.gnilc.test.container.MySqlContainerContextInitializer;
+import com.gnilc.system.support.SystemMySqlContainerContextInitializer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mybatis.spring.annotation.MapperScan;
@@ -54,7 +54,7 @@ import static org.mockito.Mockito.when;
                 "mybatis-plus.global-config.db-config.id-type=auto"
         }
 )
-@ContextConfiguration(initializers = MySqlContainerContextInitializer.class)
+@ContextConfiguration(initializers = SystemMySqlContainerContextInitializer.class)
 @Transactional
 class AdminServiceIT {
     @Autowired

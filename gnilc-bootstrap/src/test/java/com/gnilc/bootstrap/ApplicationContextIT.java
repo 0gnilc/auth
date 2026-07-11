@@ -2,10 +2,10 @@ package com.gnilc.bootstrap;
 
 import com.gnilc.auth.authn.servlet.filter.ServletAuthenticationFilter;
 import com.gnilc.auth.authz.servlet.filter.ServletAuthorizationFilter;
+import com.gnilc.bootstrap.support.BootstrapContainerContextInitializer;
 import com.gnilc.bootstrap.support.BootstrapTestConfiguration;
 import com.gnilc.system.admin.service.AdminService;
 import com.gnilc.test.annotation.IntegrationTest;
-import com.gnilc.test.container.FullStackContainerContextInitializer;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -22,7 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @IntegrationTest
 @SpringBootTest(classes = AccessControlApplication.class)
-@ContextConfiguration(initializers = FullStackContainerContextInitializer.class)
+@ContextConfiguration(initializers = BootstrapContainerContextInitializer.class)
 @Import(BootstrapTestConfiguration.class)
 class ApplicationContextIT {
     @Autowired

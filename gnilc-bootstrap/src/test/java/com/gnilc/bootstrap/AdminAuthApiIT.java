@@ -1,6 +1,7 @@
 package com.gnilc.bootstrap;
 
 import com.gnilc.bootstrap.support.AppBaselineDataSeeder;
+import com.gnilc.bootstrap.support.BootstrapContainerContextInitializer;
 import com.gnilc.bootstrap.support.BootstrapTestConfiguration;
 import com.gnilc.test.annotation.ApiTest;
 import com.gnilc.test.api.ApiTestSupport;
@@ -9,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.test.context.ContextConfiguration;
 
 import java.time.Duration;
 
@@ -18,6 +20,7 @@ import static org.hamcrest.Matchers.notNullValue;
 
 @ApiTest
 @Import(BootstrapTestConfiguration.class)
+@ContextConfiguration(initializers = BootstrapContainerContextInitializer.class)
 class AdminAuthApiIT extends ApiTestSupport {
     private static final Duration ACCESS_TTL = Duration.ofDays(7);
     private static final Duration REFRESH_TTL = Duration.ofDays(30);

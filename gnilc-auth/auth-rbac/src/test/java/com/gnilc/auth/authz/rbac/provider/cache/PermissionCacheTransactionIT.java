@@ -14,7 +14,7 @@ import com.gnilc.auth.authz.rbac.service.impl.RolePermissionServiceImpl;
 import com.gnilc.auth.authz.rbac.service.impl.UserRoleServiceImpl;
 import com.gnilc.test.annotation.IntegrationTest;
 import com.gnilc.test.cleanup.TestEnvironmentGuard;
-import com.gnilc.test.container.MySqlContainerContextInitializer;
+import com.gnilc.auth.authz.rbac.support.RbacMySqlContainerContextInitializer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -50,7 +50,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ContextConfiguration(
         classes = PermissionCacheTransactionIT.TransactionConfiguration.class,
-        initializers = MySqlContainerContextInitializer.class
+        initializers = RbacMySqlContainerContextInitializer.class
 )
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class PermissionCacheTransactionIT {

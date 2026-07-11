@@ -1,6 +1,6 @@
 # 部署 SQL 说明
 
-本目录保存人工执行的部署和初始化 SQL。应用和自动化测试不会自动执行这些脚本。
+本目录保存部署和初始化 SQL。应用不会自动执行这些脚本；Testcontainers 集成测试会在临时数据库中执行它们，以验证当前 schema 和部署初始化行为。
 
 ## 文件说明
 
@@ -27,7 +27,7 @@
 
 ## 自动化测试
 
-自动化集成测试只使用 Testcontainers 创建的临时 MySQL 8 schema `gnilc_auth_test`。测试负责创建并销毁该环境；不要让自动化测试连接 `access`、`access_local_it` 或其他本地/共享 schema。
+自动化集成测试只在 Testcontainers 创建的临时 MySQL 8 schema `gnilc_auth_test` 中执行这些脚本。测试负责创建并销毁该环境；不要让自动化测试连接 `access`、`access_local_it` 或其他本地/共享 schema。
 
 ## 人工本地验证
 

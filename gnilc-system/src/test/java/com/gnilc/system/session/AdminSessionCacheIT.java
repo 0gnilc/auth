@@ -1,35 +1,41 @@
 package com.gnilc.system.session;
 
 import com.gnilc.test.annotation.IntegrationTest;
-import com.gnilc.test.cleanup.TestEnvironmentGuard;
+import com.gnilc.test.annotation.CleanTestData;
+import com.gnilc.test.cleanup.CleanupMode;
+import com.gnilc.test.cleanup.RedisTestCleanupConfiguration;
+import com.gnilc.test.cleanup.TestDataResetListener;
 import com.gnilc.test.container.RedisContainerContextInitializer;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.env.Environment;
+import org.springframework.context.annotation.Import;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.TestExecutionListeners;
 
 import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 @IntegrationTest
+@CleanTestData(CleanupMode.REDIS_CLEAN)
 @SpringBootTest(
         classes = {
-                AdminSessionRedisIT.RedisTestConfiguration.class,
+                AdminSessionCacheIT.RedisTestConfiguration.class,
                 AdminSessionRedisCommands.class,
                 AdminSessionManager.class
         },
         webEnvironment = SpringBootTest.WebEnvironment.NONE
 )
 @ContextConfiguration(initializers = RedisContainerContextInitializer.class)
-class AdminSessionRedisIT {
+@Import(RedisTestCleanupConfiguration.class)
+@TestExecutionListeners(value = TestDataResetListener.class,
+        mergeMode = TestExecutionListeners.MergeMode.MERGE_WITH_DEFAULTS)
+class AdminSessionCacheIT {
     private static final Duration ACCESS_TTL = Duration.ofDays(7);
     private static final Duration REFRESH_TTL = Duration.ofDays(30);
 
@@ -39,26 +45,6 @@ class AdminSessionRedisIT {
     private AdminSessionRedisCommands redisCommands;
     @Autowired
     private StringRedisTemplate redisTemplate;
-    @Autowired
-    private Environment environment;
-
-    @BeforeEach
-    void clearRedisBefore() {
-        clearRedis();
-    }
-
-    @AfterEach
-    void clearRedisAfter() {
-        clearRedis();
-    }
-
-    private void clearRedis() {
-        new TestEnvironmentGuard().verifyRedis(environment);
-        try (var connection = redisTemplate.getConnectionFactory().getConnection()) {
-            connection.serverCommands().flushDb();
-        }
-    }
-
     @Test
     void createsBidirectionalPairsWithIndependentAccessAndRefreshTtls() {
         AdminSessionTokenPair pair = sessionManager.createSession(1001L);

@@ -12,7 +12,7 @@ import com.gnilc.auth.authz.rbac.entity.bo.RoleMenuBo;
 import com.gnilc.auth.authz.rbac.entity.bo.RolePermissionBo;
 import com.gnilc.auth.authz.rbac.entity.enums.MenuType;
 import com.gnilc.test.annotation.IntegrationTest;
-import com.gnilc.test.container.MySqlContainerContextInitializer;
+import com.gnilc.auth.authz.rbac.support.RbacMySqlContainerContextInitializer;
 import org.junit.jupiter.api.Test;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,7 +37,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ContextConfiguration(
         classes = RbacMapperIT.MapperConfiguration.class,
-        initializers = MySqlContainerContextInitializer.class
+        initializers = RbacMySqlContainerContextInitializer.class
 )
 class RbacMapperIT {
     @Autowired

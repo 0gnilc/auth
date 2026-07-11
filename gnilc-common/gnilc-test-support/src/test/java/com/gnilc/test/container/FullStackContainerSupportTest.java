@@ -56,10 +56,4 @@ class FullStackContainerSupportTest {
                 .containsEntry("app.test.container.redis.port", 16379);
     }
 
-    @Test
-    void schemaScriptsAreAppliedInDependencyOrder() {
-        assertThat(MySqlContainerSupport.schemaScripts()).containsExactly(
-                "sql/schema/01-rbac.sql",
-                "sql/schema/02-admin.sql");
-    }
 }

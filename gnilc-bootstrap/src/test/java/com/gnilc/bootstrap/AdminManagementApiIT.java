@@ -1,6 +1,7 @@
 package com.gnilc.bootstrap;
 
 import com.gnilc.bootstrap.support.AppBaselineDataSeeder;
+import com.gnilc.bootstrap.support.BootstrapContainerContextInitializer;
 import com.gnilc.bootstrap.support.BootstrapTestConfiguration;
 import com.gnilc.test.annotation.ApiTest;
 import com.gnilc.test.api.ApiTestSupport;
@@ -8,6 +9,7 @@ import io.restassured.response.Response;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.ContextConfiguration;
 
 import java.util.List;
 
@@ -16,6 +18,7 @@ import static org.hamcrest.Matchers.equalTo;
 
 @ApiTest
 @Import(BootstrapTestConfiguration.class)
+@ContextConfiguration(initializers = BootstrapContainerContextInitializer.class)
 class AdminManagementApiIT extends ApiTestSupport {
     @LocalServerPort
     private int port;

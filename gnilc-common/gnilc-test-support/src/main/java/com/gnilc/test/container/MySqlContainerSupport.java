@@ -8,7 +8,9 @@ import org.testcontainers.utility.DockerImageName;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-import java.util.List;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.function.BiConsumer;
 
 public final class MySqlContainerSupport {
@@ -16,15 +18,12 @@ public final class MySqlContainerSupport {
     private static final String USERNAME = "test";
     private static final String PASSWORD = "test";
     private static final String MARKER_PROPERTY = "app.test.container.owned";
-    private static final List<String> SCHEMA_SCRIPTS = List.of(
-            "sql/schema/01-rbac.sql",
-            "sql/schema/02-admin.sql");
     private static final MySQLContainer<?> CONTAINER = new MySQLContainer<>(mysqlImage())
             .withDatabaseName(DATABASE_NAME)
             .withUsername(USERNAME)
             .withPassword(PASSWORD)
             .withReuse(false);
-    private static boolean initialized;
+    private static final Set<String> INITIALIZED_SCRIPTS = new LinkedHashSet<>();
 
     private MySqlContainerSupport() {
     }
@@ -32,10 +31,6 @@ public final class MySqlContainerSupport {
     public static synchronized MySQLContainer<?> container() {
         if (!CONTAINER.isRunning()) {
             CONTAINER.start();
-        }
-        if (!initialized) {
-            initializeSchema();
-            initialized = true;
         }
         return CONTAINER;
     }
@@ -64,15 +59,16 @@ public final class MySqlContainerSupport {
         properties.accept("app.test.container.mysql.port", port);
     }
 
-    static List<String> schemaScripts() {
-        return SCHEMA_SCRIPTS;
-    }
-
-    private static void initializeSchema() {
+    public static synchronized void initializeSchema(String... classpathScripts) {
+        container();
         try (Connection connection = DriverManager.getConnection(
                 CONTAINER.getJdbcUrl(), CONTAINER.getUsername(), CONTAINER.getPassword())) {
-            for (String script : SCHEMA_SCRIPTS) {
+            for (String script : Arrays.asList(classpathScripts)) {
+                if (INITIALIZED_SCRIPTS.contains(script)) {
+                    continue;
+                }
                 ScriptUtils.executeSqlScript(connection, new ClassPathResource(script));
+                INITIALIZED_SCRIPTS.add(script);
             }
         } catch (SQLException e) {
             throw new IllegalStateException("Failed to initialize MySQL test schema", e);

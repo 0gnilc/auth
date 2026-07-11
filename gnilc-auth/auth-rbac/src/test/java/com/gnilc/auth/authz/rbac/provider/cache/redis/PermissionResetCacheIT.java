@@ -29,10 +29,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @IntegrationTest
 @ContextConfiguration(
-        classes = PermissionCacheRedisIT.RedisTestConfiguration.class,
+        classes = PermissionResetCacheIT.RedisTestConfiguration.class,
         initializers = RedisContainerContextInitializer.class
 )
-class PermissionCacheRedisIT {
+class PermissionResetCacheIT {
     @Autowired
     private StringRedisTemplate redisTemplate;
     @Autowired
