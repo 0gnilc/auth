@@ -13,7 +13,14 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.function.BiConsumer;
 
+/**
+ * 进程级 MySQL Testcontainers 生命周期与动态属性支持。
+ * <p>
+ * 默认启动 {@code mysql:8.4.0}，使用不可复用容器和固定测试 Schema。
+ * 可通过系统属性 {@code app.test.mysql.image} 覆盖镜像。
+ */
 public final class MySqlContainerSupport {
+    /** 允许执行破坏性清理的固定测试 Schema 名称。 */
     public static final String DATABASE_NAME = "gnilc_auth_test";
     private static final String USERNAME = "test";
     private static final String PASSWORD = "test";
@@ -28,6 +35,11 @@ public final class MySqlContainerSupport {
     private MySqlContainerSupport() {
     }
 
+    /**
+     * 获取当前进程共享的 MySQL 容器，并在首次访问时启动。
+     *
+     * @return 已启动的 MySQL 测试容器
+     */
     public static synchronized MySQLContainer<?> container() {
         if (!CONTAINER.isRunning()) {
             CONTAINER.start();
@@ -35,12 +47,20 @@ public final class MySqlContainerSupport {
         return CONTAINER;
     }
 
+    /**
+     * 启动 MySQL 容器并输出 Spring DataSource、清理开关和容器归属属性。
+     *
+     * @param properties 属性键值接收器
+     */
     public static void applyProperties(BiConsumer<String, Object> properties) {
         MySQLContainer<?> mysql = container();
         applyProperties(properties, mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword(),
                 mysql.getDriverClassName(), mysql.getHost(), mysql.getMappedPort(MySQLContainer.MYSQL_PORT));
     }
 
+    /**
+     * 根据给定连接信息组装属性；该重载供无容器单元测试验证属性契约。
+     */
     static void applyProperties(BiConsumer<String, Object> properties,
                                 String jdbcUrl,
                                 String username,
@@ -59,6 +79,15 @@ public final class MySqlContainerSupport {
         properties.accept("app.test.container.mysql.port", port);
     }
 
+    /**
+     * 按调用顺序执行模块声明的类路径 SQL 脚本，每个脚本在当前进程中最多执行一次。
+     * <p>
+     * 通用容器支持不决定业务 Schema；脚本列表由使用该容器的业务模块测试提供。
+     *
+     * @param classpathScripts 需要执行的类路径 SQL 脚本
+     * @throws IllegalStateException 无法连接数据库时抛出
+     * @throws org.springframework.jdbc.datasource.init.ScriptException SQL 脚本读取或执行失败时抛出
+     */
     public static synchronized void initializeSchema(String... classpathScripts) {
         container();
         try (Connection connection = DriverManager.getConnection(

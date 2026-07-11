@@ -11,6 +11,12 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+/**
+ * 标记由 Spring TestContext 驱动的集成测试。
+ * <p>
+ * 该注解只注册 Spring JUnit 扩展并启用 {@code test} Profile，
+ * 不会隐式创建 {@code @SpringBootTest} 上下文或启动测试容器。
+ */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Documented

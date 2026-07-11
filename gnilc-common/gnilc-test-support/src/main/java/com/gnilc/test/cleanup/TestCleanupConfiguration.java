@@ -8,6 +8,11 @@ import org.springframework.data.redis.connection.RedisConnectionFactory;
 import javax.sql.DataSource;
 import java.util.List;
 
+/**
+ * 同时使用 MySQL 与 Redis 的集成测试清理配置。
+ * <p>
+ * 业务模块可以额外提供多个 {@link BaselineDataSeeder}，由重置管理器在清理后统一执行。
+ */
 @TestConfiguration(proxyBeanMethods = false)
 public class TestCleanupConfiguration {
     @Bean
