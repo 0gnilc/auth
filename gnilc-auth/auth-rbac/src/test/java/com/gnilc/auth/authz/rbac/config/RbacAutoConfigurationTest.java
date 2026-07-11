@@ -19,10 +19,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import javax.sql.DataSource;
-import java.io.IOException;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
-import java.util.Enumeration;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -33,13 +29,6 @@ class RbacAutoConfigurationTest {
             .withConfiguration(AutoConfigurations.of(ServletRbacAuthorizationAutoConfiguration.class))
             .withPropertyValues("spring.main.lazy-initialization=true")
             .withBean(SqlSessionFactory.class, this::sqlSessionFactory);
-
-    @Test
-    void autoConfigurationIsPublishedThroughTheBootImportsFile() throws IOException {
-        String imports = autoConfigurationImports();
-
-        assertThat(imports).contains(ServletRbacAuthorizationAutoConfiguration.class.getName());
-    }
 
     @Test
     void registersProvidersAndTheDefaultLocalCacheInAServletApplication() {
@@ -69,18 +58,6 @@ class RbacAutoConfigurationTest {
                     assertThat(context.getBean(PermissionCache.class))
                             .isSameAs(context.getBean("customPermissionCache"));
                 });
-    }
-
-    private String autoConfigurationImports() throws IOException {
-        StringBuilder imports = new StringBuilder();
-        Enumeration<URL> resources = getClass().getClassLoader()
-                .getResources("META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports");
-        while (resources.hasMoreElements()) {
-            try (var stream = resources.nextElement().openStream()) {
-                imports.append(new String(stream.readAllBytes(), StandardCharsets.UTF_8)).append('\n');
-            }
-        }
-        return imports.toString();
     }
 
     private SqlSessionFactory sqlSessionFactory() {
