@@ -25,11 +25,11 @@ test('uses the Windows Maven wrapper through the command shell when present', ()
   const executable = resolveMavenExecutable({
     fileExists: (path) => path.endsWith('/mvnw.cmd'),
     platform: 'win32',
-    serverDir: '/repo',
+    serverDir: '/repo with spaces',
   });
 
   assert.deepEqual(executable, {
-    command: '/repo/mvnw.cmd',
+    command: '.\\mvnw.cmd',
     shell: true,
     source: 'wrapper',
   });
