@@ -1,6 +1,6 @@
 package com.gnilc.auth.authz.rbac.controller;
 
-import com.gnilc.auth.authz.rbac.common.utils.R;
+import com.gnilc.common.utils.R;
 import com.gnilc.auth.authz.rbac.entity.dto.PermissionDto;
 import com.gnilc.auth.authz.rbac.entity.dto.PermissionQueryDto;
 import com.gnilc.auth.authz.rbac.entity.vo.PermissionVo;

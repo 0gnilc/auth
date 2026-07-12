@@ -1,6 +1,6 @@
 package com.gnilc.auth.authz.rbac.controller;
 
-import com.gnilc.auth.authz.rbac.common.utils.R;
+import com.gnilc.common.utils.R;
 import com.gnilc.auth.authz.rbac.entity.dto.RolePermissionDto;
 import com.gnilc.auth.authz.rbac.service.RolePermissionService;
 import org.springframework.web.bind.annotation.PathVariable;

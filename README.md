@@ -9,6 +9,7 @@ Packages remain purpose-specific: `com.gnilc.auth.authn.*` is authentication, `c
 ## Modules
 
 - `gnilc-common`: parent/aggregator for common modules.
+- `gnilc-common/gnilc-common-core` (`gnilc-common-core`): shared response, paging, bean-copy, validation, and exception utilities.
 - `gnilc-common/gnilc-test-support` (`gnilc-test-support`): behavior-neutral shared test containers, cleanup, and test utilities.
 - `gnilc-auth`: parent/aggregator for authentication and authorization modules.
 - `gnilc-auth/auth-core` (`auth-core`): core access-control annotations, decisions, permission providers, and optional Servlet authentication/authorization adapters.
@@ -36,7 +37,7 @@ Multiple handlers are ordered by Spring order. A handler that does not support t
 
 ## Response body codes
 
-`R.code` is a business response code, not an HTTP status code. Read HTTP status from the transport response, and read business result from the JSON body. The current body-code ranges are: `0` for success, `10000-19999` for common business/request failures, and `20000-29999` for authentication, session, and authorization failures.
+`R.code` is independent from the HTTP status code and does not enforce a value range. Read HTTP status from the transport response and the application result from the JSON body. The built-in `ResponseCode` convention currently uses `0` for success, `10000-19999` for common business/request failures, and `20000-29999` for authentication, session, and authorization failures.
 
 ## Requirements
 

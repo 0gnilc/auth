@@ -1,9 +1,9 @@
 package com.gnilc.auth.authz.rbac.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.gnilc.auth.authz.rbac.common.base.Preconditions;
-import com.gnilc.auth.authz.rbac.common.constant.MenuConstant;
-import com.gnilc.auth.authz.rbac.common.utils.BeanCopyUtils;
+import com.gnilc.common.base.Preconditions;
+import com.gnilc.auth.authz.rbac.constant.MenuConstant;
+import com.gnilc.common.utils.BeanCopyUtils;
 import com.gnilc.auth.authz.rbac.dao.MenuDao;
 import com.gnilc.auth.authz.rbac.entity.bo.MenuBo;
 import com.gnilc.auth.authz.rbac.entity.dto.MenuDto;

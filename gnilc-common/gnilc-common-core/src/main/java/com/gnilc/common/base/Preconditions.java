@@ -1,9 +1,8 @@
-package com.gnilc.auth.authz.rbac.common.base;
+package com.gnilc.common.base;
 
-import com.gnilc.auth.authz.rbac.exception.IllegalConditionException;
-import com.gnilc.auth.authz.rbac.exception.InvalidArgumentException;
-import com.gnilc.auth.authz.rbac.exception.UnknownErrorException;
-import org.checkerframework.checker.nullness.qual.Nullable;
+import com.gnilc.common.exception.IllegalConditionException;
+import com.gnilc.common.exception.InvalidArgumentException;
+import com.gnilc.common.exception.UnknownErrorException;
 
 public class Preconditions {
     private Preconditions() {
@@ -15,7 +14,7 @@ public class Preconditions {
         }
     }
 
-    public static void checkArgument(boolean expression, @Nullable Object errorMessage) {
+    public static void checkArgument(boolean expression, Object errorMessage) {
         if (!expression) {
             throw new InvalidArgumentException(String.valueOf(errorMessage));
         }
@@ -27,7 +26,7 @@ public class Preconditions {
         }
     }
 
-    public static void checkCondition(boolean expression, @Nullable Object errorMessage) {
+    public static void checkCondition(boolean expression, Object errorMessage) {
         if (!expression) {
             throw new IllegalConditionException(String.valueOf(errorMessage));
         }
@@ -39,7 +38,7 @@ public class Preconditions {
         }
     }
 
-    public static void checkError(boolean expression, @Nullable Object errorMessage) {
+    public static void checkError(boolean expression, Object errorMessage) {
         if (!expression) {
             throw new UnknownErrorException(String.valueOf(errorMessage));
         }

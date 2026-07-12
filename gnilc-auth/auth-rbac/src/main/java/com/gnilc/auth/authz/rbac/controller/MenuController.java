@@ -1,7 +1,7 @@
 package com.gnilc.auth.authz.rbac.controller;
 
 
-import com.gnilc.auth.authz.rbac.common.utils.R;
+import com.gnilc.common.utils.R;
 import com.gnilc.auth.authz.rbac.entity.dto.MenuDto;
 import com.gnilc.auth.authz.rbac.entity.vo.MenuVo;
 import com.gnilc.auth.authz.rbac.service.MenuService;

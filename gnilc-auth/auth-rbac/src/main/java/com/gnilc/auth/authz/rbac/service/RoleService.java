@@ -2,7 +2,7 @@ package com.gnilc.auth.authz.rbac.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 
-import com.gnilc.auth.authz.rbac.common.utils.PageResult;
+import com.gnilc.common.utils.PageResult;
 import com.gnilc.auth.authz.rbac.entity.bo.RoleBo;
 import com.gnilc.auth.authz.rbac.entity.dto.RoleDto;
 import com.gnilc.auth.authz.rbac.entity.dto.RolePageDto;

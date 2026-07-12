@@ -1,6 +1,6 @@
 package com.gnilc.system.admin.entity.dto;
 
-import com.gnilc.auth.authz.rbac.common.utils.PageParams;
+import com.gnilc.common.utils.PageParams;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 

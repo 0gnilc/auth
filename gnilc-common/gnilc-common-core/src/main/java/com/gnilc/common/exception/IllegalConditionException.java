@@ -1,6 +1,6 @@
-package com.gnilc.auth.authz.rbac.exception;
+package com.gnilc.common.exception;
 
-public class IllegalConditionException extends RuntimeException{
+public class IllegalConditionException extends RuntimeException {
     public IllegalConditionException() {
     }
 

@@ -2,8 +2,8 @@ package com.gnilc.auth.authz.rbac.service.impl;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.gnilc.auth.authz.rbac.common.base.Preconditions;
-import com.gnilc.auth.authz.rbac.common.utils.PageResult;
+import com.gnilc.common.base.Preconditions;
+import com.gnilc.common.utils.PageResult;
 import com.gnilc.auth.authz.rbac.dao.RoleDao;
 import com.gnilc.auth.authz.rbac.entity.bo.RoleBo;
 import com.gnilc.auth.authz.rbac.entity.dto.RoleDto;

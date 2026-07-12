@@ -1,6 +1,6 @@
 package com.gnilc.system.admin.controller;
 
-import com.gnilc.auth.authz.rbac.common.utils.PageResult;
+import com.gnilc.common.utils.PageResult;
 import com.gnilc.system.admin.entity.vo.AdminTokenVo;
 import com.gnilc.system.admin.entity.vo.AdminVo;
 import com.gnilc.system.admin.service.AdminService;

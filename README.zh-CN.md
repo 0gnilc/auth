@@ -9,6 +9,7 @@ Java 包按职责区分：`com.gnilc.auth.authn.*` 表示认证，`com.gnilc.aut
 ## 模块
 
 - `gnilc-common`：common 模块的 parent/aggregator。
+- `gnilc-common/gnilc-common-core`（`gnilc-common-core`）：共享响应、分页、Bean 拷贝、前置条件和异常工具。
 - `gnilc-common/gnilc-test-support`（`gnilc-test-support`）：无业务语义的共享测试容器、清理和测试工具。
 - `gnilc-auth`：认证与授权模块的 parent/aggregator。
 - `gnilc-auth/auth-core`（`auth-core`）：访问控制核心注解、决策、权限提供者以及可选 Servlet 认证/授权 adapter。
@@ -36,7 +37,7 @@ Java 包按职责区分：`com.gnilc.auth.authn.*` 表示认证，`com.gnilc.aut
 
 ## 响应体业务码
 
-`R.code` 是业务响应码，不是 HTTP Status。HTTP 状态应从 transport response 读取，业务结果应从 JSON 响应体读取。当前业务码区间为：`0` 表示成功，`10000-19999` 表示通用业务/请求错误，`20000-29999` 表示认证、会话和授权错误。
+`R.code` 与 HTTP Status 相互独立，并且 `R` 本身不限制 code 的取值范围。HTTP 状态应从 transport response 读取，应用结果应从 JSON 响应体读取。内置 `ResponseCode` 当前约定：`0` 表示成功，`10000-19999` 表示通用业务/请求错误，`20000-29999` 表示认证、会话和授权错误。
 
 ## 环境要求
 

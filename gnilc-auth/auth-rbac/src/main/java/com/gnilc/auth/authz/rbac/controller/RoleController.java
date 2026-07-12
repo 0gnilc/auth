@@ -1,7 +1,7 @@
 package com.gnilc.auth.authz.rbac.controller;
 
 
-import com.gnilc.auth.authz.rbac.common.utils.PageResult;
+import com.gnilc.common.utils.PageResult;
 import com.gnilc.auth.authz.rbac.entity.dto.RoleDto;
 import com.gnilc.auth.authz.rbac.entity.dto.RolePageDto;
 import com.gnilc.auth.authz.rbac.entity.dto.RoleQueryDto;
@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import com.gnilc.auth.authz.rbac.service.RoleService;
-import com.gnilc.auth.authz.rbac.common.utils.R;
+import com.gnilc.common.utils.R;
 
 import java.util.List;
 

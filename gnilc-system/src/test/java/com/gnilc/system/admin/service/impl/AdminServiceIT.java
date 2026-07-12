@@ -2,8 +2,8 @@ package com.gnilc.system.admin.service.impl;
 
 import com.gnilc.auth.authz.rbac.entity.bo.RoleBo;
 import com.gnilc.auth.authz.rbac.entity.dto.RoleDto;
-import com.gnilc.auth.authz.rbac.exception.IllegalConditionException;
-import com.gnilc.auth.authz.rbac.exception.InvalidArgumentException;
+import com.gnilc.common.exception.IllegalConditionException;
+import com.gnilc.common.exception.InvalidArgumentException;
 import com.gnilc.auth.authz.rbac.service.RoleService;
 import com.gnilc.system.admin.entity.bo.AdminBo;
 import com.gnilc.system.admin.entity.dto.AdminDto;

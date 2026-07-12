@@ -1,4 +1,4 @@
-package com.gnilc.auth.authz.rbac.exception;
+package com.gnilc.common.exception;
 
 public class InvalidArgumentException extends RuntimeException {
     public InvalidArgumentException() {

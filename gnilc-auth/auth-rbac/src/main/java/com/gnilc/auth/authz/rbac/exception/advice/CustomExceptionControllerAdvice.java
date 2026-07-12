@@ -1,10 +1,10 @@
 package com.gnilc.auth.authz.rbac.exception.advice;
 
-import com.gnilc.auth.authz.rbac.common.constant.ResponseCode;
-import com.gnilc.auth.authz.rbac.common.utils.R;
-import com.gnilc.auth.authz.rbac.exception.IllegalConditionException;
-import com.gnilc.auth.authz.rbac.exception.InvalidArgumentException;
-import com.gnilc.auth.authz.rbac.exception.UnknownErrorException;
+import com.gnilc.common.constant.ResponseCode;
+import com.gnilc.common.utils.R;
+import com.gnilc.common.exception.IllegalConditionException;
+import com.gnilc.common.exception.InvalidArgumentException;
+import com.gnilc.common.exception.UnknownErrorException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.core.annotation.Order;

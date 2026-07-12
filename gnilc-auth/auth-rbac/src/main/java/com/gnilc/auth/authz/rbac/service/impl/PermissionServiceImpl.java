@@ -1,7 +1,7 @@
 package com.gnilc.auth.authz.rbac.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.gnilc.auth.authz.rbac.common.base.Preconditions;
+import com.gnilc.common.base.Preconditions;
 import com.gnilc.auth.authz.rbac.dao.PermissionDao;
 import com.gnilc.auth.authz.rbac.entity.bo.PermissionBo;
 import com.gnilc.auth.authz.rbac.entity.dto.PermissionDto;

@@ -1,4 +1,4 @@
-package com.gnilc.auth.authz.rbac.common.utils;
+package com.gnilc.common.utils;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;

@@ -1,9 +1,9 @@
 package com.gnilc.system.admin.controller;
 
 import com.alibaba.fastjson2.JSONObject;
-import com.gnilc.auth.authz.rbac.common.constant.ResponseCode;
-import com.gnilc.auth.authz.rbac.common.utils.PageResult;
-import com.gnilc.auth.authz.rbac.common.utils.R;
+import com.gnilc.common.constant.ResponseCode;
+import com.gnilc.common.utils.PageResult;
+import com.gnilc.common.utils.R;
 import com.gnilc.system.admin.entity.dto.AdminDto;
 import com.gnilc.system.admin.entity.dto.AdminPageDto;
 import com.gnilc.system.admin.entity.dto.AdminRoleDto;

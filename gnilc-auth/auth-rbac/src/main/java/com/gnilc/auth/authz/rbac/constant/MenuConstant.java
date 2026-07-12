@@ -1,4 +1,4 @@
-package com.gnilc.auth.authz.rbac.common.constant;
+package com.gnilc.auth.authz.rbac.constant;
 
 public final class MenuConstant {
     private MenuConstant() {

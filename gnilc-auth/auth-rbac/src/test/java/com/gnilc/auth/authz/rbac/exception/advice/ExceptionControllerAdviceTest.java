@@ -1,7 +1,7 @@
 package com.gnilc.auth.authz.rbac.exception.advice;
 
-import com.gnilc.auth.authz.rbac.exception.IllegalConditionException;
-import com.gnilc.auth.authz.rbac.exception.InvalidArgumentException;
+import com.gnilc.common.exception.IllegalConditionException;
+import com.gnilc.common.exception.InvalidArgumentException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;

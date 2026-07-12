@@ -1,7 +1,7 @@
 package com.gnilc.auth.authz.rbac.exception.advice;
 
-import com.gnilc.auth.authz.rbac.common.constant.ResponseCode;
-import com.gnilc.auth.authz.rbac.common.utils.R;
+import com.gnilc.common.constant.ResponseCode;
+import com.gnilc.common.utils.R;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.annotation.Order;

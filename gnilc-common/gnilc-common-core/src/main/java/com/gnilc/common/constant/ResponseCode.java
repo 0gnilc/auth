@@ -1,12 +1,11 @@
-package com.gnilc.auth.authz.rbac.common.constant;
+package com.gnilc.common.constant;
 
 import lombok.Getter;
 
 /**
  * 响应体业务码。
  * <p>
- * 该 code 只表示 JSON 响应体中的业务结果，不表示 HTTP Status；HTTP Status 由
- * {@link org.springframework.http.ResponseEntity} 或 Servlet response 单独表达。
+ * 该 code 只表示 JSON 响应体中的业务结果，不表示 HTTP Status。
  */
 @Getter
 public enum ResponseCode {
@@ -18,11 +17,11 @@ public enum ResponseCode {
     UNAUTHORIZED(20002, "unauthorized"),
     ACCESS_DENIED(20003, "access denied");
 
-    ResponseCode(Integer businessCode, String message) {
-        this.businessCode = businessCode;
+    ResponseCode(Integer code, String message) {
+        this.code = code;
         this.message = message;
     }
 
-    private final Integer businessCode;
+    private final Integer code;
     private final String message;
 }

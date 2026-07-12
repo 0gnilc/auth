@@ -1,4 +1,4 @@
-package com.gnilc.auth.authz.rbac.common.utils;
+package com.gnilc.common.utils;
 
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.BeanWrapper;
