@@ -1,0 +1,13 @@
+{
+  "name": "@app/server",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "mvn --batch-mode --no-transfer-progress -DskipTests package",
+    "clean": "mvn --batch-mode --no-transfer-progress clean",
+    "dev": "mvn --batch-mode --no-transfer-progress -DskipTests package && mvn --batch-mode --no-transfer-progress -pl gnilc-bootstrap spring-boot:run",
+    "test": "mvn --batch-mode --no-transfer-progress test",
+    "typecheck": "mvn --batch-mode --no-transfer-progress -DskipTests compile",
+    "verify": "mvn --batch-mode --no-transfer-progress verify"
+  }
+}

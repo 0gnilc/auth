@@ -15,13 +15,13 @@ Before writing, changing, reviewing, or running tests, read and follow [`docs/te
 Run fast Surefire tests (`*Test` and `*ControllerTest`) with:
 
 ```bash
-mvn test
+mvn -f apps/server/pom.xml test
 ```
 
 Run the complete Surefire and Failsafe suite (`*IT`, `*MapperIT`, `*CacheIT`, and `*ApiIT`) with:
 
 ```bash
-mvn verify
+mvn -f apps/server/pom.xml verify
 ```
 
 `mvn verify` requires Docker for Testcontainers MySQL 8 and Redis 8. Do not replace containers with H2, local services, or shared services.

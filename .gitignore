@@ -1,15 +1,37 @@
-# macOS
+node_modules
 .DS_Store
+dist
+dist-ssr
+dist.zip
+dist.tar
+dist.war
+.nitro
+.output
+coverage
+target/
+*.local
+.cache
+.turbo
+.temp
+.pnpm-store
+.env.local
+.env.*.local
+.eslintcache
+logs
+*.log
+*-debug.log*
+vite.config.mts.*
+vite.config.mjs.*
+vite.config.js.*
+vite.config.ts.*
 
-# IDE
+# Editors and developer-specific AI tools
 .idea/
 *.iml
-
-# Maven / Java build outputs
-target/
-
-# Logs
-*.log
-
-# AI tooling (developer-specific)
+.history
+.cursor
+.agent
+.agents
 .claude
+.codex
+skills-lock.json

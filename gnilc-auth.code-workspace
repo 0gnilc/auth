@@ -1,0 +1,24 @@
+{
+  "folders": [
+    {
+      "name": "admin",
+      "path": "apps/admin"
+    },
+    {
+      "name": "server",
+      "path": "apps/server"
+    },
+    {
+      "name": "vben packages",
+      "path": "packages"
+    },
+    {
+      "name": "vben tooling",
+      "path": "internal"
+    },
+    {
+      "name": "documentation",
+      "path": "docs"
+    }
+  ]
+}
