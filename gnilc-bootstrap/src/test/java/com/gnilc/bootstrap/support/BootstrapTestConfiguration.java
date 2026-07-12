@@ -31,7 +31,7 @@ public class BootstrapTestConfiguration {
     @Bean
     BaselineDataSeeder applicationBaselineDataSeeder(DataSource dataSource, JdbcTemplate jdbc) {
         return () -> {
-            new ResourceDatabasePopulator(new ClassPathResource("sql/schema/02-admin.sql"))
+            new ResourceDatabasePopulator(new ClassPathResource("sql/schema/02_admin.sql"))
                     .execute(dataSource);
             Long adminRoleId = jdbc.queryForObject(
                     "select id from az_role where code = 'admin' and del = 0", Long.class);

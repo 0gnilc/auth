@@ -19,6 +19,5 @@ public interface RolePermissionService extends IService<RolePermissionBo> {
 
     List<Long> getRoleIds(Long permissionId);
 
-    void updateRolePermission(RolePermissionDto rpd);
+    void updateRolePermission(RolePermissionDto dto);
 }
-

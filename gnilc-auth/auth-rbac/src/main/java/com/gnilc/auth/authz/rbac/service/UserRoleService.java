@@ -3,7 +3,6 @@ package com.gnilc.auth.authz.rbac.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.gnilc.auth.authz.rbac.entity.bo.UserRoleBo;
 import com.gnilc.auth.authz.rbac.entity.dto.UserRoleDto;
-import org.springframework.stereotype.Service;
 
 import java.util.List;
 
@@ -12,10 +11,9 @@ import java.util.List;
  *
  * @author kyhns7
  */
-@Service
 public interface UserRoleService extends IService<UserRoleBo> {
 
-    void updateUserRole(UserRoleDto urd);
+    void updateUserRole(UserRoleDto dto);
 
     List<Long> getRoleIds(Long userId);
 
@@ -29,4 +27,3 @@ public interface UserRoleService extends IService<UserRoleBo> {
 
     UserRoleBo getUserRole(Long userId, Long roleId);
 }
-

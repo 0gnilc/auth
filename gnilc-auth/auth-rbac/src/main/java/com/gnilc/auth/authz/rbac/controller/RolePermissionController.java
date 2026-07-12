@@ -3,8 +3,11 @@ package com.gnilc.auth.authz.rbac.controller;
 import com.gnilc.auth.authz.rbac.common.utils.R;
 import com.gnilc.auth.authz.rbac.entity.dto.RolePermissionDto;
 import com.gnilc.auth.authz.rbac.service.RolePermissionService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
@@ -17,18 +20,20 @@ import java.util.List;
 @RestController
 @RequestMapping("/authz/role-permission")
 public class RolePermissionController {
-    @Autowired
-    private RolePermissionService rolePermissionService;
+    private final RolePermissionService rolePermissionService;
+
+    public RolePermissionController(RolePermissionService rolePermissionService) {
+        this.rolePermissionService = rolePermissionService;
+    }
 
     @PostMapping("/list/{roleId}")
     public R<List<Long>> getPermissionIds(@PathVariable("roleId") Long roleId) {
-        List<Long> permissionIds = rolePermissionService.getPermissionIds(roleId);
-        return R.success(permissionIds);
+        return R.success(rolePermissionService.getPermissionIds(roleId));
     }
 
     @PostMapping("/update")
-    public R<?> updateRolePermission(@RequestBody RolePermissionDto rpd) {
-        rolePermissionService.updateRolePermission(rpd);
+    public R<?> updateRolePermission(@RequestBody RolePermissionDto dto) {
+        rolePermissionService.updateRolePermission(dto);
 
         return R.success();
     }

@@ -2,6 +2,7 @@ package com.gnilc.auth.authz.rbac.support;
 
 import com.gnilc.test.container.FullStackContainerContextInitializer;
 import com.gnilc.test.container.SharedTestContainers;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.boot.test.util.TestPropertyValues;
 import org.springframework.context.ApplicationContextInitializer;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -9,9 +10,9 @@ import org.springframework.context.ConfigurableApplicationContext;
 public final class RbacContainerContextInitializer
         implements ApplicationContextInitializer<ConfigurableApplicationContext> {
     @Override
-    public void initialize(ConfigurableApplicationContext context) {
+    public void initialize(@NotNull ConfigurableApplicationContext context) {
         new FullStackContainerContextInitializer().initialize(context);
-        SharedTestContainers.initializeMySqlSchema("sql/schema/01-rbac.sql");
+        SharedTestContainers.initializeMySqlSchema("sql/schema/01_rbac.sql");
         applyRbacProperties(context);
     }
 

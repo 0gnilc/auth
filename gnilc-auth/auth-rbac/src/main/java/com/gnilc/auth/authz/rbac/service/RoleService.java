@@ -18,18 +18,17 @@ import java.util.List;
  */
 public interface RoleService extends IService<RoleBo> {
 
-    PageResult<RoleVo> getRolePage(RolePageDto sd);
+    PageResult<RoleVo> getRolePage(RolePageDto dto);
 
-    List<RoleVo> getRoles(RoleQueryDto qd);
+    List<RoleVo> getRoles(RoleQueryDto dto);
 
-    void createRole(RoleDto rd);
+    void createRole(RoleDto dto);
 
     RoleBo getRoleByCode(String code);
 
-    void updateRole(RoleDto rd);
+    void updateRole(RoleDto dto);
 
     void removeRole(Long id);
 
     List<RoleBo> getRoles(Long userId);
 }
-

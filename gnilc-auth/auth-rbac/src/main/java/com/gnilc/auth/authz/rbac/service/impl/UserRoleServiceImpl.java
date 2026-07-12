@@ -9,7 +9,6 @@ import com.gnilc.auth.authz.rbac.entity.dto.UserRoleDto;
 import com.gnilc.auth.authz.rbac.event.RbacAuthzEvent;
 import com.gnilc.auth.authz.rbac.service.UserRoleService;
 import com.google.common.collect.Sets;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,15 +22,18 @@ import java.util.stream.Collectors;
 @Service("userRoleService")
 public class UserRoleServiceImpl extends ServiceImpl<UserRoleDao, UserRoleBo> implements UserRoleService {
 
-    @Autowired
-    private ApplicationEventPublisher publisher;
+    private final ApplicationEventPublisher eventPublisher;
+
+    public UserRoleServiceImpl(ApplicationEventPublisher eventPublisher) {
+        this.eventPublisher = eventPublisher;
+    }
 
     @Transactional
     @Override
-    public void updateUserRole(UserRoleDto urd) {
-        Preconditions.checkArgument(urd != null, "请填写用户角色信息");
-        Long userId = urd.getUserId();
-        List<Long> roleIds = urd.getRoleIds();
+    public void updateUserRole(UserRoleDto dto) {
+        Preconditions.checkArgument(dto != null, "请填写用户角色信息");
+        Long userId = dto.getUserId();
+        List<Long> roleIds = dto.getRoleIds();
         Preconditions.checkArgument(userId != null, "请选择用户");
         Set<Long> oldSet = lambdaQuery()
                 .select(UserRoleBo::getRoleId)
@@ -50,19 +52,19 @@ public class UserRoleServiceImpl extends ServiceImpl<UserRoleDao, UserRoleBo> im
                     .remove();
         }
 
-        List<UserRoleBo> urbs = Sets.difference(newSet, oldSet)
+        List<UserRoleBo> bos = Sets.difference(newSet, oldSet)
                 .stream()
                 .map(roleId -> {
-                    UserRoleBo urb = new UserRoleBo();
-                    urb.setUserId(userId);
-                    urb.setRoleId(roleId);
-                    return urb;
+                    UserRoleBo bo = new UserRoleBo();
+                    bo.setUserId(userId);
+                    bo.setRoleId(roleId);
+                    return bo;
                 }).toList();
-        if (!urbs.isEmpty()) {
-            saveBatch(urbs);
+        if (!bos.isEmpty()) {
+            saveBatch(bos);
         }
 
-        publisher.publishEvent(RbacAuthzEvent.of(
+        eventPublisher.publishEvent(RbacAuthzEvent.of(
                 RbacAuthzEvent.Type.USER_ROLE,
                 RbacAuthzEvent.Action.REPLACE,
                 userId));
@@ -88,14 +90,14 @@ public class UserRoleServiceImpl extends ServiceImpl<UserRoleDao, UserRoleBo> im
     public void bindRole(Long userId, Long roleId) {
         Preconditions.checkArgument(userId != null, "请选择用户");
         Preconditions.checkArgument(roleId != null, "请选择角色");
-        UserRoleBo existing = getUserRole(userId, roleId);
-        if (existing == null) {
-            UserRoleBo urb = new UserRoleBo();
-            urb.setUserId(userId);
-            urb.setRoleId(roleId);
-            save(urb);
+        UserRoleBo bo = getUserRole(userId, roleId);
+        if (bo == null) {
+            bo = new UserRoleBo();
+            bo.setUserId(userId);
+            bo.setRoleId(roleId);
+            save(bo);
         }
-        publisher.publishEvent(RbacAuthzEvent.of(
+        eventPublisher.publishEvent(RbacAuthzEvent.of(
                 RbacAuthzEvent.Type.USER_ROLE,
                 RbacAuthzEvent.Action.REPLACE,
                 userId));
@@ -109,7 +111,7 @@ public class UserRoleServiceImpl extends ServiceImpl<UserRoleDao, UserRoleBo> im
         remove(new LambdaQueryWrapper<UserRoleBo>()
                 .eq(UserRoleBo::getUserId, userId)
                 .eq(UserRoleBo::getRoleId, roleId));
-        publisher.publishEvent(RbacAuthzEvent.of(
+        eventPublisher.publishEvent(RbacAuthzEvent.of(
                 RbacAuthzEvent.Type.USER_ROLE,
                 RbacAuthzEvent.Action.REPLACE,
                 userId));

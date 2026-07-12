@@ -7,9 +7,12 @@ import com.gnilc.auth.authz.rbac.entity.bo.PermissionBo;
 import com.gnilc.auth.authz.rbac.entity.bo.RoleBo;
 import com.gnilc.auth.authz.rbac.entity.bo.UserBo;
 import com.gnilc.auth.authz.rbac.event.RbacAuthzEvent;
-import com.gnilc.auth.authz.rbac.service.*;
+import com.gnilc.auth.authz.rbac.service.MenuService;
+import com.gnilc.auth.authz.rbac.service.PermissionService;
+import com.gnilc.auth.authz.rbac.service.RoleService;
+import com.gnilc.auth.authz.rbac.service.UserRoleService;
+import com.gnilc.auth.authz.rbac.service.UserService;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,34 +22,37 @@ import java.util.List;
 
 @Service("userService")
 public class UserServiceImpl extends ServiceImpl<UserDao, UserBo> implements UserService {
-    @Autowired
-    private ApplicationEventPublisher publisher;
+    private final ApplicationEventPublisher eventPublisher;
+    private final RoleService roleService;
+    private final UserRoleService userRoleService;
+    private final PermissionService permissionService;
+    private final MenuService menuService;
 
-    @Autowired
-    private RoleService roleService;
-
-    @Autowired
-    private UserRoleService userRoleService;
-
-    @Autowired
-    private PermissionService permissionService;
-
-    @Autowired
-    private MenuService menuService;
+    public UserServiceImpl(ApplicationEventPublisher eventPublisher,
+                           RoleService roleService,
+                           UserRoleService userRoleService,
+                           PermissionService permissionService,
+                           MenuService menuService) {
+        this.eventPublisher = eventPublisher;
+        this.roleService = roleService;
+        this.userRoleService = userRoleService;
+        this.permissionService = permissionService;
+        this.menuService = menuService;
+    }
 
     @Transactional
     @Override
     public Long createUser() {
-        UserBo ub = new UserBo();
-        save(ub);
-        return ub.getId();
+        UserBo bo = new UserBo();
+        save(bo);
+        return bo.getId();
     }
 
     @Transactional
     @Override
     public boolean removeUser(Long userId) {
         removeById(userId);
-        publisher.publishEvent(RbacAuthzEvent.of(
+        eventPublisher.publishEvent(RbacAuthzEvent.of(
                 RbacAuthzEvent.Type.USER,
                 RbacAuthzEvent.Action.DELETE,
                 userId));
@@ -59,11 +65,11 @@ public class UserServiceImpl extends ServiceImpl<UserDao, UserBo> implements Use
         if (userId == null || StringUtils.isBlank(roleCode)) {
             return false;
         }
-        RoleBo rb = roleService.getRoleByCode(roleCode);
-        if (rb == null) {
+        RoleBo bo = roleService.getRoleByCode(roleCode);
+        if (bo == null) {
             return false;
         }
-        userRoleService.bindRole(userId, rb.getId());
+        userRoleService.bindRole(userId, bo.getId());
         return true;
     }
 
@@ -73,11 +79,11 @@ public class UserServiceImpl extends ServiceImpl<UserDao, UserBo> implements Use
         if (userId == null || StringUtils.isBlank(roleCode)) {
             return false;
         }
-        RoleBo rb = roleService.getRoleByCode(roleCode);
-        if (rb == null) {
+        RoleBo bo = roleService.getRoleByCode(roleCode);
+        if (bo == null) {
             return false;
         }
-        userRoleService.unbindRole(userId, rb.getId());
+        userRoleService.unbindRole(userId, bo.getId());
         return true;
     }
 
@@ -91,11 +97,11 @@ public class UserServiceImpl extends ServiceImpl<UserDao, UserBo> implements Use
 
     @Override
     public boolean checkRole(Long userId, String roleCode) {
-        RoleBo rb = roleService.getRoleByCode(roleCode);
-        if (rb == null) {
+        RoleBo bo = roleService.getRoleByCode(roleCode);
+        if (bo == null) {
             return false;
         }
-        return userRoleService.getUserRole(userId, rb.getId()) != null;
+        return userRoleService.getUserRole(userId, bo.getId()) != null;
     }
 
     @Override
@@ -115,7 +121,7 @@ public class UserServiceImpl extends ServiceImpl<UserDao, UserBo> implements Use
     }
 
     @Override
-    public UserBo geUser(Long userId) {
+    public UserBo getUser(Long userId) {
         if (userId == null) {
             return null;
         }

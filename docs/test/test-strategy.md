@@ -1,4 +1,4 @@
-# Test architecture
+# Test strategy
 
 This repository uses one test source set per owning Maven module. Test names select
 the execution lane:

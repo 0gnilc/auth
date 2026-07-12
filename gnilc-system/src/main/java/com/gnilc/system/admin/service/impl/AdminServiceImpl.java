@@ -68,14 +68,14 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
         if (StringUtils.isBlank(username) || StringUtils.isBlank(password)) {
             return null;
         }
-        AdminBo admin = getAdminByUsername(username);
-        if (admin == null || Boolean.FALSE.equals(admin.getStatus())) {
+        AdminBo bo = getAdminByUsername(username);
+        if (bo == null || Boolean.FALSE.equals(bo.getStatus())) {
             return null;
         }
-        if (!PASSWORD_ENCODER.matches(password, admin.getPassword())) {
+        if (!PASSWORD_ENCODER.matches(password, bo.getPassword())) {
             return null;
         }
-        AdminSessionTokenPair pair = sessionManager.createSession(admin.getUserId());
+        AdminSessionTokenPair pair = sessionManager.createSession(bo.getUserId());
         return AdminTokenVo.of(pair.getAccessToken(), pair.getRefreshToken());
     }
 
@@ -111,11 +111,11 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
     @Override
     public AdminVo getUserInfo() {
         Long userId = authenticatedUserId();
-        AdminBo admin = getAdminByUserId(userId);
-        if (admin == null) {
+        AdminBo bo = getAdminByUserId(userId);
+        if (bo == null) {
             return null;
         }
-        return toAdminVo(admin, false, true);
+        return toAdminVo(bo, false, true);
     }
 
     /**
@@ -185,17 +185,17 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
         validateStrongPassword(password);
         Preconditions.checkArgument(getAdminByUsername(username) == null, "用户名已存在");
         Long userId = userService.createUser();
-        AdminBo admin = new AdminBo();
-        admin.setUserId(userId);
-        admin.setUsername(username);
-        admin.setPassword(PASSWORD_ENCODER.encode(password));
-        admin.setNickname(dto.getNickname());
-        admin.setAvatar(dto.getAvatar());
-        admin.setDescription(dto.getDesc());
-        admin.setHomePath(dto.getHomePath());
-        admin.setStatus(dto.getStatus());
-        save(admin);
-        doUpdateRoles(userId, dto.getRoleCodes());
+        AdminBo bo = new AdminBo();
+        bo.setUserId(userId);
+        bo.setUsername(username);
+        bo.setPassword(PASSWORD_ENCODER.encode(password));
+        bo.setNickname(dto.getNickname());
+        bo.setAvatar(dto.getAvatar());
+        bo.setDescription(dto.getDesc());
+        bo.setHomePath(dto.getHomePath());
+        bo.setStatus(dto.getStatus());
+        save(bo);
+        updateRolesIfProvided(userId, dto.getRoleCodes());
     }
 
     /**
@@ -204,29 +204,28 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
     @Override
     @Transactional
     public void updateAdmin(AdminDto dto) {
-        AdminBo admin = getAdmin(dto.getId());
-        Preconditions.checkCondition(admin != null, "管理员不存在，请刷新后重试");
-        if (dto.getUsername() != null) {
-            if (!dto.getUsername().equals(admin.getUsername())) {
-                Preconditions.checkArgument(getAdminByUsername(dto.getUsername()) == null,
-                        "用户名已存在");
-            }
+        AdminBo bo = getAdmin(dto.getId());
+        Preconditions.checkCondition(bo != null, "管理员不存在，请刷新后重试");
+        String username = dto.getUsername();
+        if (username != null && !username.equals(bo.getUsername())) {
+            Preconditions.checkArgument(getAdminByUsername(username) == null, "用户名已存在");
         }
-        boolean wasEnabled = Boolean.TRUE.equals(admin.getStatus());
-        BeanCopyUtils.copyNonNullProperties(dto, admin);
+        boolean wasEnabled = Boolean.TRUE.equals(bo.getStatus());
+        BeanCopyUtils.copyNonNullProperties(dto, bo);
 
         // 单独处理密码。
-        if (StringUtils.isNotBlank(dto.getPassword())) {
-            validateStrongPassword(dto.getPassword());
-            admin.setPassword(PASSWORD_ENCODER.encode(dto.getPassword()));
+        String password = dto.getPassword();
+        if (StringUtils.isNotBlank(password)) {
+            validateStrongPassword(password);
+            bo.setPassword(PASSWORD_ENCODER.encode(password));
         }
 
-        updateById(admin);
-        doUpdateRoles(admin.getUserId(), dto.getRoleCodes());
+        updateById(bo);
+        updateRolesIfProvided(bo.getUserId(), dto.getRoleCodes());
 
         boolean disabling = wasEnabled && Boolean.FALSE.equals(dto.getStatus());
         if (disabling) {
-            sessionManager.cleanupUserSessions(admin.getUserId());
+            sessionManager.cleanupUserSessions(bo.getUserId());
         }
     }
 
@@ -236,9 +235,9 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
     @Override
     @Transactional
     public void updateAdminRoles(AdminRoleDto dto) {
-        AdminBo admin = getById(dto.getId());
-        Preconditions.checkCondition(admin != null, "管理员不存在，请刷新后重试");
-        doReplaceRoles(admin.getUserId(), dto.getRoleCodes());
+        AdminBo bo = getById(dto.getId());
+        Preconditions.checkCondition(bo != null, "管理员不存在，请刷新后重试");
+        replaceRoles(bo.getUserId(), dto.getRoleCodes());
     }
 
     /**
@@ -248,14 +247,14 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
     @Transactional
     public void removeAdmin(Long id) {
         Preconditions.checkArgument(id != null, "请选择管理员");
-        AdminBo admin = getById(id);
-        Preconditions.checkCondition(admin != null, "管理员不存在，请刷新后重试");
-        sessionManager.cleanupUserSessions(admin.getUserId());
-        admin.setUsername(admin.getUsername() + "_del_" + id);
-        updateById(admin);
+        AdminBo bo = getById(id);
+        Preconditions.checkCondition(bo != null, "管理员不存在，请刷新后重试");
+        sessionManager.cleanupUserSessions(bo.getUserId());
+        bo.setUsername(bo.getUsername() + "_del_" + id);
+        updateById(bo);
         removeById(id);
-        userService.removeUser(admin.getUserId());
-        doReplaceRoles(admin.getUserId(), List.of());
+        userService.removeUser(bo.getUserId());
+        replaceRoles(bo.getUserId(), List.of());
     }
 
     /**
@@ -263,16 +262,17 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
      */
     @Override
     public PageResult<AdminVo> getAdminPage(AdminPageDto dto) {
-        AdminPageDto queryDto = dto == null ? new AdminPageDto() : dto;
+        AdminPageDto query = dto == null ? new AdminPageDto() : dto;
         IPage<AdminBo> page = lambdaQuery()
-                .eq(StringUtils.isNotBlank(queryDto.getUsername()), AdminBo::getUsername, queryDto.getUsername())
-                .like(StringUtils.isNotBlank(queryDto.getNickname()), AdminBo::getNickname, queryDto.getNickname())
-                .eq(queryDto.getStatus() != null, AdminBo::getStatus, queryDto.getStatus())
+                .eq(StringUtils.isNotBlank(query.getUsername()), AdminBo::getUsername, query.getUsername())
+                .like(StringUtils.isNotBlank(query.getNickname()), AdminBo::getNickname, query.getNickname())
+                .eq(query.getStatus() != null, AdminBo::getStatus, query.getStatus())
                 .orderByDesc(AdminBo::getId)
-                .page(queryDto.getPage());
-        List<AdminVo> avs = page.getRecords().stream()
-                .map(ab -> toAdminVo(ab, true, true)).toList();
-        return PageResult.of(page, avs);
+                .page(query.getPage());
+        List<AdminVo> vos = page.getRecords().stream()
+                .map(bo -> toAdminVo(bo, true, true))
+                .toList();
+        return PageResult.of(page, vos);
     }
 
     /**
@@ -295,11 +295,11 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
     }
 
     @Override
-    public AdminBo getAdmin(Long adminId) {
-        if (adminId == null) {
+    public AdminBo getAdmin(Long id) {
+        if (id == null) {
             return null;
         }
-        return getById(adminId);
+        return getById(id);
     }
 
 
@@ -315,44 +315,45 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
                 && password.chars().anyMatch(Character::isLowerCase)
                 && password.chars().anyMatch(Character::isDigit)
                 && password.chars().anyMatch(ch -> !Character.isLetterOrDigit(ch));
-        Preconditions.checkArgument(valid, "密码必须为8-32位且包含大写字母、小写字母、数字、特殊字符，不能包含空白字符");
+        Preconditions.checkArgument(valid,
+                "密码必须为8-32位且包含大写字母、小写字母、数字、特殊字符，不能包含空白字符");
     }
 
     /**
      * 替换用户角色。
      */
-    private void doUpdateRoles(Long userId, List<String> roleCodes) {
+    private void updateRolesIfProvided(Long userId, List<String> roleCodes) {
         if (roleCodes == null) {
             return;
         }
-        doReplaceRoles(userId, roleCodes);
+        replaceRoles(userId, roleCodes);
     }
 
-    private void doReplaceRoles(Long userId, List<String> roleCodes) {
-        List<String> targetRoleCodes = roleCodes == null ? List.of() : roleCodes;
-        List<Long> roleIds = targetRoleCodes.stream()
+    private void replaceRoles(Long userId, List<String> roleCodes) {
+        List<String> codes = roleCodes == null ? List.of() : roleCodes;
+        List<Long> roleIds = codes.stream()
                 .map(code -> {
                     Preconditions.checkArgument(StringUtils.isNotBlank(code), "角色标识不能为空");
-                    RoleBo role = roleService.getRoleByCode(code);
-                    Preconditions.checkCondition(role != null, "角色不存在，请刷新后重试");
-                    return role.getId();
+                    RoleBo bo = roleService.getRoleByCode(code);
+                    Preconditions.checkCondition(bo != null, "角色不存在，请刷新后重试");
+                    return bo.getId();
                 })
                 .toList();
-        UserRoleDto userRoleDto = new UserRoleDto();
-        userRoleDto.setUserId(userId);
-        userRoleDto.setRoleIds(roleIds);
-        userRoleService.updateUserRole(userRoleDto);
+        UserRoleDto dto = new UserRoleDto();
+        dto.setUserId(userId);
+        dto.setRoleIds(roleIds);
+        userRoleService.updateUserRole(dto);
     }
 
-    private AdminVo toAdminVo(AdminBo admin, boolean includeStatus, boolean includeRoleCodes) {
+    private AdminVo toAdminVo(AdminBo bo, boolean includeStatus, boolean includeRoleCodes) {
         AdminVo vo = new AdminVo();
-        BeanUtils.copyProperties(admin, vo);
-        vo.setDesc(admin.getDescription());
+        BeanUtils.copyProperties(bo, vo);
+        vo.setDesc(bo.getDescription());
         if (!includeStatus) {
             vo.setStatus(null);
         }
         if (includeRoleCodes) {
-            vo.setRoleCodes(getRoleCodes(admin.getUserId()));
+            vo.setRoleCodes(getRoleCodes(bo.getUserId()));
         }
         return vo;
     }

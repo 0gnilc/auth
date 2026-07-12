@@ -12,44 +12,47 @@ import com.gnilc.auth.authz.rbac.entity.vo.MenuVo;
 import com.gnilc.auth.authz.rbac.service.MenuService;
 import com.gnilc.auth.authz.rbac.service.RoleMenuService;
 import com.gnilc.auth.authz.rbac.service.UserRoleService;
-import com.google.common.collect.Lists;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 
 @Service("menuService")
 public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements MenuService {
 
-    @Autowired
-    private UserRoleService userRoleService;
+    private final UserRoleService userRoleService;
+    private final RoleMenuService roleMenuService;
 
-    @Autowired
-    private RoleMenuService roleMenuService;
+    public MenuServiceImpl(UserRoleService userRoleService, RoleMenuService roleMenuService) {
+        this.userRoleService = userRoleService;
+        this.roleMenuService = roleMenuService;
+    }
 
     @Override
     public List<MenuVo> getMenuTree() {
-        List<MenuVo> mvs = list()
-                .stream().map(mb -> {
-                    MenuVo mv = new MenuVo();
-                    BeanUtils.copyProperties(mb, mv);
-                    return mv;
-                }).toList();
-        Map<Long, MenuVo> mvMap = mvs.stream().collect(Collectors.toMap(MenuVo::getId, mv -> mv));
-        List<MenuVo> roots = Lists.newArrayList();
-        for (MenuVo mv : mvs) {
-            Long pid = mv.getPid();
+        List<MenuVo> vos = list().stream()
+                .map(this::toMenuVo)
+                .toList();
+        Map<Long, MenuVo> voMap = vos.stream()
+                .collect(Collectors.toMap(MenuVo::getId, vo -> vo));
+        List<MenuVo> roots = new ArrayList<>();
+        for (MenuVo vo : vos) {
+            Long pid = vo.getPid();
             if (Objects.equals(pid, MenuConstant.ROOT_PARENT_ID)) {
-                roots.add(mv);
+                roots.add(vo);
             }
-            MenuVo pmv = mvMap.get(pid);
-            if (pmv != null) {
-                pmv.getChildren().add(mv);
+            MenuVo parent = voMap.get(pid);
+            if (parent != null) {
+                parent.getChildren().add(vo);
             }
         }
         sortMenuTree(roots);
@@ -57,31 +60,31 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
     }
 
     @Override
-    public void createMenu(MenuDto md) {
-        Preconditions.checkArgument(md != null, "请填写菜单信息");
-        MenuBo mb = new MenuBo();
-        BeanUtils.copyProperties(md, mb);
-        validateMenu(mb);
-        save(mb);
+    public void createMenu(MenuDto dto) {
+        Preconditions.checkArgument(dto != null, "请填写菜单信息");
+        MenuBo bo = new MenuBo();
+        BeanUtils.copyProperties(dto, bo);
+        validateMenu(bo);
+        save(bo);
     }
 
     @Override
-    public void updateMenu(MenuDto md) {
-        Preconditions.checkArgument(md != null, "请填写菜单信息");
-        Long id = md.getId();
-        Preconditions.checkArgument(id != null, "请选择菜单");
-        MenuBo mb = getById(id);
-        Preconditions.checkArgument(mb != null, "菜单不存在，请刷新后重试");
-        BeanCopyUtils.copyNonNullProperties(md, mb);
-        validateMenu(mb);
-        updateById(mb);
+    public void updateMenu(MenuDto dto) {
+        Preconditions.checkArgument(dto != null, "请填写菜单信息");
+        Long menuId = dto.getId();
+        Preconditions.checkArgument(menuId != null, "请选择菜单");
+        MenuBo bo = getById(menuId);
+        Preconditions.checkArgument(bo != null, "菜单不存在，请刷新后重试");
+        BeanCopyUtils.copyNonNullProperties(dto, bo);
+        validateMenu(bo);
+        updateById(bo);
     }
 
     @Override
     public void removeMenu(Long id) {
         Preconditions.checkArgument(id != null, "请选择菜单");
-        MenuBo mb = getById(id);
-        Preconditions.checkArgument(mb != null, "菜单不存在，请刷新后重试");
+        MenuBo bo = getById(id);
+        Preconditions.checkArgument(bo != null, "菜单不存在，请刷新后重试");
         removeById(id);
     }
 
@@ -138,17 +141,17 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
         return null;
     }
 
-    private void validateMenu(MenuBo mb) {
-        Long menuId = mb.getId();
-        Long pid = mb.getPid();
-        MenuType type = mb.getType();
-        String name = mb.getName();
-        String title = mb.getTitle();
-        String path = mb.getPath();
-        String component = mb.getComponent();
-        String accessCode = mb.getAccessCode();
-        String iframeSrc = mb.getIframeSrc();
-        String link = mb.getLink();
+    private void validateMenu(MenuBo bo) {
+        Long menuId = bo.getId();
+        Long pid = bo.getPid();
+        MenuType type = bo.getType();
+        String name = bo.getName();
+        String title = bo.getTitle();
+        String path = bo.getPath();
+        String component = bo.getComponent();
+        String accessCode = bo.getAccessCode();
+        String iframeSrc = bo.getIframeSrc();
+        String link = bo.getLink();
         Preconditions.checkArgument(pid != null, "请选择父菜单");
         if (!Objects.equals(pid, MenuConstant.ROOT_PARENT_ID)) {
             Preconditions.checkArgument(getById(pid) != null, "父菜单不存在，请重新选择");
@@ -169,24 +172,30 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
             }
             case LINK -> Preconditions.checkArgument(StringUtils.isNotBlank(link), "请输入外链地址");
         }
-        MenuBo nmb = getMenuByName(name);
-        Preconditions.checkArgument(nmb == null || Objects.equals(nmb.getId(), menuId),
+        MenuBo nameBo = getMenuByName(name);
+        Preconditions.checkArgument(nameBo == null || Objects.equals(nameBo.getId(), menuId),
                 "菜单名称已存在");
-        MenuBo pmb = getMenuByPath(path);
-        Preconditions.checkArgument(pmb == null || Objects.equals(pmb.getId(), menuId),
+        MenuBo pathBo = getMenuByPath(path);
+        Preconditions.checkArgument(pathBo == null || Objects.equals(pathBo.getId(), menuId),
                 "路由路径已存在");
-        MenuBo cmb = getMenuByAccessCode(accessCode);
-        Preconditions.checkArgument(cmb == null || Objects.equals(cmb.getId(), menuId),
+        MenuBo accessBo = getMenuByAccessCode(accessCode);
+        Preconditions.checkArgument(accessBo == null || Objects.equals(accessBo.getId(), menuId),
                 "权限标识已存在");
     }
 
-    private void sortMenuTree(List<MenuVo> mvs) {
-        mvs.sort(Comparator.comparingInt(mv -> Optional.ofNullable(mv.getOrder()).orElse(999)));
-        for (MenuVo mv : mvs) {
-            List<MenuVo> children = mv.getChildren();
+    private void sortMenuTree(List<MenuVo> vos) {
+        vos.sort(Comparator.comparingInt(vo -> Optional.ofNullable(vo.getOrder()).orElse(999)));
+        for (MenuVo vo : vos) {
+            List<MenuVo> children = vo.getChildren();
             if (!CollectionUtils.isEmpty(children)) {
                 sortMenuTree(children);
             }
         }
+    }
+
+    private MenuVo toMenuVo(MenuBo bo) {
+        MenuVo vo = new MenuVo();
+        BeanUtils.copyProperties(bo, vo);
+        return vo;
     }
 }

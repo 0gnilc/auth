@@ -1,5 +1,5 @@
 -- 系统后台管理员初始化脚本。
--- 依赖先执行 01-rbac.sql。
+-- 依赖先执行 01_rbac.sql。
 -- 包含 sys_admin 表结构、默认管理员账号和 RBAC 绑定数据。
 
 CREATE TABLE IF NOT EXISTS sys_admin (
@@ -81,8 +81,7 @@ SET @default_admin_role_id := (
 
 INSERT INTO az_user_role (del, create_time, update_time, user_id, role_id)
 SELECT 0, NOW(), NULL, @default_admin_user_id, @default_admin_role_id
-WHERE @default_admin_existing_user_id IS NULL
-  AND @default_admin_user_id IS NOT NULL
+WHERE @default_admin_user_id IS NOT NULL
   AND @default_admin_role_id IS NOT NULL
   AND NOT EXISTS (
       SELECT 1

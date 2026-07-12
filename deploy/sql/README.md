@@ -1,54 +1,107 @@
-# 部署 SQL 说明
+# 部署 SQL
 
-本目录保存部署和初始化 SQL。应用不会自动执行这些脚本；Testcontainers 集成测试会在临时数据库中执行它们，以验证当前 schema 和部署初始化行为。
+本目录是当前版本数据库结构和基础数据的部署入口。应用启动时不会自动执行这些脚本；生产或本地首次部署需要由运维人员按顺序执行。集成测试会将同一组脚本加载到 Testcontainers 创建的临时 MySQL 8 数据库，以校验部署脚本与代码的一致性。
 
-## 文件说明
+## 脚本说明
 
-- `01-rbac.sql`
-  - RBAC 模块当前表结构的空库 schema 脚本。
-  - 用于干净 schema 首次创建 RBAC 表。
+### `01_rbac.sql`
 
-- `02-admin.sql`
-  - 系统后台管理员初始化脚本。
-  - 包含 `sys_admin` 表结构、默认管理员账号和 RBAC 绑定数据。
-  - 依赖先执行 `01-rbac.sql`。
-  - 该文件保留幂等判断，适合人工重复执行时避免覆盖已有数据。
+创建 RBAC 模块的当前表结构：
 
-## 迁移脚本说明
+- `az_role`
+- `az_permission`
+- `az_menu`
+- `az_user`
+- `az_user_role`
+- `az_role_permission`
+- `az_role_menu`
 
-本目录不再保留旧 RBAC schema 到当前 schema 的迁移脚本。旧库升级应由使用方结合自身迁移系统和实际历史结构单独维护。
+该脚本使用 `CREATE TABLE IF NOT EXISTS`，可以重复执行。对于已存在的表，脚本不会修改字段、索引或约束，因此不能替代数据库迁移。
 
-## 执行顺序
+### `02_admin.sql`
 
-首次初始化干净 schema 时，按以下顺序人工执行：
+创建并初始化系统管理模块：
 
-1. `01-rbac.sql`
-2. `02-admin.sql`
+- 创建 `sys_admin` 表；
+- 创建内置 `admin` 角色；
+- 创建默认 RBAC 用户和管理员账号；
+- 建立默认管理员与 `admin` 角色的绑定关系。
 
-## 自动化测试
+该脚本依赖 `01_rbac.sql`，可以重复执行。它不会覆盖已有默认管理员，并会确保默认管理员、内置角色及两者的有效绑定存在。它不会修复已有记录的密码、状态或其他字段，也不能替代数据库迁移。
 
-自动化集成测试只在 Testcontainers 创建的临时 MySQL 8 schema `gnilc_auth_test` 中执行这些脚本。测试负责创建并销毁该环境；不要让自动化测试连接 `access`、`access_local_it` 或其他本地/共享 schema。
+默认管理员凭据：
 
-## 人工本地验证
+- 用户名：`admin`
+- 密码：`123456`
 
-如需人工执行部署 SQL，只能使用专用 schema `access_local_it`，并明确传入连接参数。不要把数据库密码写入脚本、命令历史、日志或文档。示例仅展示执行顺序：
+首次登录后必须立即修改默认密码。不要在公网环境中保留默认凭据。
+
+## 首次部署
+
+准备一个空的 MySQL 8 数据库，并按以下顺序执行：
 
 ```bash
-mysql --host=127.0.0.1 --user=<user> --password --database=access_local_it \
-  < deploy/sql/01-rbac.sql
-mysql --host=127.0.0.1 --user=<user> --password --database=access_local_it \
-  < deploy/sql/02-admin.sql
+mysql --host=<host> --user=<user> --password --database=<database> \
+  < deploy/sql/01_rbac.sql
+mysql --host=<host> --user=<user> --password --database=<database> \
+  < deploy/sql/02_admin.sql
 ```
 
-执行前确认当前 schema：
+执行前确认目标数据库：
 
 ```sql
 SELECT DATABASE();
 ```
 
-安全约束：
+执行完成后至少确认以下对象存在：
 
-- 不要写入 `application-dev.yml` 默认业务库 `access`。
-- `access_local_it` 仅用于人工本地验证；它不是自动化测试依赖。
-- 不要对共享数据库运行清理或初始化脚本。
-- 本流程只处理 MySQL SQL，不涉及 Redis。
+```sql
+SHOW TABLES;
+SELECT id, username, status FROM sys_admin WHERE username = 'admin' AND del = 0;
+SELECT id, code, built_in FROM az_role WHERE code = 'admin' AND del = 0;
+```
+
+## 已有数据库升级
+
+本目录只维护当前版本的空库初始化脚本，不维护历史版本之间的增量迁移。已有数据库升级时，不要把重复执行 `01_rbac.sql` 当作升级方案；应根据实际版本差异编写并审核迁移脚本，通过项目采用的迁移系统单独执行。
+
+## 幂等性边界
+
+两个脚本都支持在当前版本结构上重复执行，但幂等只表示重复执行不会重复建表或重复插入默认数据：
+
+- `01_rbac.sql` 不会升级已有表结构；
+- `02_admin.sql` 不会覆盖已有管理员资料或密码；
+- 脚本不会删除额外的业务数据；
+- 历史版本升级、字段变更和索引变更仍需专门的迁移脚本。
+
+## 自动化测试
+
+根 `pom.xml` 会把本目录下的所有 `*.sql` 复制到各 Maven 模块的测试 classpath：
+
+```text
+deploy/sql/*.sql -> sql/schema/*.sql
+```
+
+当前测试加载方式如下：
+
+- `auth-rbac` 测试只执行 `sql/schema/01_rbac.sql`；
+- `gnilc-system` 测试依次执行 `01_rbac.sql`、`02_admin.sql`；
+- `gnilc-bootstrap` 测试依次执行 `01_rbac.sql`、`02_admin.sql`；
+- Bootstrap API 测试恢复基线数据时会重新执行 `02_admin.sql`。
+
+测试数据库固定为 Testcontainers 创建的 `gnilc_auth_test`，测试不会使用 H2、本机 MySQL、开发数据库或共享数据库。
+
+```bash
+# Docker-free 快速测试，不执行部署 SQL
+mvn test
+
+# 完整测试，使用 MySQL 8 和 Redis 8 Testcontainers
+mvn verify
+```
+
+## 安全要求
+
+- 不要把数据库密码写入 SQL、文档、脚本参数或提交记录；使用客户端交互式密码输入或安全的凭据管理方式。
+- 不要在共享数据库或未备份的现有数据库上试运行初始化脚本。
+- 自动化测试只能连接由 Testcontainers 管理的临时数据库。
+- 本目录只处理 MySQL 结构和基础数据，不负责 Redis 初始化。

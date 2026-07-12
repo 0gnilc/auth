@@ -74,6 +74,5 @@ public interface UserService extends IService<UserBo> {
      * @param userId 用户id
      * @return 用户信息
      */
-    UserBo geUser(Long userId);
+    UserBo getUser(Long userId);
 }
-

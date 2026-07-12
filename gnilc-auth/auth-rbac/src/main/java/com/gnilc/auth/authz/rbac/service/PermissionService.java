@@ -16,13 +16,13 @@ import java.util.List;
  */
 public interface PermissionService extends IService<PermissionBo> {
 
-    void createPermission(PermissionDto pd);
+    void createPermission(PermissionDto dto);
 
-    void updatePermission(PermissionDto pd);
+    void updatePermission(PermissionDto dto);
 
     void removePermission(Long id);
 
-    List<PermissionVo> getPermissions(PermissionQueryDto qd);
+    List<PermissionVo> getPermissions(PermissionQueryDto dto);
 
     PermissionBo getPermissionByCode(String code);
 
@@ -30,4 +30,3 @@ public interface PermissionService extends IService<PermissionBo> {
 
     List<PermissionBo> getPermissions(Long userId);
 }
-

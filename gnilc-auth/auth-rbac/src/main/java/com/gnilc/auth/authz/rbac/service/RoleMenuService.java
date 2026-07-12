@@ -17,6 +17,5 @@ public interface RoleMenuService extends IService<RoleMenuBo> {
 
     List<Long> getMenuIds(List<Long> roleIds);
 
-    void updateRoleMenu(RoleMenuDto rmd);
+    void updateRoleMenu(RoleMenuDto dto);
 }
-

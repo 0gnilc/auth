@@ -11,9 +11,9 @@ public interface MenuService extends IService<MenuBo> {
 
     List<MenuVo> getMenuTree();
 
-    void createMenu(MenuDto md);
+    void createMenu(MenuDto dto);
 
-    void updateMenu(MenuDto md);
+    void updateMenu(MenuDto dto);
 
     MenuBo getMenuByPath(String path);
 

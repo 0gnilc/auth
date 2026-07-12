@@ -13,7 +13,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.MediaType;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -39,19 +38,12 @@ class RbacControllerTest {
 
     @BeforeEach
     void setUp() {
-        MenuController menuController = new MenuController();
-        PermissionController permissionController = new PermissionController();
-        RoleController roleController = new RoleController();
-        RoleMenuController roleMenuController = new RoleMenuController();
-        RolePermissionController rolePermissionController = new RolePermissionController();
-        UserRoleController userRoleController = new UserRoleController();
-        ReflectionTestUtils.setField(menuController, "menuService", menus);
-        ReflectionTestUtils.setField(permissionController, "permissionService", permissions);
-        ReflectionTestUtils.setField(permissionController, "publisher", publisher);
-        ReflectionTestUtils.setField(roleController, "roleService", roles);
-        ReflectionTestUtils.setField(roleMenuController, "roleMenuService", roleMenus);
-        ReflectionTestUtils.setField(rolePermissionController, "rolePermissionService", rolePermissions);
-        ReflectionTestUtils.setField(userRoleController, "userRoleService", userRoles);
+        MenuController menuController = new MenuController(menus);
+        PermissionController permissionController = new PermissionController(permissions, publisher);
+        RoleController roleController = new RoleController(roles);
+        RoleMenuController roleMenuController = new RoleMenuController(roleMenus);
+        RolePermissionController rolePermissionController = new RolePermissionController(rolePermissions);
+        UserRoleController userRoleController = new UserRoleController(userRoles);
         mvc = MockMvcBuilders.standaloneSetup(menuController, permissionController, roleController,
                 roleMenuController, rolePermissionController, userRoleController).build();
     }

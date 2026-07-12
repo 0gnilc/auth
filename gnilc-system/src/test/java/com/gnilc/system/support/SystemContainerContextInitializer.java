@@ -12,8 +12,8 @@ public final class SystemContainerContextInitializer
     public void initialize(ConfigurableApplicationContext context) {
         new FullStackContainerContextInitializer().initialize(context);
         SharedTestContainers.initializeMySqlSchema(
-                "sql/schema/01-rbac.sql",
-                "sql/schema/02-admin.sql");
+                "sql/schema/01_rbac.sql",
+                "sql/schema/02_admin.sql");
         TestPropertyValues.of(
                 "mybatis-plus.configuration.map-underscore-to-camel-case=true",
                 "mybatis-plus.global-config.db-config.logic-delete-field=del",

@@ -1,7 +1,7 @@
--- RBAC 空库表结构。
+-- RBAC 当前版本空库表结构。
 -- 用于干净 schema 首次创建当前版本 RBAC 表。
 
-CREATE TABLE az_role (
+CREATE TABLE IF NOT EXISTS az_role (
     id bigint NOT NULL AUTO_INCREMENT COMMENT 'id',
     del tinyint NOT NULL DEFAULT '0' COMMENT '是否删除,0未删除、1已删除',
     create_time datetime NOT NULL COMMENT '创建时间',
@@ -14,7 +14,7 @@ CREATE TABLE az_role (
     UNIQUE KEY uk_code (code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='角色';
 
-CREATE TABLE az_permission (
+CREATE TABLE IF NOT EXISTS az_permission (
     id bigint NOT NULL AUTO_INCREMENT COMMENT 'id',
     del tinyint NOT NULL DEFAULT '0' COMMENT '是否删除,0未删除、1已删除',
     create_time datetime NOT NULL COMMENT '创建时间',
@@ -31,7 +31,7 @@ CREATE TABLE az_permission (
     KEY idx_target_qualifier (target_qualifier)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='权限';
 
-CREATE TABLE az_menu (
+CREATE TABLE IF NOT EXISTS az_menu (
     id bigint NOT NULL AUTO_INCREMENT COMMENT 'id',
     del tinyint NOT NULL DEFAULT '0' COMMENT '是否删除,0未删除、1已删除',
     create_time datetime NOT NULL COMMENT '创建时间',
@@ -77,7 +77,7 @@ CREATE TABLE az_menu (
     UNIQUE KEY uk_path (path)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='菜单';
 
-CREATE TABLE az_user (
+CREATE TABLE IF NOT EXISTS az_user (
     id bigint NOT NULL AUTO_INCREMENT COMMENT 'id',
     del tinyint NOT NULL DEFAULT '0' COMMENT '是否删除,0未删除、1已删除',
     create_time datetime NOT NULL COMMENT '创建时间',
@@ -85,7 +85,7 @@ CREATE TABLE az_user (
     PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户';
 
-CREATE TABLE az_user_role (
+CREATE TABLE IF NOT EXISTS az_user_role (
     id bigint NOT NULL AUTO_INCREMENT COMMENT 'id',
     del tinyint NOT NULL DEFAULT '0' COMMENT '是否删除,0未删除、1已删除',
     create_time datetime NOT NULL COMMENT '创建时间',
@@ -98,7 +98,7 @@ CREATE TABLE az_user_role (
     KEY idx_user_role (user_id, role_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户角色关系';
 
-CREATE TABLE az_role_permission (
+CREATE TABLE IF NOT EXISTS az_role_permission (
     id bigint NOT NULL AUTO_INCREMENT COMMENT 'id',
     del tinyint NOT NULL DEFAULT '0' COMMENT '是否删除,0未删除、1已删除',
     create_time datetime NOT NULL COMMENT '创建时间',
@@ -111,7 +111,7 @@ CREATE TABLE az_role_permission (
     KEY idx_role_permission (role_id, permission_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='角色权限关系';
 
-CREATE TABLE az_role_menu (
+CREATE TABLE IF NOT EXISTS az_role_menu (
     id bigint NOT NULL AUTO_INCREMENT COMMENT 'id',
     del tinyint NOT NULL DEFAULT '0' COMMENT '是否删除,0未删除、1已删除',
     create_time datetime NOT NULL COMMENT '创建时间',

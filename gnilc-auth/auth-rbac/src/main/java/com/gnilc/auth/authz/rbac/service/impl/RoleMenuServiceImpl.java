@@ -24,8 +24,9 @@ public class RoleMenuServiceImpl extends ServiceImpl<RoleMenusDao, RoleMenuBo> i
         return lambdaQuery()
                 .select(RoleMenuBo::getMenuId)
                 .eq(RoleMenuBo::getRoleId, roleId)
-                .list().stream().
-                map(RoleMenuBo::getMenuId)
+                .list()
+                .stream()
+                .map(RoleMenuBo::getMenuId)
                 .distinct()
                 .toList();
     }
@@ -39,17 +40,18 @@ public class RoleMenuServiceImpl extends ServiceImpl<RoleMenusDao, RoleMenuBo> i
                 .select(RoleMenuBo::getMenuId)
                 .in(RoleMenuBo::getRoleId, roleIds)
                 .list()
-                .stream().map(RoleMenuBo::getMenuId)
+                .stream()
+                .map(RoleMenuBo::getMenuId)
                 .distinct()
                 .toList();
     }
 
     @Transactional
     @Override
-    public void updateRoleMenu(RoleMenuDto rmd) {
-        Preconditions.checkArgument(rmd != null, "请填写角色菜单信息");
-        Long roleId = rmd.getRoleId();
-        List<Long> menuIds = rmd.getMenuIds();
+    public void updateRoleMenu(RoleMenuDto dto) {
+        Preconditions.checkArgument(dto != null, "请填写角色菜单信息");
+        Long roleId = dto.getRoleId();
+        List<Long> menuIds = dto.getMenuIds();
         Preconditions.checkArgument(roleId != null, "请选择角色");
 
         Set<Long> oldSet = lambdaQuery()
@@ -69,16 +71,16 @@ public class RoleMenuServiceImpl extends ServiceImpl<RoleMenusDao, RoleMenuBo> i
                     .remove();
         }
 
-        List<RoleMenuBo> rmbs = Sets.difference(newSet, oldSet)
+        List<RoleMenuBo> bos = Sets.difference(newSet, oldSet)
                 .stream()
                 .map(menuId -> {
-                    RoleMenuBo rmb = new RoleMenuBo();
-                    rmb.setRoleId(roleId);
-                    rmb.setMenuId(menuId);
-                    return rmb;
+                    RoleMenuBo bo = new RoleMenuBo();
+                    bo.setRoleId(roleId);
+                    bo.setMenuId(menuId);
+                    return bo;
                 }).toList();
-        if (!rmbs.isEmpty()) {
-            saveBatch(rmbs);
+        if (!bos.isEmpty()) {
+            saveBatch(bos);
         }
     }
 }

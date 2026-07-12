@@ -87,33 +87,35 @@ public class AdminController {
     public R<AdminTokenVo> login(@RequestBody(required = false) JSONObject body) {
         String username = body == null ? null : body.getString("username");
         String password = body == null ? null : body.getString("password");
-        AdminTokenVo token = adminService.login(username, password);
-        if (token == null) {
+        AdminTokenVo vo = adminService.login(username, password);
+        if (vo == null) {
             return R.error(ResponseCode.AUTHENTICATION_FAILED, "用户名或密码错误");
         }
-        return R.success(token);
+        return R.success(vo);
     }
 
     /**
      * 刷新访问令牌。
      */
     @PostMapping("/refresh")
-    public ResponseEntity<R<?>> refresh(@RequestHeader(value = REFRESH_TOKEN_HEADER, required = false) String refreshToken) {
+    public ResponseEntity<R<?>> refresh(
+            @RequestHeader(value = REFRESH_TOKEN_HEADER, required = false) String refreshToken) {
         if (StringUtils.isBlank(refreshToken)) {
             return unauthorized();
         }
-        AdminTokenVo token = adminService.refresh(refreshToken);
-        if (token == null) {
+        AdminTokenVo vo = adminService.refresh(refreshToken);
+        if (vo == null) {
             return unauthorized();
         }
-        return ResponseEntity.ok(R.success(token));
+        return ResponseEntity.ok(R.success(vo));
     }
 
     /**
      * 登出当前会话。
      */
     @PostMapping("/logout")
-    public ResponseEntity<R<?>> logout(@RequestHeader(value = REFRESH_TOKEN_HEADER, required = false) String refreshToken) {
+    public ResponseEntity<R<?>> logout(
+            @RequestHeader(value = REFRESH_TOKEN_HEADER, required = false) String refreshToken) {
         if (StringUtils.isBlank(refreshToken)) {
             return unauthorized();
         }
@@ -147,7 +149,7 @@ public class AdminController {
         return R.success(adminService.getMenuAccessCodes());
     }
 
-    private ResponseEntity<R<?>> unauthorized() {
+    private static ResponseEntity<R<?>> unauthorized() {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(R.error(ResponseCode.UNAUTHORIZED, "unauthorized"));
     }
 }

@@ -28,8 +28,7 @@ class SchemaScriptsIT {
 
     @BeforeEach
     void restoreDeploymentBaseline() {
-        new ResourceDatabasePopulator(new ClassPathResource("sql/schema/02-admin.sql"))
-                .execute(dataSource);
+        runScript("sql/schema/02_admin.sql");
     }
 
     @Test
@@ -51,5 +50,59 @@ class SchemaScriptsIT {
                   join az_role r on r.id = ur.role_id
                  where a.username = 'admin' and r.code = 'admin'
                 """, Integer.class)).isEqualTo(1);
+    }
+
+    @Test
+    void deploymentScriptsAreIdempotentAndRestoreMissingAdminRoleBinding() {
+        runScript("sql/schema/01_rbac.sql");
+        runScript("sql/schema/02_admin.sql");
+        runScript("sql/schema/01_rbac.sql");
+        runScript("sql/schema/02_admin.sql");
+
+        assertThat(count("az_role", "code = 'admin' AND del = 0")).isEqualTo(1);
+        assertThat(count("sys_admin", "username = 'admin' AND del = 0")).isEqualTo(1);
+        assertThat(jdbc.queryForObject("""
+                SELECT COUNT(*)
+                  FROM az_user u
+                  JOIN sys_admin a ON a.user_id = u.id
+                 WHERE a.username = 'admin'
+                   AND a.del = 0
+                   AND u.del = 0
+                """, Integer.class)).isEqualTo(1);
+        assertThat(defaultAdminRoleBindingCount()).isEqualTo(1);
+
+        jdbc.update("""
+                DELETE ur
+                  FROM az_user_role ur
+                  JOIN sys_admin a ON a.user_id = ur.user_id
+                  JOIN az_role r ON r.id = ur.role_id
+                 WHERE a.username = 'admin'
+                   AND r.code = 'admin'
+                """);
+        runScript("sql/schema/02_admin.sql");
+
+        assertThat(defaultAdminRoleBindingCount()).isEqualTo(1);
+    }
+
+    private int count(String table, String where) {
+        return jdbc.queryForObject("SELECT COUNT(*) FROM " + table + " WHERE " + where, Integer.class);
+    }
+
+    private int defaultAdminRoleBindingCount() {
+        return jdbc.queryForObject("""
+                SELECT COUNT(*)
+                  FROM az_user_role ur
+                  JOIN sys_admin a ON a.user_id = ur.user_id
+                  JOIN az_role r ON r.id = ur.role_id
+                 WHERE a.username = 'admin'
+                   AND a.del = 0
+                   AND r.code = 'admin'
+                   AND r.del = 0
+                   AND ur.del = 0
+                """, Integer.class);
+    }
+
+    private void runScript(String path) {
+        new ResourceDatabasePopulator(new ClassPathResource(path)).execute(dataSource);
     }
 }

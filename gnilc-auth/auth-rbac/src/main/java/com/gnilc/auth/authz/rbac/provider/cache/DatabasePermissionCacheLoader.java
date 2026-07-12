@@ -53,7 +53,7 @@ public class DatabasePermissionCacheLoader implements PermissionCacheLoader {
         if (userId == null) {
             return List.of();
         }
-        UserBo user = userService.geUser(userId);
+        UserBo user = userService.getUser(userId);
         if (user == null) {
             return List.of();
         }

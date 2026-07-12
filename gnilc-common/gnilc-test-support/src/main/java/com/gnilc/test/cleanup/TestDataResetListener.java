@@ -1,5 +1,6 @@
 package com.gnilc.test.cleanup;
 
+import org.jetbrains.annotations.NotNull;
 import org.springframework.test.context.TestContext;
 import org.springframework.test.context.support.AbstractTestExecutionListener;
 
@@ -9,13 +10,13 @@ import org.springframework.test.context.support.AbstractTestExecutionListener;
 public final class TestDataResetListener extends AbstractTestExecutionListener {
     /** {@inheritDoc} */
     @Override
-    public void beforeTestMethod(TestContext testContext) {
+    public void beforeTestMethod(@NotNull TestContext testContext) {
         manager(testContext).resetToBaseline();
     }
 
     /** {@inheritDoc} */
     @Override
-    public void afterTestMethod(TestContext testContext) {
+    public void afterTestMethod(@NotNull TestContext testContext) {
         manager(testContext).cleanAfterTest();
     }
 

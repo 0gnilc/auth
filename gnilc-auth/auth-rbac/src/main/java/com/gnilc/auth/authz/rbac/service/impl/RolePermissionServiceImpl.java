@@ -8,7 +8,6 @@ import com.gnilc.auth.authz.rbac.entity.dto.RolePermissionDto;
 import com.gnilc.auth.authz.rbac.event.RbacAuthzEvent;
 import com.gnilc.auth.authz.rbac.service.RolePermissionService;
 import com.google.common.collect.Sets;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,10 +19,14 @@ import java.util.stream.Collectors;
 
 
 @Service("rolePermissionService")
-public class RolePermissionServiceImpl extends ServiceImpl<RolePermissionDao, RolePermissionBo> implements RolePermissionService {
+public class RolePermissionServiceImpl extends ServiceImpl<RolePermissionDao, RolePermissionBo>
+        implements RolePermissionService {
 
-    @Autowired
-    private ApplicationEventPublisher publisher;
+    private final ApplicationEventPublisher eventPublisher;
+
+    public RolePermissionServiceImpl(ApplicationEventPublisher eventPublisher) {
+        this.eventPublisher = eventPublisher;
+    }
 
     @Override
     public List<Long> getPermissionIds(Long roleId) {
@@ -32,7 +35,8 @@ public class RolePermissionServiceImpl extends ServiceImpl<RolePermissionDao, Ro
                 .select(RolePermissionBo::getPermissionId)
                 .eq(RolePermissionBo::getRoleId, roleId)
                 .list()
-                .stream().map(RolePermissionBo::getPermissionId)
+                .stream()
+                .map(RolePermissionBo::getPermissionId)
                 .distinct()
                 .toList();
     }
@@ -55,10 +59,10 @@ public class RolePermissionServiceImpl extends ServiceImpl<RolePermissionDao, Ro
 
     @Transactional
     @Override
-    public void updateRolePermission(RolePermissionDto rpd) {
-        Preconditions.checkArgument(rpd != null, "请填写角色权限信息");
-        Long roleId = rpd.getRoleId();
-        List<Long> permissionIds = rpd.getPermissionIds();
+    public void updateRolePermission(RolePermissionDto dto) {
+        Preconditions.checkArgument(dto != null, "请填写角色权限信息");
+        Long roleId = dto.getRoleId();
+        List<Long> permissionIds = dto.getPermissionIds();
         Preconditions.checkArgument(roleId != null, "请选择角色");
 
         Set<Long> oldSet = lambdaQuery()
@@ -78,18 +82,18 @@ public class RolePermissionServiceImpl extends ServiceImpl<RolePermissionDao, Ro
                     .remove();
         }
 
-        List<RolePermissionBo> rpbs = Sets.difference(newSet, oldSet)
+        List<RolePermissionBo> bos = Sets.difference(newSet, oldSet)
                 .stream()
                 .map(permissionId -> {
-                    RolePermissionBo rpb = new RolePermissionBo();
-                    rpb.setRoleId(roleId);
-                    rpb.setPermissionId(permissionId);
-                    return rpb;
+                    RolePermissionBo bo = new RolePermissionBo();
+                    bo.setRoleId(roleId);
+                    bo.setPermissionId(permissionId);
+                    return bo;
                 }).toList();
-        if (!rpbs.isEmpty()) {
-            saveBatch(rpbs);
+        if (!bos.isEmpty()) {
+            saveBatch(bos);
         }
-        publisher.publishEvent(RbacAuthzEvent.of(
+        eventPublisher.publishEvent(RbacAuthzEvent.of(
                 RbacAuthzEvent.Type.ROLE_PERMISSION,
                 RbacAuthzEvent.Action.REPLACE,
                 roleId));
