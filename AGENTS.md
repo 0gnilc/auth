@@ -24,7 +24,7 @@ Run the complete Surefire and Failsafe suite (`*IT`, `*MapperIT`, `*CacheIT`, an
 mvn -f apps/server/pom.xml verify
 ```
 
-`mvn verify` requires Docker for Testcontainers MySQL 8 and Redis 8. Do not replace containers with H2, local services, or shared services.
+`mvn -f apps/server/pom.xml verify` requires Docker for Testcontainers MySQL 8 and Redis 8. Do not replace containers with H2, local services, or shared services.
 
 ### Domain docs
 

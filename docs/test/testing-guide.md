@@ -2107,8 +2107,8 @@ newman run docs/postman/project.postman_collection.json \
 Maven：
 
 ```bash
-mvn test
-mvn verify
+mvn -f apps/server/pom.xml test
+mvn -f apps/server/pom.xml verify
 ```
 
 Gradle：
@@ -2197,8 +2197,8 @@ RANDOM_PORT API 合同 -> *ApiIT
 ### 16.4 最后运行测试
 
 ```bash
-mvn test
-mvn verify
+mvn -f apps/server/pom.xml test
+mvn -f apps/server/pom.xml verify
 ```
 
 ---

@@ -6,8 +6,8 @@
 
 <!-- List the commands run and their results. If not run, explain why. -->
 
-- [ ] `mvn test`
-- [ ] `mvn verify` (requires Docker)
+- [ ] `mvn -f apps/server/pom.xml test`
+- [ ] `mvn -f apps/server/pom.xml verify` (requires Docker)
 
 ## Checklist
 
