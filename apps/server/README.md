@@ -46,6 +46,19 @@ Multiple handlers are ordered by Spring order. A handler that does not support t
 
 ## Build and test
 
+From the repository root, use the cross-platform pnpm scripts:
+
+```bash
+pnpm dev:server
+pnpm build:server
+pnpm test:server
+pnpm verify:server
+```
+
+The Node runner in `scripts/maven.mjs` selects `mvnw` on macOS/Linux or `mvnw.cmd` on Windows when wrapper files are present. Otherwise, it falls back to `mvn`/`mvn.cmd` from `PATH`.
+
+Maven can also be invoked directly from this directory:
+
 ```bash
 # Fast Surefire tests: *Test and *ControllerTest
 mvn test

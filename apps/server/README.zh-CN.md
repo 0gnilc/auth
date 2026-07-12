@@ -46,6 +46,19 @@ Java 包按职责区分：`com.gnilc.auth.authn.*` 表示认证，`com.gnilc.aut
 
 ## 构建与测试
 
+在仓库根目录使用以下跨平台 pnpm 命令：
+
+```bash
+pnpm dev:server
+pnpm build:server
+pnpm test:server
+pnpm verify:server
+```
+
+Node runner `scripts/maven.mjs` 会优先在 macOS/Linux 使用 `mvnw`，在 Windows 使用 `mvnw.cmd`；如果项目没有 Maven Wrapper，则回退到 `PATH` 中的 `mvn`/`mvn.cmd`。
+
+也可以在当前目录直接运行 Maven：
+
 ```bash
 # Surefire 快速测试：*Test 和 *ControllerTest
 mvn test

@@ -3,11 +3,12 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "mvn --batch-mode --no-transfer-progress -DskipTests package",
-    "clean": "mvn --batch-mode --no-transfer-progress clean",
-    "dev": "mvn --batch-mode --no-transfer-progress -DskipTests package && mvn --batch-mode --no-transfer-progress -pl gnilc-bootstrap spring-boot:run",
-    "test": "mvn --batch-mode --no-transfer-progress test",
-    "typecheck": "mvn --batch-mode --no-transfer-progress -DskipTests compile",
-    "verify": "mvn --batch-mode --no-transfer-progress verify"
+    "build": "node ./scripts/maven.mjs build",
+    "clean": "node ./scripts/maven.mjs clean",
+    "dev": "node ./scripts/maven.mjs dev",
+    "test": "node --test ./src/test/scripts/maven.test.mjs && node ./scripts/maven.mjs test",
+    "test:scripts": "node --test ./src/test/scripts/maven.test.mjs",
+    "typecheck": "node ./scripts/maven.mjs typecheck",
+    "verify": "node ./scripts/maven.mjs verify"
   }
 }

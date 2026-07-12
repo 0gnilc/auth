@@ -35,6 +35,9 @@ jobs:
       - name: Typecheck admin
         run: pnpm --filter=@app/admin run typecheck
 
+      - name: Test server task runner
+        run: pnpm --filter=@app/server run test:scripts
+
       - name: Build admin
         run: pnpm build:admin
 
