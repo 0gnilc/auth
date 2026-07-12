@@ -11,6 +11,7 @@ import com.gnilc.system.admin.entity.dto.AdminPageDto;
 import com.gnilc.system.admin.entity.dto.AdminRoleDto;
 import com.gnilc.system.admin.entity.vo.AdminTokenVo;
 import com.gnilc.system.admin.entity.vo.AdminVo;
+import com.gnilc.system.session.AdminSessionManager;
 import com.gnilc.system.support.SystemTestApplication;
 import com.gnilc.system.support.SystemContainerContextInitializer;
 import com.gnilc.test.cleanup.RedisCleaner;
@@ -39,6 +40,7 @@ class AdminServiceIT {
     @Autowired private RoleService roles;
     @Autowired private RedisConnectionFactory redis;
     @Autowired private JdbcTemplate jdbc;
+    @Autowired private AdminSessionManager sessions;
 
     @AfterEach
     void cleanRedis() {
@@ -71,7 +73,10 @@ class AdminServiceIT {
         admins.removeAdmin(stored.getId());
         assertThat(admins.getAdmin(stored.getId())).isNull();
         assertThat(admins.login("alice", "Strong#123")).isNull();
+        assertThat(sessions.validateAccessToken(token.getAccessToken())).isNull();
         assertThat(admins.refresh(token.getRefreshToken())).isNull();
+        assertThat(sessions.validateAccessToken(otherToken.getAccessToken()))
+                .isEqualTo(admins.getAdminByUsername("other-admin").getUserId());
         assertThat(admins.refresh(otherToken.getRefreshToken())).isNotNull();
         assertThat(jdbc.queryForObject(
                 "select username from sys_admin where id = ?", String.class, stored.getId()))
@@ -110,8 +115,12 @@ class AdminServiceIT {
         assertThat(admins.getAdmin(bob.getId()).getNickname()).isEqualTo("Robert");
         assertThat(admins.getRoleCodes(bob.getUserId())).containsExactly("reviewer");
         assertThat(admins.login("bob", "Changed#456")).isNull();
+        assertThat(sessions.validateAccessToken(firstBobSession.getAccessToken())).isNull();
+        assertThat(sessions.validateAccessToken(secondBobSession.getAccessToken())).isNull();
         assertThat(admins.refresh(firstBobSession.getRefreshToken())).isNull();
         assertThat(admins.refresh(secondBobSession.getRefreshToken())).isNull();
+        assertThat(sessions.validateAccessToken(enabledSession.getAccessToken()))
+                .isEqualTo(admins.getAdminByUsername("still-enabled").getUserId());
         assertThat(admins.refresh(enabledSession.getRefreshToken())).isNotNull();
     }
 

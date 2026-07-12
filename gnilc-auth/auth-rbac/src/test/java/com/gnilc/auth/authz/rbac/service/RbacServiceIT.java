@@ -191,6 +191,22 @@ class RbacServiceIT {
         assertThat(rolePermissions.getPermissionIds(role.getId())).containsExactly(permission.getId());
         assertThat(rolePermissions.getRoleIds(permission.getId())).containsExactly(role.getId());
         assertThat(roleMenus.getMenuIds(role.getId())).containsExactly(menu.getId());
+        assertThat(users.getRoles(userId)).extracting(RoleBo::getCode)
+                .containsExactly("duplicate-relations");
+        assertThat(users.getPermissions(userId)).extracting(PermissionBo::getCode)
+                .containsExactly("duplicates:read");
+        assertThat(users.getMenus(userId)).extracting(MenuBo::getName)
+                .containsExactly("duplicates");
+
+        userRoles.updateUserRole(userRole);
+        rolePermissions.updateRolePermission(rolePermission);
+        roleMenus.updateRoleMenu(roleMenu);
+        assertThat(activeRelationCount("az_user_role", "user_id", userId)).isEqualTo(2);
+        assertThat(activeRelationCount("az_role_permission", "role_id", role.getId())).isEqualTo(2);
+        assertThat(activeRelationCount("az_role_menu", "role_id", role.getId())).isEqualTo(2);
+        assertThat(userRoles.getRoleIds(userId)).containsExactly(role.getId());
+        assertThat(rolePermissions.getPermissionIds(role.getId())).containsExactly(permission.getId());
+        assertThat(roleMenus.getMenuIds(role.getId())).containsExactly(menu.getId());
 
         userRole.setRoleIds(List.of());
         userRoles.updateUserRole(userRole);

@@ -31,6 +31,10 @@ class SchemaScriptsIT {
 
     @Test
     void deploymentScriptsCreateAllCurrentTablesAndDefaultAdmin() {
+        dropCurrentSchema();
+        runScript("sql/schema/01_rbac.sql");
+        runScript("sql/schema/02_admin.sql");
+
         assertThat(jdbc.queryForList("""
                 select table_name
                   from information_schema.tables
@@ -41,6 +45,15 @@ class SchemaScriptsIT {
         assertThat(jdbc.queryForObject(
                 "select count(*) from sys_admin where username = 'admin' and del = 0", Integer.class))
                 .isEqualTo(1);
+        assertThat(jdbc.queryForObject(
+                "select count(*) from az_role where code = 'admin' and del = 0 and built_in = 1",
+                Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("""
+                select count(*)
+                  from az_user u
+                  join sys_admin a on a.user_id = u.id
+                 where a.username = 'admin' and a.del = 0 and u.del = 0
+                """, Integer.class)).isEqualTo(1);
         assertThat(jdbc.queryForObject("""
                 select count(*)
                   from az_user_role ur
@@ -143,5 +156,19 @@ class SchemaScriptsIT {
 
     private void runScript(String path) {
         new ResourceDatabasePopulator(new ClassPathResource(path)).execute(dataSource);
+    }
+
+    private void dropCurrentSchema() {
+        jdbc.execute("""
+                DROP TABLE IF EXISTS
+                    sys_admin,
+                    az_role_menu,
+                    az_role_permission,
+                    az_user_role,
+                    az_menu,
+                    az_permission,
+                    az_user,
+                    az_role
+                """);
     }
 }
