@@ -1,0 +1,107 @@
+# 部署 SQL
+
+本目录是当前版本数据库结构和基础数据的部署入口。应用启动时不会自动执行这些脚本；生产或本地首次部署需要由运维人员按顺序执行。集成测试会将同一组脚本加载到 Testcontainers 创建的临时 MySQL 8 数据库，以校验部署脚本与代码的一致性。
+
+## 脚本说明
+
+### `01_rbac.sql`
+
+创建 RBAC 模块的当前表结构：
+
+- `az_role`
+- `az_permission`
+- `az_menu`
+- `az_user`
+- `az_user_role`
+- `az_role_permission`
+- `az_role_menu`
+
+该脚本使用 `CREATE TABLE IF NOT EXISTS`，可以重复执行。对于已存在的表，脚本不会修改字段、索引或约束，因此不能替代数据库迁移。
+
+### `02_admin.sql`
+
+创建并初始化系统管理模块：
+
+- 创建 `sys_admin` 表；
+- 创建内置 `admin` 角色；
+- 创建默认 RBAC 用户和管理员账号；
+- 建立默认管理员与 `admin` 角色的绑定关系。
+
+该脚本依赖 `01_rbac.sql`，可以重复执行。它不会覆盖已有默认管理员资料，并会确保默认管理员、RBAC 用户、内置角色及三者的有效关系存在；如果这些默认记录被逻辑删除，脚本会恢复其 `del` 状态。它不会修复已有记录的密码、启用状态或其他资料字段，也不能替代数据库迁移。
+
+默认管理员凭据：
+
+- 用户名：`admin`
+- 密码：`123456`
+
+首次登录后必须立即修改默认密码。不要在公网环境中保留默认凭据。
+
+## 首次部署
+
+准备一个空的 MySQL 8 数据库，并按以下顺序执行：
+
+```bash
+mysql --host=<host> --user=<user> --password --database=<database> \
+  < deploy/sql/01_rbac.sql
+mysql --host=<host> --user=<user> --password --database=<database> \
+  < deploy/sql/02_admin.sql
+```
+
+执行前确认目标数据库：
+
+```sql
+SELECT DATABASE();
+```
+
+执行完成后至少确认以下对象存在：
+
+```sql
+SHOW TABLES;
+SELECT id, username, status FROM sys_admin WHERE username = 'admin' AND del = 0;
+SELECT id, code, built_in FROM az_role WHERE code = 'admin' AND del = 0;
+```
+
+## 已有数据库升级
+
+本目录只维护当前版本的空库初始化脚本，不维护历史版本之间的增量迁移。已有数据库升级时，不要把重复执行 `01_rbac.sql` 当作升级方案；应根据实际版本差异编写并审核迁移脚本，通过项目采用的迁移系统单独执行。
+
+## 幂等性边界
+
+两个脚本都支持在当前版本结构上重复执行，但幂等只表示重复执行不会重复建表或重复插入默认数据：
+
+- `01_rbac.sql` 不会升级已有表结构；
+- `02_admin.sql` 不会覆盖已有管理员资料或密码，但会恢复默认记录的逻辑删除状态；
+- 脚本不会删除额外的业务数据；
+- 历史版本升级、字段变更和索引变更仍需专门的迁移脚本。
+
+## 自动化测试
+
+使用部署脚本的模块会在各自 `pom.xml` 中将所需 SQL 复制到测试 classpath：
+
+```text
+deploy/sql/<script>.sql -> sql/schema/<script>.sql
+```
+
+当前测试加载方式如下：
+
+- `auth-rbac` 测试只执行 `sql/schema/01_rbac.sql`；
+- `gnilc-system` 测试依次执行 `01_rbac.sql`、`02_admin.sql`；
+- `gnilc-bootstrap` 测试依次执行 `01_rbac.sql`、`02_admin.sql`；
+- Bootstrap API 测试恢复基线数据时会重新执行 `02_admin.sql`。
+
+测试数据库固定为 Testcontainers 创建的 `gnilc_auth_test`，测试不会使用 H2、本机 MySQL、开发数据库或共享数据库。
+
+```bash
+# Docker-free 快速测试，不执行部署 SQL
+mvn test
+
+# 完整测试，使用 MySQL 8 和 Redis 8 Testcontainers
+mvn verify
+```
+
+## 安全要求
+
+- 不要把数据库密码写入 SQL、文档、脚本参数或提交记录；使用客户端交互式密码输入或安全的凭据管理方式。
+- 不要在共享数据库或未备份的现有数据库上试运行初始化脚本。
+- 自动化测试只能连接由 Testcontainers 管理的临时数据库。
+- 本目录只处理 MySQL 结构和基础数据，不负责 Redis 初始化。

@@ -1,0 +1,12 @@
+spring:
+  main:
+    banner-mode: "off"
+  sql:
+    init:
+      mode: never
+logging:
+  level:
+    root: warn
+    org.testcontainers: info
+    com.gnilc: info
+    com.gnilc.auth.authz.rbac.dao: warn

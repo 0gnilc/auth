@@ -1,0 +1,87 @@
+package com.gnilc.bootstrap;
+
+import com.gnilc.bootstrap.support.AdminApiTestSupport;
+import com.gnilc.bootstrap.support.BootstrapContainerContextInitializer;
+import com.gnilc.bootstrap.support.BootstrapTestConfiguration;
+import com.gnilc.test.annotation.ApiTest;
+import io.restassured.http.ContentType;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.ContextConfiguration;
+
+import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasItem;
+
+@ApiTest
+@Import(BootstrapTestConfiguration.class)
+@ContextConfiguration(initializers = BootstrapContainerContextInitializer.class)
+class AdminManagementApiIT extends AdminApiTestSupport {
+    @Autowired
+    private JdbcTemplate jdbc;
+
+    @Test
+    void createQueryUpdateRolesAndRemoveAdminThroughApi() {
+        TokenPair pair = loginAsDefaultAdmin();
+        String authorization = bearer(pair.accessToken());
+
+        given()
+                .header("Authorization", authorization)
+                .contentType(ContentType.JSON)
+                .body("""
+                        {
+                          "username":"api-user",
+                          "password":"Strong#123",
+                          "nickname":"API User",
+                          "homePath":"/workspace",
+                          "status":true,
+                          "roleCodes":["admin"]
+                        }
+                        """)
+                .when()
+                .post("/api/sys/admin/create")
+                .then()
+                .statusCode(200)
+                .body("code", equalTo(0));
+
+        Long adminId = jdbc.queryForObject(
+                "select id from sys_admin where username = 'api-user'", Long.class);
+        given()
+                .header("Authorization", authorization)
+                .contentType(ContentType.JSON)
+                .body("""
+                        {"username":"api-user","currentPage":1,"pageSize":10}
+                        """)
+                .when()
+                .post("/api/sys/admin/page")
+                .then()
+                .statusCode(200)
+                .body("data.totalCount", equalTo("1"))
+                .body("data.list.username", hasItem("api-user"));
+
+        given()
+                .header("Authorization", authorization)
+                .contentType(ContentType.JSON)
+                .body("{\"id\":" + adminId + ",\"nickname\":\"Updated User\"}")
+                .when()
+                .post("/api/sys/admin/update")
+                .then()
+                .statusCode(200);
+        assertThat(jdbc.queryForObject(
+                "select nickname from sys_admin where id = ?", String.class, adminId))
+                .isEqualTo("Updated User");
+
+        given()
+                .header("Authorization", authorization)
+                .when()
+                .post("/api/sys/admin/remove/{id}", adminId)
+                .then()
+                .statusCode(200);
+        assertThat(jdbc.queryForObject(
+                "select count(*) from sys_admin where id = ? and del = 0", Integer.class, adminId))
+                .isZero();
+    }
+}

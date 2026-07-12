@@ -5,16 +5,15 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.gnilc.auth</groupId>
-    <artifactId>access-control</artifactId>
+    <artifactId>gnilc-auth-parent</artifactId>
     <version>1.0.0</version>
     <packaging>pom</packaging>
-    <name>Access Control</name>
 
     <modules>
-        <module>access-control-core</module>
-        <module>access-control-rbac</module>
-        <module>access-control-system</module>
-        <module>access-control-bootstrap</module>
+        <module>gnilc-common</module>
+        <module>gnilc-auth</module>
+        <module>gnilc-system</module>
+        <module>gnilc-bootstrap</module>
     </modules>
 
     <properties>
@@ -22,6 +21,10 @@
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spring-boot.version>3.2.12</spring-boot.version>
+        <mybatis-plus.version>3.5.14</mybatis-plus.version>
+        <mysql.test.image>mysql:8.4.0</mysql.test.image>
+        <redis.test.image>redis:8-alpine</redis.test.image>
+        <rest-assured.version>5.5.6</rest-assured.version>
     </properties>
 
     <dependencyManagement>
@@ -37,9 +40,21 @@
             <dependency>
                 <groupId>com.baomidou</groupId>
                 <artifactId>mybatis-plus-bom</artifactId>
-                <version>3.5.14</version>
+                <version>${mybatis-plus.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>com.gnilc.auth</groupId>
+                <artifactId>gnilc-test-support</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>io.rest-assured</groupId>
+                <artifactId>rest-assured</artifactId>
+                <version>${rest-assured.version}</version>
             </dependency>
 
             <dependency>
@@ -95,7 +110,6 @@
                 <artifactId>fastjson</artifactId>
                 <version>2.0.17</version>
             </dependency>
-
         </dependencies>
     </dependencyManagement>
 
@@ -112,6 +126,11 @@
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>3.2.5</version>
                 </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-failsafe-plugin</artifactId>
+                    <version>3.2.5</version>
+                </plugin>
             </plugins>
         </pluginManagement>
 
@@ -119,6 +138,45 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <includes>
+                        <include>**/*Test.java</include>
+                    </includes>
+                    <excludes>
+                        <exclude>**/*IT.java</exclude>
+                    </excludes>
+                    <systemPropertyVariables>
+                        <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration>
+                    <includes>
+                        <include>**/*IT.java</include>
+                    </includes>
+                    <forkCount>1</forkCount>
+                    <reuseForks>true</reuseForks>
+                    <systemPropertyVariables>
+                        <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                        <app.test.mysql.image>${mysql.test.image}</app.test.mysql.image>
+                        <app.test.redis.image>${redis.test.image}</app.test.redis.image>
+                    </systemPropertyVariables>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

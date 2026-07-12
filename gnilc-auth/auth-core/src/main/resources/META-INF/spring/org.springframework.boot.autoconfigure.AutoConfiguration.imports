@@ -1,0 +1,3 @@
+com.gnilc.auth.authn.servlet.config.ServletAuthenticationAutoConfiguration
+com.gnilc.auth.authz.config.AuthorizationAutoConfiguration
+com.gnilc.auth.authz.servlet.config.ServletAuthorizationAutoConfiguration
