@@ -21,6 +21,7 @@ import com.gnilc.auth.authz.rbac.support.RbacContainerContextInitializer;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,6 +44,7 @@ class RbacServiceIT {
     @Autowired private MenuService menus;
     @Autowired private RoleMenuService roleMenus;
     @Autowired private DatabasePermissionCacheLoader cacheLoader;
+    @Autowired private JdbcTemplate jdbc;
 
     @Test
     void roleLifecycleEnforcesUniqueCodesAndProtectsBuiltInRoles() {
@@ -73,6 +75,12 @@ class RbacServiceIT {
 
         roles.removeRole(role.getId());
         assertThat(roles.getById(role.getId())).isNull();
+        assertThat(jdbc.queryForObject(
+                "select code from az_role where id = ?", String.class, role.getId()))
+                .isEqualTo("support-v2_del_" + role.getId());
+
+        roles.createRole(role("support-v2", "Replacement support"));
+        assertThat(roles.getRoleByCode("support-v2").getId()).isNotEqualTo(role.getId());
     }
 
     @Test
@@ -94,6 +102,14 @@ class RbacServiceIT {
 
         permissions.removePermission(stored.getId());
         assertThat(permissions.getById(stored.getId())).isNull();
+        assertThat(jdbc.queryForObject(
+                "select code from az_permission where id = ?", String.class, stored.getId()))
+                .isEqualTo("invoice:view_del_" + stored.getId());
+
+        permissions.createPermission(permission(
+                "invoice:view", "Replacement invoice view", "/invoices/**", false));
+        assertThat(permissions.getPermissionByCode("invoice:view").getId())
+                .isNotEqualTo(stored.getId());
     }
 
     @Test
@@ -126,6 +142,75 @@ class RbacServiceIT {
         userRole.setRoleIds(List.of());
         userRoles.updateUserRole(userRole);
         assertThat(users.getRoles(userId)).isEmpty();
+    }
+
+    @Test
+    void relationshipServicesHidePhysicalDuplicatesAndStillReplaceSets() {
+        roles.createRole(role("duplicate-relations", "Duplicate relations"));
+        RoleBo role = roles.getRoleByCode("duplicate-relations");
+        permissions.createPermission(permission(
+                "duplicates:read", "Read duplicates", "/duplicates/**", false));
+        PermissionBo permission = permissions.getPermissionByCode("duplicates:read");
+        MenuDto menuDto = menu("duplicates", "Duplicates", "/duplicates", MenuType.MENU, 0L, 10);
+        menuDto.setComponent("views/duplicates");
+        menus.createMenu(menuDto);
+        MenuBo menu = menus.getMenuByPath("/duplicates");
+        Long userId = users.createUser();
+
+        UserRoleDto userRole = new UserRoleDto();
+        userRole.setUserId(userId);
+        userRole.setRoleIds(List.of(role.getId()));
+        userRoles.updateUserRole(userRole);
+        RolePermissionDto rolePermission = new RolePermissionDto();
+        rolePermission.setRoleId(role.getId());
+        rolePermission.setPermissionIds(List.of(permission.getId()));
+        rolePermissions.updateRolePermission(rolePermission);
+        RoleMenuDto roleMenu = new RoleMenuDto();
+        roleMenu.setRoleId(role.getId());
+        roleMenu.setMenuIds(List.of(menu.getId()));
+        roleMenus.updateRoleMenu(roleMenu);
+
+        jdbc.update("""
+                insert into az_user_role (del, create_time, user_id, role_id)
+                values (0, now(), ?, ?)
+                """, userId, role.getId());
+        jdbc.update("""
+                insert into az_role_permission (del, create_time, role_id, permission_id)
+                values (0, now(), ?, ?)
+                """, role.getId(), permission.getId());
+        jdbc.update("""
+                insert into az_role_menu (del, create_time, role_id, menu_id)
+                values (0, now(), ?, ?)
+                """, role.getId(), menu.getId());
+
+        assertThat(activeRelationCount("az_user_role", "user_id", userId)).isEqualTo(2);
+        assertThat(activeRelationCount("az_role_permission", "role_id", role.getId())).isEqualTo(2);
+        assertThat(activeRelationCount("az_role_menu", "role_id", role.getId())).isEqualTo(2);
+        assertThat(userRoles.getRoleIds(userId)).containsExactly(role.getId());
+        assertThat(userRoles.getUserIds(role.getId())).containsExactly(userId);
+        assertThat(rolePermissions.getPermissionIds(role.getId())).containsExactly(permission.getId());
+        assertThat(rolePermissions.getRoleIds(permission.getId())).containsExactly(role.getId());
+        assertThat(roleMenus.getMenuIds(role.getId())).containsExactly(menu.getId());
+
+        userRole.setRoleIds(List.of());
+        userRoles.updateUserRole(userRole);
+        rolePermission.setPermissionIds(List.of());
+        rolePermissions.updateRolePermission(rolePermission);
+        roleMenu.setMenuIds(List.of());
+        roleMenus.updateRoleMenu(roleMenu);
+        assertThat(userRoles.getRoleIds(userId)).isEmpty();
+        assertThat(rolePermissions.getPermissionIds(role.getId())).isEmpty();
+        assertThat(roleMenus.getMenuIds(role.getId())).isEmpty();
+
+        userRole.setRoleIds(List.of(role.getId()));
+        userRoles.updateUserRole(userRole);
+        rolePermission.setPermissionIds(List.of(permission.getId()));
+        rolePermissions.updateRolePermission(rolePermission);
+        roleMenu.setMenuIds(List.of(menu.getId()));
+        roleMenus.updateRoleMenu(roleMenu);
+        assertThat(userRoles.getRoleIds(userId)).containsExactly(role.getId());
+        assertThat(rolePermissions.getPermissionIds(role.getId())).containsExactly(permission.getId());
+        assertThat(roleMenus.getMenuIds(role.getId())).containsExactly(menu.getId());
     }
 
     @Test
@@ -192,5 +277,12 @@ class RbacServiceIT {
         dto.setOrder(order);
         dto.setStatus(true);
         return dto;
+    }
+
+    private int activeRelationCount(String table, String ownerColumn, Long ownerId) {
+        return jdbc.queryForObject(
+                "select count(*) from " + table + " where " + ownerColumn + " = ? and del = 0",
+                Integer.class,
+                ownerId);
     }
 }

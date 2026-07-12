@@ -72,6 +72,10 @@ Servlet 授权命名遵循两层语言：`Web*` 用于功能/配置入口，`Ser
 
 后台管理员会话是后台管理员用户认证成功后形成的登录会话事实，包含访问令牌、刷新令牌及其配对关系。会话模块负责签发、校验、刷新、撤销和清理后台管理员会话；令牌格式、Redis key 组织、TTL、刷新令牌与访问令牌配对规则属于该模块的实现细节，不应泄漏到 Controller 或后台管理员用户资料维护流程中。
 
+### 默认管理员基线（Default Admin Baseline）
+
+默认管理员基线是系统完成初始化后必须存在的内置后台管理员用户、对应的 RBAC 授权主体、内置管理员角色及其必要绑定。恢复基线只恢复系统身份及必要关系，不覆盖密码、昵称等可维护的管理员资料。
+
 ### 系统 Auth 组合包（System Auth Composition）
 
 `com.gnilc.system.auth.*` 是后台管理系统 auth 组合包，放置后台管理员会话认证和系统访问拒绝响应等系统专属 concrete adapter。它属于 `com.gnilc.system.*` 的编排能力，不属于纯 `com.gnilc.auth.authn.*` 或纯 `com.gnilc.auth.authz.*` 核心包。

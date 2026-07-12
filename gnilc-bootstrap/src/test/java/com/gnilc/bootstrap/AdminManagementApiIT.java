@@ -49,6 +49,30 @@ class AdminManagementApiIT extends AdminApiTestSupport {
 
         Long adminId = jdbc.queryForObject(
                 "select id from sys_admin where username = 'api-user'", Long.class);
+        Long userId = jdbc.queryForObject(
+                "select user_id from sys_admin where id = ?", Long.class, adminId);
+        given()
+                .header("Authorization", authorization)
+                .contentType(ContentType.JSON)
+                .body("{\"id\":" + adminId + ",\"roleCodes\":[]}")
+                .when()
+                .post("/api/sys/admin/update-roles")
+                .then()
+                .statusCode(200)
+                .body("code", equalTo(0));
+        assertThat(activeRoleBindingCount(userId)).isZero();
+
+        given()
+                .header("Authorization", authorization)
+                .contentType(ContentType.JSON)
+                .body("{\"id\":" + adminId + ",\"roleCodes\":[\"admin\"]}")
+                .when()
+                .post("/api/sys/admin/update-roles")
+                .then()
+                .statusCode(200)
+                .body("code", equalTo(0));
+        assertThat(activeRoleBindingCount(userId)).isEqualTo(1);
+
         given()
                 .header("Authorization", authorization)
                 .contentType(ContentType.JSON)
@@ -83,5 +107,12 @@ class AdminManagementApiIT extends AdminApiTestSupport {
         assertThat(jdbc.queryForObject(
                 "select count(*) from sys_admin where id = ? and del = 0", Integer.class, adminId))
                 .isZero();
+    }
+
+    private int activeRoleBindingCount(Long userId) {
+        return jdbc.queryForObject(
+                "select count(*) from az_user_role where user_id = ? and del = 0",
+                Integer.class,
+                userId);
     }
 }

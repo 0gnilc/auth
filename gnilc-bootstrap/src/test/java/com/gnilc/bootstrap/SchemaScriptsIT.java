@@ -88,7 +88,17 @@ class SchemaScriptsIT {
         assertThat(count("az_user", "id = " + userId + " AND del = 0")).isEqualTo(1);
 
         jdbc.update("UPDATE az_user_role SET del = 1 WHERE user_id = ?", userId);
-        jdbc.update("UPDATE sys_admin SET del = 1 WHERE username = 'admin'");
+        jdbc.update("""
+                UPDATE sys_admin
+                   SET del = 1,
+                       password = 'operator-managed-hash',
+                       nickname = 'Operator Managed',
+                       avatar = 'https://example.test/avatar.png',
+                       description = 'Operator managed description',
+                       home_path = '/operator-home',
+                       status = 0
+                 WHERE username = 'admin'
+                """);
         jdbc.update("UPDATE az_user SET del = 1 WHERE id = ?", userId);
         jdbc.update("UPDATE az_role SET del = 1, built_in = 0 WHERE code = 'admin'");
 
@@ -98,6 +108,17 @@ class SchemaScriptsIT {
         assertThat(count("az_role", "code = 'admin'")).isEqualTo(1);
         assertThat(count("sys_admin", "username = 'admin' AND del = 0")).isEqualTo(1);
         assertThat(count("sys_admin", "username = 'admin'")).isEqualTo(1);
+        assertThat(jdbc.queryForMap("""
+                SELECT password, nickname, avatar, description, home_path, status
+                  FROM sys_admin
+                 WHERE username = 'admin'
+                """))
+                .containsEntry("password", "operator-managed-hash")
+                .containsEntry("nickname", "Operator Managed")
+                .containsEntry("avatar", "https://example.test/avatar.png")
+                .containsEntry("description", "Operator managed description")
+                .containsEntry("home_path", "/operator-home")
+                .containsEntry("status", true);
         assertThat(count("az_user", "id = " + userId + " AND del = 0")).isEqualTo(1);
         assertThat(defaultAdminRoleBindingCount()).isEqualTo(1);
     }
