@@ -12,8 +12,8 @@ Java 包按职责区分：`com.gnilc.auth.authn.*` 表示认证，`com.gnilc.aut
 - `gnilc-common/gnilc-common-core`（`gnilc-common-core`）：共享响应、分页、Bean 拷贝、前置条件和异常工具。
 - `gnilc-common/gnilc-test-support`（`gnilc-test-support`）：无业务语义的共享测试容器、清理和测试工具。
 - `gnilc-auth`：认证与授权模块的 parent/aggregator。
-- `gnilc-auth/auth-core`（`auth-core`）：访问控制核心注解、决策、权限提供者以及可选 Servlet 认证/授权 adapter。
-- `gnilc-auth/auth-rbac`（`auth-rbac`）：RBAC 实体、Mapper、服务、Controller、权限提供者和缓存行为。
+- `gnilc-auth/gnilc-auth-core`（`gnilc-auth-core`）：访问控制核心注解、决策、权限提供者以及可选 Servlet 认证/授权 adapter。
+- `gnilc-auth/gnilc-auth-rbac`（`gnilc-auth-rbac`）：RBAC 实体、Mapper、服务、Controller、权限提供者和缓存行为。
 - `gnilc-system`：后台管理员资料、会话和系统级 auth 编排。
 - `gnilc-bootstrap`：可执行应用和全应用集成边界。
 

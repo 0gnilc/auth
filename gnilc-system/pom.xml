@@ -37,7 +37,7 @@
 
         <dependency>
             <groupId>com.gnilc.auth</groupId>
-            <artifactId>auth-rbac</artifactId>
+            <artifactId>gnilc-auth-rbac</artifactId>
             <version>1.0.0</version>
             <scope>compile</scope>
         </dependency>

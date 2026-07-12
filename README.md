@@ -12,8 +12,8 @@ Packages remain purpose-specific: `com.gnilc.auth.authn.*` is authentication, `c
 - `gnilc-common/gnilc-common-core` (`gnilc-common-core`): shared response, paging, bean-copy, validation, and exception utilities.
 - `gnilc-common/gnilc-test-support` (`gnilc-test-support`): behavior-neutral shared test containers, cleanup, and test utilities.
 - `gnilc-auth`: parent/aggregator for authentication and authorization modules.
-- `gnilc-auth/auth-core` (`auth-core`): core access-control annotations, decisions, permission providers, and optional Servlet authentication/authorization adapters.
-- `gnilc-auth/auth-rbac` (`auth-rbac`): RBAC entities, mappers, services, controllers, permission providers, and cache behavior.
+- `gnilc-auth/gnilc-auth-core` (`gnilc-auth-core`): core access-control annotations, decisions, permission providers, and optional Servlet authentication/authorization adapters.
+- `gnilc-auth/gnilc-auth-rbac` (`gnilc-auth-rbac`): RBAC entities, mappers, services, controllers, permission providers, and cache behavior.
 - `gnilc-system`: administrator profiles, sessions, and system-level auth composition.
 - `gnilc-bootstrap`: executable application and whole-application integration boundary.
 

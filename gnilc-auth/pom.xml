@@ -13,8 +13,8 @@
     <packaging>pom</packaging>
 
     <modules>
-        <module>auth-core</module>
-        <module>auth-rbac</module>
+        <module>gnilc-auth-core</module>
+        <module>gnilc-auth-rbac</module>
     </modules>
 
     <properties>

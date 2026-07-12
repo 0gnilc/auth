@@ -10,7 +10,7 @@
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
-    <artifactId>auth-rbac</artifactId>
+    <artifactId>gnilc-auth-rbac</artifactId>
 
     <dependencies>
         <dependency>
@@ -20,7 +20,7 @@
 
         <dependency>
             <groupId>com.gnilc.auth</groupId>
-            <artifactId>auth-core</artifactId>
+            <artifactId>gnilc-auth-core</artifactId>
             <version>${project.version}</version>
         </dependency>
 

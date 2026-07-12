@@ -10,7 +10,7 @@
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
-    <artifactId>auth-core</artifactId>
+    <artifactId>gnilc-auth-core</artifactId>
 
     <dependencies>
         <dependency>

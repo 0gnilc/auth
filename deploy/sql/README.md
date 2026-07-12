@@ -84,7 +84,7 @@ deploy/sql/<script>.sql -> sql/schema/<script>.sql
 
 当前测试加载方式如下：
 
-- `auth-rbac` 的 `RbacSchemaIT` 及模块集成测试只加载 `sql/schema/01_rbac.sql`；
+- `gnilc-auth-rbac` 的 `RbacSchemaIT` 及模块集成测试只加载 `sql/schema/01_rbac.sql`；
 - `gnilc-system` 的 `AdminSchemaIT` 及模块集成测试依次加载 `01_rbac.sql`、`02_admin.sql`；
 - `gnilc-system` 的 Admin API 测试恢复基线数据时会重新执行 `02_admin.sql`；
 - `gnilc-bootstrap` 只验证最终应用组合和启动，不再复制或执行部署 SQL。
