@@ -10,7 +10,6 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
-import org.springframework.transaction.annotation.Transactional;
 
 import javax.sql.DataSource;
 
@@ -19,7 +18,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest(classes = AccessControlApplication.class)
 @ActiveProfiles("test")
 @ContextConfiguration(initializers = BootstrapContainerContextInitializer.class)
-@Transactional
 class SchemaScriptsIT {
     @Autowired
     private JdbcTemplate jdbc;
@@ -53,7 +51,7 @@ class SchemaScriptsIT {
     }
 
     @Test
-    void deploymentScriptsAreIdempotentAndRestoreMissingAdminRoleBinding() {
+    void deploymentScriptsAreIdempotentAndRestoreDefaultAdminBaseline() {
         runScript("sql/schema/01_rbac.sql");
         runScript("sql/schema/02_admin.sql");
         runScript("sql/schema/01_rbac.sql");
@@ -70,6 +68,8 @@ class SchemaScriptsIT {
                    AND u.del = 0
                 """, Integer.class)).isEqualTo(1);
         assertThat(defaultAdminRoleBindingCount()).isEqualTo(1);
+        Long userId = jdbc.queryForObject(
+                "SELECT user_id FROM sys_admin WHERE username = 'admin'", Long.class);
 
         jdbc.update("""
                 DELETE ur
@@ -81,6 +81,24 @@ class SchemaScriptsIT {
                 """);
         runScript("sql/schema/02_admin.sql");
 
+        assertThat(defaultAdminRoleBindingCount()).isEqualTo(1);
+
+        jdbc.update("DELETE FROM az_user WHERE id = ?", userId);
+        runScript("sql/schema/02_admin.sql");
+        assertThat(count("az_user", "id = " + userId + " AND del = 0")).isEqualTo(1);
+
+        jdbc.update("UPDATE az_user_role SET del = 1 WHERE user_id = ?", userId);
+        jdbc.update("UPDATE sys_admin SET del = 1 WHERE username = 'admin'");
+        jdbc.update("UPDATE az_user SET del = 1 WHERE id = ?", userId);
+        jdbc.update("UPDATE az_role SET del = 1, built_in = 0 WHERE code = 'admin'");
+
+        runScript("sql/schema/02_admin.sql");
+
+        assertThat(count("az_role", "code = 'admin' AND del = 0 AND built_in = 1")).isEqualTo(1);
+        assertThat(count("az_role", "code = 'admin'")).isEqualTo(1);
+        assertThat(count("sys_admin", "username = 'admin' AND del = 0")).isEqualTo(1);
+        assertThat(count("sys_admin", "username = 'admin'")).isEqualTo(1);
+        assertThat(count("az_user", "id = " + userId + " AND del = 0")).isEqualTo(1);
         assertThat(defaultAdminRoleBindingCount()).isEqualTo(1);
     }
 

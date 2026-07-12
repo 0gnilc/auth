@@ -25,13 +25,6 @@
         </dependency>
 
         <dependency>
-            <groupId>com.baomidou</groupId>
-            <artifactId>mybatis-plus-spring-boot3-starter-test</artifactId>
-            <version>${mybatis-plus.version}</version>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
             <groupId>com.gnilc.auth</groupId>
             <artifactId>auth-rbac</artifactId>
             <version>1.0.0</version>
@@ -60,6 +53,22 @@
         </dependency>
 
     </dependencies>
+
+    <build>
+        <testResources>
+            <testResource>
+                <directory>src/test/resources</directory>
+            </testResource>
+            <testResource>
+                <directory>${maven.multiModuleProjectDirectory}/deploy/sql</directory>
+                <targetPath>sql/schema</targetPath>
+                <includes>
+                    <include>01_rbac.sql</include>
+                    <include>02_admin.sql</include>
+                </includes>
+            </testResource>
+        </testResources>
+    </build>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>

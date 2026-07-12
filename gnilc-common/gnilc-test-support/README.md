@@ -182,7 +182,7 @@ SQL 应由使用方通过 Maven `testResources` 放入测试 classpath。例如�
 
 ## 清理安全机制
 
-`DatabaseCleaner` 会截断当前 schema 中除 Flyway、Liquibase 元数据表之外的业务表；`RedisCleaner` 会执行 `FLUSHDB`。这些操作具有破坏性，因此 `TestEnvironmentGuard` 要求同时满足：
+`DatabaseCleaner` 会截断当前 schema 中除 Flyway、Liquibase、Quartz 和 Seata 元数据表之外的业务表；`RedisCleaner` 会执行 `FLUSHDB`。这些操作具有破坏性，因此 `TestEnvironmentGuard` 要求同时满足：
 
 - Spring 激活 `test` profile；
 - `app.test.cleanup.enabled=true`；

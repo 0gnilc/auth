@@ -2,6 +2,7 @@ package com.gnilc.auth.authz.rbac.provider.cache.redis;
 
 import com.gnilc.auth.authz.rbac.provider.cache.PermissionCacheResetCommand;
 import com.gnilc.auth.authz.rbac.provider.cache.PermissionCacheResetExecutor;
+import com.gnilc.test.cleanup.RedisCleaner;
 import com.gnilc.test.container.RedisContainerContextInitializer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -10,7 +11,6 @@ import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.redis.connection.RedisConnection;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.listener.ChannelTopic;
@@ -34,9 +34,7 @@ class PermissionCacheRedisIT {
 
     @AfterEach
     void cleanRedis() {
-        try (RedisConnection connection = connectionFactory.getConnection()) {
-            connection.serverCommands().flushDb();
-        }
+        new RedisCleaner(connectionFactory).flushDatabase();
     }
 
     @Test

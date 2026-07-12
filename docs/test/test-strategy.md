@@ -20,12 +20,12 @@ the execution lane:
 - API baseline reset orchestration;
 - RestAssured random-port setup.
 
-The deployment scripts under `deploy/sql` are the only schema input. They are
-copied to the test classpath by Maven and initialized in the temporary MySQL
-database. Each owning module declares which deployment scripts and MyBatis
-properties its tests need; the shared support module contains no RBAC or admin
-schema knowledge. Module tests never use H2, a local database, or a local Redis
-service.
+The deployment scripts under `deploy/sql` are the only schema input. The owning
+modules copy only their required scripts to the test classpath and initialize
+them in the temporary MySQL database. Each owning module declares which
+deployment scripts and MyBatis properties its tests need; the shared support
+module contains no RBAC or admin schema knowledge. Module tests never use H2, a
+local database, or a local Redis service.
 
 ## Isolation
 

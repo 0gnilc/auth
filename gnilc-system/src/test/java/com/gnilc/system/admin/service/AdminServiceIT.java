@@ -12,11 +12,11 @@ import com.gnilc.system.admin.entity.dto.AdminRoleDto;
 import com.gnilc.system.admin.entity.vo.AdminTokenVo;
 import com.gnilc.system.support.SystemTestApplication;
 import com.gnilc.system.support.SystemContainerContextInitializer;
+import com.gnilc.test.cleanup.RedisCleaner;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.data.redis.connection.RedisConnection;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
@@ -39,9 +39,7 @@ class AdminServiceIT {
 
     @AfterEach
     void cleanRedis() {
-        try (RedisConnection connection = redis.getConnection()) {
-            connection.serverCommands().flushDb();
-        }
+        new RedisCleaner(redis).flushDatabase();
     }
 
     @Test

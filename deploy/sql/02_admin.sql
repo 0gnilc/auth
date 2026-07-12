@@ -21,28 +21,46 @@ CREATE TABLE IF NOT EXISTS sys_admin (
     KEY idx_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='后台管理员';
 
+UPDATE az_role
+SET del = 0,
+    built_in = 1
+WHERE code = 'admin'
+  AND (del <> 0 OR built_in <> 1);
+
 INSERT INTO az_role (del, create_time, update_time, code, name, remark, built_in)
 SELECT 0, NOW(), NULL, 'admin', '管理员', '系统管理员', 1
 WHERE NOT EXISTS (
     SELECT 1
     FROM az_role
     WHERE code = 'admin'
-      AND del = 0
 );
 
 SET @default_admin_existing_user_id := (
     SELECT user_id
     FROM sys_admin
     WHERE username = 'admin'
-      AND del = 0
     LIMIT 1
 );
+
+INSERT INTO az_user (id, del, create_time, update_time)
+SELECT @default_admin_existing_user_id, 0, NOW(), NULL
+WHERE @default_admin_existing_user_id IS NOT NULL
+  AND NOT EXISTS (
+      SELECT 1
+      FROM az_user
+      WHERE id = @default_admin_existing_user_id
+  );
 
 INSERT INTO az_user (del, create_time, update_time)
 SELECT 0, NOW(), NULL
 WHERE @default_admin_existing_user_id IS NULL;
 
 SET @default_admin_user_id := COALESCE(@default_admin_existing_user_id, LAST_INSERT_ID());
+
+UPDATE az_user
+SET del = 0
+WHERE id = @default_admin_user_id
+  AND del <> 0;
 
 INSERT INTO sys_admin (
     del,
@@ -71,6 +89,11 @@ SELECT
     1
 WHERE @default_admin_existing_user_id IS NULL;
 
+UPDATE sys_admin
+SET del = 0
+WHERE username = 'admin'
+  AND del <> 0;
+
 SET @default_admin_role_id := (
     SELECT id
     FROM az_role
@@ -78,6 +101,15 @@ SET @default_admin_role_id := (
       AND del = 0
     LIMIT 1
 );
+
+UPDATE az_user_role
+SET del = 0,
+    update_time = NOW()
+WHERE user_id = @default_admin_user_id
+  AND role_id = @default_admin_role_id
+  AND del <> 0
+ORDER BY id
+LIMIT 1;
 
 INSERT INTO az_user_role (del, create_time, update_time, user_id, role_id)
 SELECT 0, NOW(), NULL, @default_admin_user_id, @default_admin_role_id

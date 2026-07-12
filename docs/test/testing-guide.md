@@ -2,8 +2,7 @@
 
 > 文件用途：规范项目测试编写、执行、维护和代码评审中的测试要求。  
 > 适用技术栈：Spring Boot 3、Java 17+、MySQL 8、Redis 8、MyBatis-Plus（`com.baomidou`）。  
-> 推荐放置位置：仓库根目录。  
-> 建议文件名：`TESTING_EXECUTION_SPEC.md` 或 `TESTING_EXECUTION_SPEC_UPDATED.md`。
+> 当前文件：`docs/test/testing-guide.md`。
 
 ---
 
@@ -33,14 +32,15 @@ RestAssured
 
 编写测试时，不追求“理论完整”，而是编写能在当前项目中落地执行、能在 CI 中稳定运行、能定位真实问题的测试。
 
-本项目测试分为五类：
+本项目测试分为六类：
 
 ```text
 1. 纯单元测试：*Test
 2. Controller 切片测试：*ControllerTest
 3. MyBatis-Plus Mapper / SQL 测试：*MapperIT
-4. Spring Boot 集成测试：*IT
-5. RANDOM_PORT API 接口测试：*ApiIT
+4. Redis 行为测试：*CacheIT
+5. Spring Boot 集成测试：*IT
+6. RANDOM_PORT API 接口测试：*ApiIT
 ```
 
 推荐比例：
@@ -49,9 +49,14 @@ RestAssured
 纯单元测试：30%
 Controller 切片测试：10%
 Mapper / SQL 测试：20%
-Spring Boot 集成测试：30%
+Redis 行为测试：10%
+Spring Boot 集成测试：20%
 RANDOM_PORT API 接口测试：10%
 ```
+
+所有测试及其专用支持代码都放在所属 Maven 模块的 `src/test` 下，不使用 `src/intg-test` source set。
+
+本仓库的集成测试只允许使用 Testcontainers 提供的 MySQL 8 和 Redis 8，不连接本机、开发或共享服务。下文的 `NAMESPACE_RESET` 是未来启用并行隔离时的设计约束，不代表当前允许在共享环境执行测试。
 
 编写测试时必须优先保证：
 
@@ -71,7 +76,7 @@ RANDOM_PORT API 接口测试：10%
 ### 2.1 禁止使用 H2 替代 MySQL 8
 
 本项目生产数据库是 MySQL 8。  
-编写 Mapper、SQL、集成测试、接口测试时，必须使用 Testcontainers MySQL 8 或 CI 专用隔离 MySQL 8 环境，优先 Testcontainers。
+编写 Mapper、SQL、集成测试、接口测试时，必须使用 Testcontainers MySQL 8。
 
 禁止：
 
@@ -86,7 +91,7 @@ H2
 原因：
 
 ```text
-MyBatis-Plus 的分页、Wrapper、逻辑删除、乐观锁、自动填充、自定义 XML SQL、唯一索引、datetime/timestamp 行为都可能依赖MySQL 8 8。
+MyBatis-Plus 的分页、Wrapper、逻辑删除、乐观锁、自动填充、自定义 XML SQL、唯一索引、datetime/timestamp 行为都可能依赖 MySQL 8。
 ```
 
 ---
@@ -120,7 +125,6 @@ TTL
 
 ```text
 Testcontainers GenericContainer redis:8-alpine
-CI 专用隔离 Redis 8 环境，但优先 Testcontainers
 ```
 
 ---
@@ -134,7 +138,7 @@ CI 专用隔离 Redis 8 环境，但优先 Testcontainers
 只测 Controller 参数校验 / JSON / 状态码 -> @WebMvcTest
 只测 Mapper / SQL -> @MybatisPlusTest + MySQL 8 Testcontainers
 测 Controller + Service + Mapper + MySQL/Redis -> @SpringBootTest + MockMvc + Testcontainers
-测RANDOM_PORT API 合同 -> @SpringBootTest(RANDOM_PORT) + RestAssured + Testcontainers
+测 RANDOM_PORT API 合同 -> @SpringBootTest(RANDOM_PORT) + RestAssured + Testcontainers
 ```
 
 ---
@@ -176,7 +180,7 @@ BASELINE_RESET 不是重启容器，也不是重建 schema。
 4. 不允许依赖 @Transactional 回滚RANDOM_PORT API 请求产生的数据。
 5. 不允许连接开发库、共享测试库、共享 Redis。
 6. Testcontainers 独占环境下允许 TRUNCATE 业务表和 Redis FLUSHDB。
-7. 共享环境或并行测试环境下禁止全库清理，必须切换到 NAMESPACE_RESET。
+7. 本仓库不在共享环境运行测试；未来若启用并行隔离，必须先实现 NAMESPACE_RESET 并同步更新仓库规范。
 ```
 
 ---
@@ -326,7 +330,7 @@ token
 ```text
 @SpringBootTest
 Testcontainers Redis 8
-Redis 8 容器 读写断言
+Redis 8 容器读写断言
 ```
 
 必须断言：
@@ -770,7 +774,7 @@ project-test-support 模块
     <!-- MyBatis-Plus 官方测试 starter，提供 @MybatisPlusTest -->
     <dependency>
         <groupId>com.baomidou</groupId>
-        <artifactId>mybatis-plus-boot-starter-test</artifactId>
+        <artifactId>mybatis-plus-spring-boot3-starter-test</artifactId>
         <scope>test</scope>
     </dependency>
 
@@ -1857,7 +1861,7 @@ TypeHandler
 
 ## 11. 集成测试编写规则
 
-集成测试主力使用 MockMvc，不启动RANDOM_PORT。
+集成测试主力使用 MockMvc，不启动 RANDOM_PORT。
 
 ```java
 @IntegrationTest
@@ -2014,7 +2018,7 @@ class UserApiIT extends ApiTestSupport {
 必须覆盖少量高价值场景：
 
 ```text
-应用RANDOM_PORT启动
+应用 RANDOM_PORT 启动
 登录成功获取 token
 携带 token 访问成功
 不携带 token 返回 401
@@ -2099,8 +2103,8 @@ newman run docs/postman/project.postman_collection.json \
 Maven：
 
 ```bash
-./mvnw test
-./mvnw verify
+mvn test
+mvn verify
 ```
 
 Gradle：
@@ -2189,8 +2193,8 @@ RANDOM_PORT API 合同 -> *ApiIT
 ### 16.4 最后运行测试
 
 ```bash
-./mvnw test
-./mvnw verify
+mvn test
+mvn verify
 ```
 
 ---
@@ -2278,7 +2282,7 @@ Redis 最终状态
 
 ```text
 @MybatisPlusTest
-mybatis-plus-boot-starter-test
+mybatis-plus-spring-boot3-starter-test
 Mapper / SQL 测试
 ```
 
@@ -2387,7 +2391,7 @@ https://testcontainers.com/guides/testing-spring-boot-rest-api-using-testcontain
 ```text
 @WebMvcTest Controller 切片测试
 Validator 单元测试
-@SpringBootTest(RANDOM_PORT) RANDOM_PORT测试
+@SpringBootTest(RANDOM_PORT) RANDOM_PORT 测试
 MySQL Testcontainers 示例
 ```
 
@@ -2492,7 +2496,7 @@ https://github.com/Gtomika/spring-boot-testing-demo/blob/master/build.gradle
 
 ```text
 *MapperIT
-MySQL 8 8
+MySQL 8
 正常查询
 边界条件
 空结果
@@ -2564,9 +2568,9 @@ RANDOM_PORT API
 2. 优先使用项目已有测试工具类。
 3. 不要引入与项目技术栈不一致的测试框架。
 4. 单元测试不启动 Spring。
-5. Mapper / SQL 测试必须使用MySQL 8 8。
-6. Redis 行为测试必须使用Redis 8 容器 8。
-7. 大量业务集成测试使用 MockMvc，不使用RANDOM_PORT。
+5. Mapper / SQL 测试必须使用 MySQL 8。
+6. Redis 行为测试必须使用 Redis 8 容器。
+7. 大量业务集成测试使用 MockMvc，不使用 RANDOM_PORT。
 8. RANDOM_PORT ApiIT 只覆盖核心链路。
 9. RANDOM_PORT ApiIT 默认使用 BASELINE_RESET 恢复测试初始化状态。
 10. 共享环境或并行测试必须使用 NAMESPACE_RESET，禁止全库清理。

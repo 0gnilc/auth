@@ -14,6 +14,7 @@ import java.util.Set;
 public final class DatabaseCleaner {
     private static final Set<String> PRESERVED_TABLES = Set.of(
             "flyway_schema_history", "databasechangelog", "databasechangeloglock");
+    private static final List<String> PRESERVED_PREFIXES = List.of("qrtz_", "undo_log");
 
     private final JdbcTemplate jdbcTemplate;
 
@@ -34,7 +35,7 @@ public final class DatabaseCleaner {
                  WHERE table_schema = DATABASE()
                    AND table_type = 'BASE TABLE'
                 """, String.class).stream()
-                .filter(table -> !PRESERVED_TABLES.contains(table.toLowerCase(Locale.ROOT)))
+                .filter(this::isBusinessTable)
                 .sorted()
                 .toList();
         jdbcTemplate.execute((ConnectionCallback<Void>) connection -> {
@@ -51,6 +52,12 @@ public final class DatabaseCleaner {
             }
             return null;
         });
+    }
+
+    private boolean isBusinessTable(String table) {
+        String name = table.toLowerCase(Locale.ROOT);
+        return !PRESERVED_TABLES.contains(name)
+                && PRESERVED_PREFIXES.stream().noneMatch(name::startsWith);
     }
 
     private String quote(String identifier) {

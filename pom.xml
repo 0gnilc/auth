@@ -114,19 +114,6 @@
     </dependencyManagement>
 
     <build>
-        <testResources>
-            <testResource>
-                <directory>src/test/resources</directory>
-            </testResource>
-            <testResource>
-                <directory>${maven.multiModuleProjectDirectory}/deploy/sql</directory>
-                <targetPath>sql/schema</targetPath>
-                <includes>
-                    <include>*.sql</include>
-                </includes>
-            </testResource>
-        </testResources>
-
         <pluginManagement>
             <plugins>
                 <plugin>
