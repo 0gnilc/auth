@@ -26,7 +26,7 @@ jobs:
       - name: Set up Node.js 24
         uses: actions/setup-node@v4
         with:
-          node-version: "24"
+          node-version: '24'
           cache: pnpm
 
       - name: Install dependencies
@@ -35,11 +35,28 @@ jobs:
       - name: Typecheck admin
         run: pnpm --filter=@app/admin run typecheck
 
-      - name: Test server task runner
-        run: pnpm --filter=@app/server run test:scripts
-
       - name: Build admin
         run: pnpm build:admin
+
+  server-task-runner:
+    name: Server task runner (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Test server task runner
+        run: node --test apps/server/src/test/scripts/maven.test.mjs
 
   fast-tests:
     name: Fast tests
@@ -53,7 +70,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: '17'
           cache: maven
 
       - name: Run Surefire tests
@@ -65,7 +82,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: fast-tests-surefire-reports
-          path: "apps/server/**/target/surefire-reports/**"
+          path: 'apps/server/**/target/surefire-reports/**'
           if-no-files-found: ignore
 
   full-verification:
@@ -81,7 +98,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: '17'
           cache: maven
 
       # Maven verify runs Testcontainers integration tests and requires Docker.

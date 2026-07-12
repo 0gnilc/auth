@@ -9,7 +9,7 @@ import {
 
 test('uses the Maven wrapper for Unix-like platforms when present', () => {
   const executable = resolveMavenExecutable({
-    fileExists: (path) => path.endsWith('/mvnw'),
+    fileExists: (path) => path.endsWith('mvnw'),
     platform: 'linux',
     serverDir: '/repo',
   });
@@ -23,7 +23,7 @@ test('uses the Maven wrapper for Unix-like platforms when present', () => {
 
 test('uses the Windows Maven wrapper through the command shell when present', () => {
   const executable = resolveMavenExecutable({
-    fileExists: (path) => path.endsWith('/mvnw.cmd'),
+    fileExists: (path) => path.endsWith('mvnw.cmd'),
     platform: 'win32',
     serverDir: '/repo with spaces',
   });
