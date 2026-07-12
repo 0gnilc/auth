@@ -56,6 +56,8 @@ RANDOM_PORT API 接口测试：10%
 
 所有测试及其专用支持代码都放在所属 Maven 模块的 `src/test` 下，不使用 `src/intg-test` source set。
 
+测试包应镜像目标生产代码包：单类行为测试放在目标类的同名包下，并以目标类命名；只有验证真实协作关系的集成场景才允许覆盖同一边界内的多个类。禁止把不同 `context`、`provider`、`filter`、Controller 或工具类行为集中到模块根包的总括测试类中。
+
 本仓库的集成测试只允许使用 Testcontainers 提供的 MySQL 8 和 Redis 8，不连接本机、开发或共享服务。下文的 `NAMESPACE_RESET` 是未来启用并行隔离时的设计约束，不代表当前允许在共享环境执行测试。
 
 编写测试时必须优先保证：
@@ -495,15 +497,16 @@ app
     └── AppBaselineDataSeeder.java
 ```
 
-多模块项目，如果只有启动模块跑RANDOM_PORT API 测试：
+多模块项目，业务 API 测试及其 seed 默认放在拥有该 API 的功能模块：
 
 ```text
-app-bootstrap
-└── src/test/java/com/example/app/support/seed
-    └── AppBaselineDataSeeder.java
+user-module
+└── src/test/java/com/example/user
+    ├── api/UserApiIT.java
+    └── support/seed/UserApiBaselineDataSeeder.java
 ```
 
-多模块项目，如果多个模块都需要同一套应用级 seed：
+只有无法由单个功能模块启动、必须验证最终应用跨模块组合时，才把该场景的 seed 放在启动模块。多个模块确实需要同一套业务 seed 时，可以建立独立的应用测试支持模块：
 
 ```text
 app-test-support
@@ -590,7 +593,7 @@ order-module
 | `TestDataResetManager` | 否 | 全项目 | `project-test-support` |
 | `BaselineDataSeeder` 接口 | 否 | 全项目 | `project-test-support` |
 | `NamespaceDataCleaner` 接口 | 否 | 全项目 | `project-test-support` |
-| 默认 admin / 角色 / 权限 seed | 是 | 应用级 | `app-bootstrap/src/test` 或 `app-test-support` |
+| 默认 admin / 角色 / 权限 seed | 是 | 功能模块 API | 所属功能模块 `src/test/.../support` |
 | `UserTestDataFactory` | 是 | user 模块 | `user-module/src/test/.../support` |
 | `OrderNamespaceDataCleaner` | 是 | order 模块 | `order-module/src/test/.../support` |
 | 只服务单个测试类的 helper | 是 | 单个测试类 | 测试类内部 |
@@ -674,25 +677,28 @@ root
 │           └── ApiTest.java
 │
 ├── app-bootstrap
-│   └── src/test/java/com/example/app/support
-│       ├── seed
-│       │   └── AppBaselineDataSeeder.java
-│       ├── auth
-│       │   └── TestLoginHelper.java
-│       └── config
-│           └── AppTestSupportConfig.java
+│   └── src/test/java/com/example/app
+│       └── ApplicationContextIT.java
 │
 ├── user-module
-│   └── src/test/java/com/example/user/support
-│       ├── UserTestDataFactory.java
-│       ├── UserNamespaceDataCleaner.java
-│       └── UserTestSupportConfig.java
+│   └── src/test/java/com/example/user
+│       ├── api
+│       │   └── UserApiIT.java
+│       └── support
+│           ├── UserApiBaselineDataSeeder.java
+│           ├── UserTestDataFactory.java
+│           ├── UserNamespaceDataCleaner.java
+│           └── UserTestSupportConfig.java
 │
 └── order-module
-    └── src/test/java/com/example/order/support
-        ├── OrderTestDataFactory.java
-        ├── OrderNamespaceDataCleaner.java
-        └── OrderTestSupportConfig.java
+    └── src/test/java/com/example/order
+        ├── api
+        │   └── OrderApiIT.java
+        └── support
+            ├── OrderApiBaselineDataSeeder.java
+            ├── OrderTestDataFactory.java
+            ├── OrderNamespaceDataCleaner.java
+            └── OrderTestSupportConfig.java
 ```
 
 依赖方向：
@@ -701,8 +707,6 @@ root
 user-module test scope -> project-test-support
 order-module test scope -> project-test-support
 app-bootstrap test scope -> project-test-support
-app-bootstrap test scope -> user-module
-app-bootstrap test scope -> order-module
 ```
 
 禁止：
@@ -979,7 +983,7 @@ public interface BaselineDataSeeder {
 }
 ```
 
-应用级实现示例，放在 `app-bootstrap/src/test/java/.../support/seed` 或 `app-test-support`：
+业务基线实现放在拥有对应 API 的功能模块 `src/test/java/.../support/seed`。只有最终应用组合场景无法由功能模块承载时，才放在 `app-bootstrap/src/test`：
 
 ```java
 @TestConfiguration

@@ -25,6 +25,12 @@
         </dependency>
 
         <dependency>
+            <groupId>io.rest-assured</groupId>
+            <artifactId>rest-assured</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
             <groupId>com.gnilc.auth</groupId>
             <artifactId>auth-rbac</artifactId>
             <version>1.0.0</version>
