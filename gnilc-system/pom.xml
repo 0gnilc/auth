@@ -13,6 +13,11 @@
 
     <dependencies>
         <dependency>
+            <groupId>com.gnilc.auth</groupId>
+            <artifactId>gnilc-common-core</artifactId>
+        </dependency>
+
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
@@ -25,8 +30,14 @@
         </dependency>
 
         <dependency>
+            <groupId>io.rest-assured</groupId>
+            <artifactId>rest-assured</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
             <groupId>com.gnilc.auth</groupId>
-            <artifactId>auth-rbac</artifactId>
+            <artifactId>gnilc-auth-rbac</artifactId>
             <version>1.0.0</version>
             <scope>compile</scope>
         </dependency>

@@ -1,0 +1,24 @@
+package com.gnilc.system.support;
+
+import com.gnilc.test.container.SharedTestContainers;
+import org.springframework.boot.test.util.TestPropertyValues;
+import org.springframework.context.ApplicationContextInitializer;
+import org.springframework.context.ConfigurableApplicationContext;
+
+public final class SystemModuleContextInitializer
+        implements ApplicationContextInitializer<ConfigurableApplicationContext> {
+    @Override
+    public void initialize(ConfigurableApplicationContext context) {
+        SharedTestContainers.initializeMySqlSchema(
+                "sql/schema/01_rbac.sql",
+                "sql/schema/02_admin.sql");
+        TestPropertyValues.of(
+                "server.servlet.context-path=/api",
+                "mybatis-plus.configuration.map-underscore-to-camel-case=true",
+                "mybatis-plus.global-config.db-config.logic-delete-field=del",
+                "mybatis-plus.global-config.db-config.logic-delete-value=1",
+                "mybatis-plus.global-config.db-config.logic-not-delete-value=0",
+                "mybatis-plus.global-config.db-config.id-type=auto"
+        ).applyTo(context);
+    }
+}

@@ -90,9 +90,10 @@ SELECT
 WHERE @default_admin_existing_user_id IS NULL;
 
 UPDATE sys_admin
-SET del = 0
+SET del = 0,
+    status = 1
 WHERE username = 'admin'
-  AND del <> 0;
+  AND (del <> 0 OR status <> 1);
 
 SET @default_admin_role_id := (
     SELECT id

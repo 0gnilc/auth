@@ -13,6 +13,7 @@
     <packaging>pom</packaging>
 
     <modules>
+        <module>gnilc-common-core</module>
         <module>gnilc-test-support</module>
     </modules>
 

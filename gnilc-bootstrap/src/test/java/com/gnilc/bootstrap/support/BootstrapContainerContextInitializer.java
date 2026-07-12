@@ -1,7 +1,6 @@
 package com.gnilc.bootstrap.support;
 
 import com.gnilc.test.container.FullStackContainerContextInitializer;
-import com.gnilc.test.container.SharedTestContainers;
 import org.springframework.boot.test.util.TestPropertyValues;
 import org.springframework.context.ApplicationContextInitializer;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -11,9 +10,6 @@ public final class BootstrapContainerContextInitializer
     @Override
     public void initialize(ConfigurableApplicationContext context) {
         new FullStackContainerContextInitializer().initialize(context);
-        SharedTestContainers.initializeMySqlSchema(
-                "sql/schema/01_rbac.sql",
-                "sql/schema/02_admin.sql");
         TestPropertyValues.of(
                 "mybatis-plus.configuration.map-underscore-to-camel-case=true",
                 "mybatis-plus.global-config.db-config.logic-delete-field=del",

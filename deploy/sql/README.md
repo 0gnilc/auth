@@ -27,7 +27,7 @@
 - 创建默认 RBAC 用户和管理员账号；
 - 建立默认管理员与 `admin` 角色的绑定关系。
 
-该脚本依赖 `01_rbac.sql`，可以重复执行。它不会覆盖已有默认管理员资料，并会确保默认管理员、RBAC 用户、内置角色及三者的有效关系存在；如果这些默认记录被逻辑删除，脚本会恢复其 `del` 状态。它不会修复已有记录的密码、启用状态或其他资料字段，也不能替代数据库迁移。
+该脚本依赖 `01_rbac.sql`，可以重复执行。它不会覆盖已有默认管理员资料，并会确保默认管理员、RBAC 用户、内置角色及三者的有效关系存在；如果这些默认记录被逻辑删除，脚本会恢复其 `del` 状态，并恢复默认管理员的启用状态。它不会覆盖已有记录的密码或其他资料字段，也不能替代数据库迁移。
 
 默认管理员凭据：
 
@@ -70,7 +70,7 @@ SELECT id, code, built_in FROM az_role WHERE code = 'admin' AND del = 0;
 两个脚本都支持在当前版本结构上重复执行，但幂等只表示重复执行不会重复建表或重复插入默认数据：
 
 - `01_rbac.sql` 不会升级已有表结构；
-- `02_admin.sql` 不会覆盖已有管理员资料或密码，但会恢复默认记录的逻辑删除状态；
+- `02_admin.sql` 不会覆盖已有管理员资料或密码，但会恢复默认记录的逻辑删除状态和默认管理员的启用状态；
 - 脚本不会删除额外的业务数据；
 - 历史版本升级、字段变更和索引变更仍需专门的迁移脚本。
 
@@ -84,10 +84,10 @@ deploy/sql/<script>.sql -> sql/schema/<script>.sql
 
 当前测试加载方式如下：
 
-- `auth-rbac` 测试只执行 `sql/schema/01_rbac.sql`；
-- `gnilc-system` 测试依次执行 `01_rbac.sql`、`02_admin.sql`；
-- `gnilc-bootstrap` 测试依次执行 `01_rbac.sql`、`02_admin.sql`；
-- Bootstrap API 测试恢复基线数据时会重新执行 `02_admin.sql`。
+- `gnilc-auth-rbac` 的 `RbacSchemaIT` 及模块集成测试只加载 `sql/schema/01_rbac.sql`；
+- `gnilc-system` 的 `AdminSchemaIT` 及模块集成测试依次加载 `01_rbac.sql`、`02_admin.sql`；
+- `gnilc-system` 的 Admin API 测试恢复基线数据时会重新执行 `02_admin.sql`；
+- `gnilc-bootstrap` 只验证最终应用组合和启动，不再复制或执行部署 SQL。
 
 测试数据库固定为 Testcontainers 创建的 `gnilc_auth_test`，测试不会使用 H2、本机 MySQL、开发数据库或共享数据库。
 

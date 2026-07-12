@@ -1,7 +1,7 @@
 package com.gnilc.system.admin.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.gnilc.auth.authz.rbac.common.utils.PageResult;
+import com.gnilc.common.utils.PageResult;
 import com.gnilc.system.admin.entity.bo.AdminBo;
 import com.gnilc.system.admin.entity.dto.AdminDto;
 import com.gnilc.system.admin.entity.dto.AdminPageDto;
