@@ -61,7 +61,7 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
 
     @Override
     public void createMenu(MenuDto dto) {
-        Preconditions.checkArgument(dto != null, "请填写菜单信息");
+        Preconditions.checkArgument(dto != null, "Menu information is required.");
         MenuBo bo = new MenuBo();
         BeanUtils.copyProperties(dto, bo);
         validateMenu(bo);
@@ -70,11 +70,11 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
 
     @Override
     public void updateMenu(MenuDto dto) {
-        Preconditions.checkArgument(dto != null, "请填写菜单信息");
+        Preconditions.checkArgument(dto != null, "Menu information is required.");
         Long menuId = dto.getId();
-        Preconditions.checkArgument(menuId != null, "请选择菜单");
+        Preconditions.checkArgument(menuId != null, "A menu must be selected.");
         MenuBo bo = getById(menuId);
-        Preconditions.checkArgument(bo != null, "菜单不存在，请刷新后重试");
+        Preconditions.checkArgument(bo != null, "The menu no longer exists. Refresh and try again.");
         BeanCopyUtils.copyNonNullProperties(dto, bo);
         validateMenu(bo);
         updateById(bo);
@@ -82,9 +82,9 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
 
     @Override
     public void removeMenu(Long id) {
-        Preconditions.checkArgument(id != null, "请选择菜单");
+        Preconditions.checkArgument(id != null, "A menu must be selected.");
         MenuBo bo = getById(id);
-        Preconditions.checkArgument(bo != null, "菜单不存在，请刷新后重试");
+        Preconditions.checkArgument(bo != null, "The menu no longer exists. Refresh and try again.");
         removeById(id);
     }
 
@@ -152,35 +152,35 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
         String accessCode = bo.getAccessCode();
         String iframeSrc = bo.getIframeSrc();
         String link = bo.getLink();
-        Preconditions.checkArgument(pid != null, "请选择父菜单");
+        Preconditions.checkArgument(pid != null, "A parent menu must be selected.");
         if (!Objects.equals(pid, MenuConstant.ROOT_PARENT_ID)) {
-            Preconditions.checkArgument(getById(pid) != null, "父菜单不存在，请重新选择");
+            Preconditions.checkArgument(getById(pid) != null, "The parent menu no longer exists. Select another menu.");
         }
-        Preconditions.checkArgument(type != null, "请选择菜单类型");
-        Preconditions.checkArgument(StringUtils.isNotBlank(name), "请输入菜单名称");
-        Preconditions.checkArgument(StringUtils.isNotBlank(title), "请输入菜单标题");
+        Preconditions.checkArgument(type != null, "A menu type must be selected.");
+        Preconditions.checkArgument(StringUtils.isNotBlank(name), "Menu name is required.");
+        Preconditions.checkArgument(StringUtils.isNotBlank(title), "Menu title is required.");
         switch (type) {
-            case CATALOG -> Preconditions.checkArgument(StringUtils.isNotBlank(path), "请输入路由路径");
+            case CATALOG -> Preconditions.checkArgument(StringUtils.isNotBlank(path), "Route path is required.");
             case MENU -> {
-                Preconditions.checkArgument(StringUtils.isNotBlank(path), "请输入路由路径");
-                Preconditions.checkArgument(StringUtils.isNotBlank(component), "请输入页面组件");
+                Preconditions.checkArgument(StringUtils.isNotBlank(path), "Route path is required.");
+                Preconditions.checkArgument(StringUtils.isNotBlank(component), "Page component is required.");
             }
-            case BUTTON -> Preconditions.checkArgument(StringUtils.isNotBlank(accessCode), "请输入权限标识");
+            case BUTTON -> Preconditions.checkArgument(StringUtils.isNotBlank(accessCode), "Permission code is required.");
             case EMBEDDED -> {
-                Preconditions.checkArgument(StringUtils.isNotBlank(path), "请输入路由路径");
-                Preconditions.checkArgument(StringUtils.isNotBlank(iframeSrc), "请输入内嵌页面地址");
+                Preconditions.checkArgument(StringUtils.isNotBlank(path), "Route path is required.");
+                Preconditions.checkArgument(StringUtils.isNotBlank(iframeSrc), "Embedded page URL is required.");
             }
-            case LINK -> Preconditions.checkArgument(StringUtils.isNotBlank(link), "请输入外链地址");
+            case LINK -> Preconditions.checkArgument(StringUtils.isNotBlank(link), "External URL is required.");
         }
         MenuBo nameBo = getMenuByName(name);
         Preconditions.checkArgument(nameBo == null || Objects.equals(nameBo.getId(), menuId),
-                "菜单名称已存在");
+                "A menu with this name already exists.");
         MenuBo pathBo = getMenuByPath(path);
         Preconditions.checkArgument(pathBo == null || Objects.equals(pathBo.getId(), menuId),
-                "路由路径已存在");
+                "A menu with this route path already exists.");
         MenuBo accessBo = getMenuByAccessCode(accessCode);
         Preconditions.checkArgument(accessBo == null || Objects.equals(accessBo.getId(), menuId),
-                "权限标识已存在");
+                "A menu with this permission code already exists.");
     }
 
     private void sortMenuTree(List<MenuVo> vos) {

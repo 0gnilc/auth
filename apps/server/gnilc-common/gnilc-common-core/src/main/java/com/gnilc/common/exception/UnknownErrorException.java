@@ -2,7 +2,7 @@ package com.gnilc.common.exception;
 
 public class UnknownErrorException extends RuntimeException {
     public UnknownErrorException() {
-        this("系统异常");
+        this("An unexpected error occurred.");
     }
 
     public UnknownErrorException(String message) {

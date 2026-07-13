@@ -30,7 +30,7 @@ public class RolePermissionServiceImpl extends ServiceImpl<RolePermissionDao, Ro
 
     @Override
     public List<Long> getPermissionIds(Long roleId) {
-        Preconditions.checkArgument(roleId != null, "请选择角色");
+        Preconditions.checkArgument(roleId != null, "A role must be selected.");
         return lambdaQuery()
                 .select(RolePermissionBo::getPermissionId)
                 .eq(RolePermissionBo::getRoleId, roleId)
@@ -43,7 +43,7 @@ public class RolePermissionServiceImpl extends ServiceImpl<RolePermissionDao, Ro
 
     @Override
     public List<Long> getPermissionIds(List<Long> roleIds) {
-        Preconditions.checkArgument(roleIds != null, "请选择角色");
+        Preconditions.checkArgument(roleIds != null, "At least one role must be selected.");
         if (CollectionUtils.isEmpty(roleIds)) {
             return List.of();
         }
@@ -60,10 +60,10 @@ public class RolePermissionServiceImpl extends ServiceImpl<RolePermissionDao, Ro
     @Transactional
     @Override
     public void updateRolePermission(RolePermissionDto dto) {
-        Preconditions.checkArgument(dto != null, "请填写角色权限信息");
+        Preconditions.checkArgument(dto != null, "Role permission assignment information is required.");
         Long roleId = dto.getRoleId();
         List<Long> permissionIds = dto.getPermissionIds();
-        Preconditions.checkArgument(roleId != null, "请选择角色");
+        Preconditions.checkArgument(roleId != null, "A role must be selected.");
 
         Set<Long> oldSet = lambdaQuery()
                 .select(RolePermissionBo::getPermissionId)

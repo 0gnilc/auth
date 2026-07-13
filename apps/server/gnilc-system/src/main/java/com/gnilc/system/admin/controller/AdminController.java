@@ -89,7 +89,7 @@ public class AdminController {
         String password = body == null ? null : body.getString("password");
         AdminTokenVo vo = adminService.login(username, password);
         if (vo == null) {
-            return R.error(ResponseCode.AUTHENTICATION_FAILED, "用户名或密码错误");
+            return R.error(ResponseCode.AUTHENTICATION_FAILED, "Incorrect username or password.");
         }
         return R.success(vo);
     }
