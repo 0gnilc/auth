@@ -1,0 +1,22 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "pwa-chrome",
+      "name": "Admin: Chrome",
+      "request": "launch",
+      "url": "http://localhost:5777",
+      "sourceMaps": true,
+      "webRoot": "${workspaceFolder}/apps/admin"
+    },
+    {
+      "type": "java",
+      "name": "Server: Spring Boot",
+      "request": "launch",
+      "mainClass": "com.gnilc.bootstrap.AccessControlApplication",
+      "projectName": "gnilc-bootstrap",
+      "cwd": "${workspaceFolder}/apps/server",
+      "args": "--spring.profiles.active=dev"
+    }
+  ]
+}
