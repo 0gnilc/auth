@@ -1,0 +1,23 @@
+{
+  "recommendations": [
+    "antfu.iconify",
+    "antfu.pnpm-catalog-lens",
+    "bradlc.vscode-tailwindcss",
+    "dbaeumer.vscode-eslint",
+    "lokalise.i18n-ally",
+    "mikestead.dotenv",
+    "oxc.oxc-vscode",
+    "redhat.java",
+    "redhat.vscode-yaml",
+    "streetsidesoftware.code-spell-checker",
+    "stylelint.vscode-stylelint",
+    "vscjava.vscode-java-debug",
+    "vscjava.vscode-java-test",
+    "vscjava.vscode-maven",
+    "vscjava.vscode-spring-boot-dashboard",
+    "vue.volar",
+    "vunguyentuan.vscode-css-variables",
+    "vmware.vscode-spring-boot"
+  ],
+  "unwantedRecommendations": ["octref.vetur"]
+}
