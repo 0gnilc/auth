@@ -1,5 +1,6 @@
 package com.gnilc.system.admin.api;
 
+import com.gnilc.common.exception.RestExceptionHandlingConfiguration;
 import com.gnilc.system.admin.support.AdminApiTestConfiguration;
 import com.gnilc.system.admin.support.AdminApiTestSupport;
 import com.gnilc.system.support.SystemContainerContextInitializer;
@@ -15,7 +16,10 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.not;
 
 @ApiTest
-@Import(AdminApiTestConfiguration.class)
+@Import({
+        AdminApiTestConfiguration.class,
+        RestExceptionHandlingConfiguration.class
+})
 @ContextConfiguration(
         classes = SystemTestApplication.class,
         initializers = SystemContainerContextInitializer.class)
@@ -73,5 +77,18 @@ class AdminAuthApiIT extends AdminApiTestSupport {
                 .statusCode(200)
                 .body("code", equalTo(20001))
                 .body("error", equalTo("Incorrect username or password."));
+    }
+
+    @Test
+    void malformedLoginRequestUsesTheCommonExceptionFormat() {
+        given()
+                .contentType(ContentType.JSON)
+                .body("{")
+                .when()
+                .post("/api/sys/admin/login")
+                .then()
+                .statusCode(400)
+                .body("code", equalTo(10001))
+                .body("error", equalTo("The request body is malformed."));
     }
 }

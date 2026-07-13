@@ -1,11 +1,14 @@
 package com.gnilc.common.exception;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -19,15 +22,19 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-class RestExceptionControllerAdviceTest {
+class RestExceptionControllerAdviceControllerTest {
 
     private MockMvc mvc;
 
     @BeforeEach
     void setUp() {
+        RestExceptionHandlingConfiguration configuration = new RestExceptionHandlingConfiguration();
+        LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
+        validator.afterPropertiesSet();
         mvc = MockMvcBuilders.standaloneSetup(new ThrowingController())
-                .setControllerAdvice(new RestExceptionControllerAdvice())
+                .setControllerAdvice(configuration.new RestExceptionControllerAdvice())
                 .setMessageConverters(new MappingJackson2HttpMessageConverter())
+                .setValidator(validator)
                 .build();
     }
 
@@ -58,6 +65,23 @@ class RestExceptionControllerAdviceTest {
     }
 
     @Test
+    void validationAndUnsupportedMediaTypeUseTheCommonErrorFormat() throws Exception {
+        mvc.perform(post("/test/validated")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(10001))
+                .andExpect(jsonPath("$.error").value("Name is required."));
+
+        mvc.perform(post("/test/body")
+                        .contentType(MediaType.TEXT_PLAIN)
+                        .content("body"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(10001))
+                .andExpect(jsonPath("$.error").value("The request content type is not supported."));
+    }
+
+    @Test
     void unexpectedFailuresDoNotExposeImplementationDetails() throws Exception {
         mvc.perform(get("/test/runtime"))
                 .andExpect(status().isInternalServerError())
@@ -83,12 +107,19 @@ class RestExceptionControllerAdviceTest {
             throw new RuntimeException("database password leaked");
         }
 
-        @PostMapping("/test/body")
+        @PostMapping(value = "/test/body", consumes = MediaType.APPLICATION_JSON_VALUE)
         void body(@RequestBody Map<String, Object> body) {
         }
 
         @GetMapping("/test/number")
         void number(@RequestParam("value") Integer value) {
         }
+
+        @PostMapping("/test/validated")
+        void validated(@Valid @RequestBody TestRequest request) {
+        }
+    }
+
+    record TestRequest(@NotBlank(message = "Name is required.") String name) {
     }
 }
