@@ -1,0 +1,13 @@
+{
+  "name": "@app/server",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "node ./scripts/maven.mjs build",
+    "clean": "node ./scripts/maven.mjs clean",
+    "dev": "node ./scripts/maven.mjs dev",
+    "test": "node ./scripts/maven.mjs test",
+    "typecheck": "node ./scripts/maven.mjs typecheck",
+    "verify": "node ./scripts/maven.mjs verify"
+  }
+}

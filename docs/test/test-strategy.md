@@ -5,10 +5,10 @@ the execution lane:
 
 | Suffix | Scope | Maven lane |
 | --- | --- | --- |
-| `*Test`, `*ControllerTest` | Unit, focused auto-configuration, and HTTP controller contracts | Surefire, `mvn test` |
-| `*MapperIT` | MyBatis-Plus mappings and MySQL behavior | Failsafe, `mvn verify` |
-| `*CacheIT`, `*IT` | Spring integration and Redis behavior | Failsafe, `mvn verify` |
-| `*ApiIT` | Random-port HTTP flows | Failsafe, `mvn verify` |
+| `*Test`, `*ControllerTest` | Unit, focused auto-configuration, and HTTP controller contracts | Surefire, `mvn -f apps/server/pom.xml test` |
+| `*MapperIT` | MyBatis-Plus mappings and MySQL behavior | Failsafe, `mvn -f apps/server/pom.xml verify` |
+| `*CacheIT`, `*IT` | Spring integration and Redis behavior | Failsafe, `mvn -f apps/server/pom.xml verify` |
+| `*ApiIT` | Random-port HTTP flows | Failsafe, `mvn -f apps/server/pom.xml verify` |
 
 ## Package locality
 
@@ -73,9 +73,9 @@ account needed by its API test flows.
 ## Commands
 
 ```bash
-mvn test
-mvn verify
+mvn -f apps/server/pom.xml test
+mvn -f apps/server/pom.xml verify
 ```
 
-`mvn test` must remain Docker-free. `mvn verify` requires Docker and fails
+`mvn -f apps/server/pom.xml test` must remain Docker-free. `mvn -f apps/server/pom.xml verify` requires Docker and fails
 instead of substituting a different database or cache.

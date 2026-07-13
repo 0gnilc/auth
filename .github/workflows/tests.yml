@@ -10,6 +10,34 @@ permissions:
   contents: read
 
 jobs:
+  admin:
+    name: Admin typecheck and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck admin
+        run: pnpm --filter=@app/admin run typecheck
+
+      - name: Build admin
+        run: pnpm build:admin
+
   fast-tests:
     name: Fast tests
     runs-on: ubuntu-latest
@@ -22,10 +50,11 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: '17'
           cache: maven
 
       - name: Run Surefire tests
+        working-directory: apps/server
         run: mvn --batch-mode --no-transfer-progress test
 
       - name: Upload Surefire reports on failure
@@ -33,7 +62,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: fast-tests-surefire-reports
-          path: "**/target/surefire-reports/**"
+          path: 'apps/server/**/target/surefire-reports/**'
           if-no-files-found: ignore
 
   full-verification:
@@ -49,7 +78,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: '17'
           cache: maven
 
       # Maven verify runs Testcontainers integration tests and requires Docker.
@@ -57,6 +86,7 @@ jobs:
         run: docker info
 
       - name: Run full verification
+        working-directory: apps/server
         run: mvn --batch-mode --no-transfer-progress verify
 
       - name: Upload test reports on failure
@@ -65,6 +95,6 @@ jobs:
         with:
           name: full-verification-test-reports
           path: |
-            **/target/surefire-reports/**
-            **/target/failsafe-reports/**
+            apps/server/**/target/surefire-reports/**
+            apps/server/**/target/failsafe-reports/**
           if-no-files-found: ignore
