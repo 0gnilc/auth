@@ -5,7 +5,7 @@ import {
   getTaskInvocations,
   resolveMavenExecutable,
   runTask,
-} from '../../../scripts/maven.mjs';
+} from '../maven.mjs';
 
 test('uses the Maven wrapper for Unix-like platforms when present', () => {
   const executable = resolveMavenExecutable({

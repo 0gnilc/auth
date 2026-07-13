@@ -46,7 +46,7 @@ RestAssured
 Node 构建脚本测试属于工程工具链测试例外，不计入上述 Java 业务测试六分类。仅当被测生产代码本身是 Node 脚本时允许使用 Node 内置 `node:test`，并遵循：
 
 ```text
-测试放在 owning module 的 src/test/scripts 下。
+测试放在 owning module 的 scripts/test 下，与被测工程脚本放在同一工具链目录中。
 文件命名使用 *.test.mjs。
 只验证命令映射、平台选择、退出码传播等工程编排行为。
 通过 owning package 的 test:scripts 执行，并纳入 CI。

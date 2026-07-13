@@ -6,8 +6,8 @@
     "build": "node ./scripts/maven.mjs build",
     "clean": "node ./scripts/maven.mjs clean",
     "dev": "node ./scripts/maven.mjs dev",
-    "test": "node --test ./src/test/scripts/maven.test.mjs && node ./scripts/maven.mjs test",
-    "test:scripts": "node --test ./src/test/scripts/maven.test.mjs",
+    "test": "node --test ./scripts/test/maven.test.mjs && node ./scripts/maven.mjs test",
+    "test:scripts": "node --test ./scripts/test/maven.test.mjs",
     "typecheck": "node ./scripts/maven.mjs typecheck",
     "verify": "node ./scripts/maven.mjs verify"
   }
