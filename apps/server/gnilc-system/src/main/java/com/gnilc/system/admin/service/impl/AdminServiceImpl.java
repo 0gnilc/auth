@@ -180,10 +180,11 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
     public void createAdmin(AdminDto dto) {
         String username = dto.getUsername();
         String password = dto.getPassword();
-        Preconditions.checkArgument(StringUtils.isNotBlank(username), "请输入用户名");
-        Preconditions.checkArgument(StringUtils.isNotBlank(password), "请输入密码");
+        Preconditions.checkArgument(StringUtils.isNotBlank(username), "Username is required.");
+        Preconditions.checkArgument(StringUtils.isNotBlank(password), "Password is required.");
         validateStrongPassword(password);
-        Preconditions.checkArgument(getAdminByUsername(username) == null, "用户名已存在");
+        Preconditions.checkArgument(getAdminByUsername(username) == null,
+                "An administrator with this username already exists.");
         Long userId = userService.createUser();
         AdminBo bo = new AdminBo();
         bo.setUserId(userId);
@@ -205,10 +206,11 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
     @Transactional
     public void updateAdmin(AdminDto dto) {
         AdminBo bo = getAdmin(dto.getId());
-        Preconditions.checkCondition(bo != null, "管理员不存在，请刷新后重试");
+        Preconditions.checkCondition(bo != null, "The administrator no longer exists. Refresh and try again.");
         String username = dto.getUsername();
         if (username != null && !username.equals(bo.getUsername())) {
-            Preconditions.checkArgument(getAdminByUsername(username) == null, "用户名已存在");
+            Preconditions.checkArgument(getAdminByUsername(username) == null,
+                    "An administrator with this username already exists.");
         }
         boolean wasEnabled = Boolean.TRUE.equals(bo.getStatus());
         BeanCopyUtils.copyNonNullProperties(dto, bo);
@@ -236,7 +238,7 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
     @Transactional
     public void updateAdminRoles(AdminRoleDto dto) {
         AdminBo bo = getById(dto.getId());
-        Preconditions.checkCondition(bo != null, "管理员不存在，请刷新后重试");
+        Preconditions.checkCondition(bo != null, "The administrator no longer exists. Refresh and try again.");
         replaceRoles(bo.getUserId(), dto.getRoleCodes());
     }
 
@@ -246,9 +248,9 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
     @Override
     @Transactional
     public void removeAdmin(Long id) {
-        Preconditions.checkArgument(id != null, "请选择管理员");
+        Preconditions.checkArgument(id != null, "An administrator must be selected.");
         AdminBo bo = getById(id);
-        Preconditions.checkCondition(bo != null, "管理员不存在，请刷新后重试");
+        Preconditions.checkCondition(bo != null, "The administrator no longer exists. Refresh and try again.");
         sessionManager.cleanupUserSessions(bo.getUserId());
         bo.setUsername(bo.getUsername() + "_del_" + id);
         updateById(bo);
@@ -280,9 +282,10 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
      */
     private Long authenticatedUserId() {
         AccessPrincipal principal = DefaultAccessPrincipalHolder.getPrincipal();
-        Preconditions.checkArgument(principal != null, "请重新登录");
+        Preconditions.checkArgument(principal != null, "Your session is no longer valid. Sign in again.");
         String identifier = principal.getIdentifier();
-        Preconditions.checkArgument(StringUtils.isNotBlank(identifier), "请重新登录");
+        Preconditions.checkArgument(StringUtils.isNotBlank(identifier),
+                "Your session is no longer valid. Sign in again.");
         return Long.valueOf(identifier);
     }
 
@@ -316,7 +319,8 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
                 && password.chars().anyMatch(Character::isDigit)
                 && password.chars().anyMatch(ch -> !Character.isLetterOrDigit(ch));
         Preconditions.checkArgument(valid,
-                "密码必须为8-32位且包含大写字母、小写字母、数字、特殊字符，不能包含空白字符");
+                "Password must be 8 to 32 characters and include uppercase and lowercase letters, "
+                        + "a number, and a special character, with no whitespace.");
     }
 
     /**
@@ -333,9 +337,10 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
         List<String> codes = roleCodes == null ? List.of() : roleCodes;
         List<Long> roleIds = codes.stream()
                 .map(code -> {
-                    Preconditions.checkArgument(StringUtils.isNotBlank(code), "角色标识不能为空");
+                    Preconditions.checkArgument(StringUtils.isNotBlank(code), "Role code is required.");
                     RoleBo bo = roleService.getRoleByCode(code);
-                    Preconditions.checkCondition(bo != null, "角色不存在，请刷新后重试");
+                    Preconditions.checkCondition(bo != null,
+                            "The role no longer exists. Refresh and try again.");
                     return bo.getId();
                 })
                 .toList();

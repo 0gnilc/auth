@@ -49,10 +49,10 @@ public class RoleMenuServiceImpl extends ServiceImpl<RoleMenusDao, RoleMenuBo> i
     @Transactional
     @Override
     public void updateRoleMenu(RoleMenuDto dto) {
-        Preconditions.checkArgument(dto != null, "请填写角色菜单信息");
+        Preconditions.checkArgument(dto != null, "Role menu assignment information is required.");
         Long roleId = dto.getRoleId();
         List<Long> menuIds = dto.getMenuIds();
-        Preconditions.checkArgument(roleId != null, "请选择角色");
+        Preconditions.checkArgument(roleId != null, "A role must be selected.");
 
         Set<Long> oldSet = lambdaQuery()
                 .select(RoleMenuBo::getMenuId)

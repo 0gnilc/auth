@@ -31,10 +31,10 @@ public class UserRoleServiceImpl extends ServiceImpl<UserRoleDao, UserRoleBo> im
     @Transactional
     @Override
     public void updateUserRole(UserRoleDto dto) {
-        Preconditions.checkArgument(dto != null, "请填写用户角色信息");
+        Preconditions.checkArgument(dto != null, "User role assignment information is required.");
         Long userId = dto.getUserId();
         List<Long> roleIds = dto.getRoleIds();
-        Preconditions.checkArgument(userId != null, "请选择用户");
+        Preconditions.checkArgument(userId != null, "A user must be selected.");
         Set<Long> oldSet = lambdaQuery()
                 .select(UserRoleBo::getRoleId)
                 .eq(UserRoleBo::getUserId, userId)
@@ -88,8 +88,8 @@ public class UserRoleServiceImpl extends ServiceImpl<UserRoleDao, UserRoleBo> im
     @Transactional
     @Override
     public void bindRole(Long userId, Long roleId) {
-        Preconditions.checkArgument(userId != null, "请选择用户");
-        Preconditions.checkArgument(roleId != null, "请选择角色");
+        Preconditions.checkArgument(userId != null, "A user must be selected.");
+        Preconditions.checkArgument(roleId != null, "A role must be selected.");
         UserRoleBo bo = getUserRole(userId, roleId);
         if (bo == null) {
             bo = new UserRoleBo();
@@ -106,8 +106,8 @@ public class UserRoleServiceImpl extends ServiceImpl<UserRoleDao, UserRoleBo> im
     @Transactional
     @Override
     public void unbindRole(Long userId, Long roleId) {
-        Preconditions.checkArgument(userId != null, "请选择用户");
-        Preconditions.checkArgument(roleId != null, "请选择角色");
+        Preconditions.checkArgument(userId != null, "A user must be selected.");
+        Preconditions.checkArgument(roleId != null, "A role must be selected.");
         remove(new LambdaQueryWrapper<UserRoleBo>()
                 .eq(UserRoleBo::getUserId, userId)
                 .eq(UserRoleBo::getRoleId, roleId));

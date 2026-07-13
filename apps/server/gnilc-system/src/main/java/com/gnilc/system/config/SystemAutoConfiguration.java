@@ -5,6 +5,7 @@ import com.gnilc.auth.authn.servlet.config.ServletAuthenticationAutoConfiguratio
 import com.gnilc.auth.authz.config.AuthorizationAutoConfiguration;
 import com.gnilc.auth.authz.rbac.config.ServletRbacAuthorizationAutoConfiguration;
 import com.gnilc.auth.authz.servlet.config.ServletAuthorizationAutoConfiguration;
+import com.gnilc.common.exception.RestExceptionHandlingConfiguration;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -29,7 +30,10 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 @ConditionalOnClass({SqlSessionFactory.class, StringRedisTemplate.class})
 @ComponentScan(basePackages = "com.gnilc.system",
         excludeFilters = @ComponentScan.Filter(type = FilterType.ANNOTATION, classes = Configuration.class))
-@Import(SystemControlConfiguration.class)
+@Import({
+        SystemControlConfiguration.class,
+        RestExceptionHandlingConfiguration.class
+})
 public class SystemAutoConfiguration {
 
 }

@@ -38,17 +38,17 @@ public class PermissionServiceImpl extends ServiceImpl<PermissionDao, Permission
     @Transactional
     @Override
     public void createPermission(PermissionDto dto) {
-        Preconditions.checkArgument(dto != null, "请填写权限信息");
+        Preconditions.checkArgument(dto != null, "Permission information is required.");
         String name = dto.getName();
         String code = dto.getCode();
         String targetIdentifier = dto.getTargetIdentifier();
         String targetQualifier = dto.getTargetQualifier();
         String remark = dto.getRemark();
         Boolean publicAccess = dto.getPublicAccess();
-        Preconditions.checkArgument(StringUtils.isNotBlank(name), "请输入权限名称");
-        Preconditions.checkArgument(StringUtils.isNotBlank(code), "请输入权限标识");
-        Preconditions.checkArgument(StringUtils.isNotBlank(targetIdentifier), "请输入访问目标标识");
-        Preconditions.checkArgument(getPermissionByCode(code) == null, "权限标识已存在");
+        Preconditions.checkArgument(StringUtils.isNotBlank(name), "Permission name is required.");
+        Preconditions.checkArgument(StringUtils.isNotBlank(code), "Permission code is required.");
+        Preconditions.checkArgument(StringUtils.isNotBlank(targetIdentifier), "Access target identifier is required.");
+        Preconditions.checkArgument(getPermissionByCode(code) == null, "A permission with this code already exists.");
         PermissionBo bo = new PermissionBo();
         bo.setName(name);
         bo.setCode(code);
@@ -68,7 +68,7 @@ public class PermissionServiceImpl extends ServiceImpl<PermissionDao, Permission
     @Transactional
     @Override
     public void updatePermission(PermissionDto dto) {
-        Preconditions.checkArgument(dto != null, "请填写权限信息");
+        Preconditions.checkArgument(dto != null, "Permission information is required.");
         Long permissionId = dto.getId();
         String name = dto.getName();
         String code = dto.getCode();
@@ -76,16 +76,16 @@ public class PermissionServiceImpl extends ServiceImpl<PermissionDao, Permission
         String targetQualifier = dto.getTargetQualifier();
         String remark = dto.getRemark();
         Boolean publicAccess = dto.getPublicAccess();
-        Preconditions.checkArgument(permissionId != null, "请选择权限");
+        Preconditions.checkArgument(permissionId != null, "A permission must be selected.");
         PermissionBo bo = getById(permissionId);
-        Preconditions.checkCondition(bo != null, "权限不存在，请刷新后重试");
+        Preconditions.checkCondition(bo != null, "The permission no longer exists. Refresh and try again.");
         if (StringUtils.isNotBlank(code) && !code.equals(bo.getCode())) {
             PermissionBo sameBo = getPermissionByCode(code);
-            Preconditions.checkArgument(sameBo == null, "权限标识已存在");
+            Preconditions.checkArgument(sameBo == null, "A permission with this code already exists.");
         }
-        Preconditions.checkArgument(StringUtils.isNotBlank(name), "请输入权限名称");
-        Preconditions.checkArgument(StringUtils.isNotBlank(code), "请输入权限标识");
-        Preconditions.checkArgument(StringUtils.isNotBlank(targetIdentifier), "请输入访问目标标识");
+        Preconditions.checkArgument(StringUtils.isNotBlank(name), "Permission name is required.");
+        Preconditions.checkArgument(StringUtils.isNotBlank(code), "Permission code is required.");
+        Preconditions.checkArgument(StringUtils.isNotBlank(targetIdentifier), "Access target identifier is required.");
         bo.setName(name);
         bo.setCode(code);
         bo.setTargetIdentifier(targetIdentifier);
@@ -102,9 +102,9 @@ public class PermissionServiceImpl extends ServiceImpl<PermissionDao, Permission
     @Transactional
     @Override
     public void removePermission(Long id) {
-        Preconditions.checkArgument(id != null, "请选择权限");
+        Preconditions.checkArgument(id != null, "A permission must be selected.");
         PermissionBo bo = getById(id);
-        Preconditions.checkCondition(bo != null, "权限不存在，请刷新后重试");
+        Preconditions.checkCondition(bo != null, "The permission no longer exists. Refresh and try again.");
         bo.setCode(bo.getCode() + "_del_" + id);
         updateById(bo);
         removeById(id);
@@ -158,7 +158,7 @@ public class PermissionServiceImpl extends ServiceImpl<PermissionDao, Permission
 
     @Override
     public List<PermissionBo> getPermissions(List<Long> ids) {
-        Preconditions.checkArgument(ids != null, "请选择权限");
+        Preconditions.checkArgument(ids != null, "At least one permission must be selected.");
         if (CollectionUtils.isEmpty(ids)) {
             return List.of();
         }

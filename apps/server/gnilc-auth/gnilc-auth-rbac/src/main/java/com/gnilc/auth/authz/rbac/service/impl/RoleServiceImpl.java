@@ -65,12 +65,12 @@ public class RoleServiceImpl extends ServiceImpl<RoleDao, RoleBo> implements Rol
     @Transactional
     @Override
     public void createRole(RoleDto dto) {
-        Preconditions.checkArgument(dto != null, "请填写角色信息");
+        Preconditions.checkArgument(dto != null, "Role information is required.");
         String name = dto.getName();
         String code = dto.getCode();
         String remark = dto.getRemark();
-        Preconditions.checkArgument(StringUtils.isNotBlank(code), "请输入角色标识");
-        Preconditions.checkArgument(getRoleByCode(code) == null, "角色标识已存在");
+        Preconditions.checkArgument(StringUtils.isNotBlank(code), "Role code is required.");
+        Preconditions.checkArgument(getRoleByCode(code) == null, "A role with this code already exists.");
         RoleBo bo = new RoleBo();
         bo.setName(name);
         bo.setCode(code);
@@ -97,18 +97,18 @@ public class RoleServiceImpl extends ServiceImpl<RoleDao, RoleBo> implements Rol
     @Transactional
     @Override
     public void updateRole(RoleDto dto) {
-        Preconditions.checkArgument(dto != null, "请填写角色信息");
+        Preconditions.checkArgument(dto != null, "Role information is required.");
         Long roleId = dto.getId();
         String name = dto.getName();
         String code = dto.getCode();
         String remark = dto.getRemark();
-        Preconditions.checkArgument(roleId != null, "请选择角色");
+        Preconditions.checkArgument(roleId != null, "A role must be selected.");
         RoleBo bo = getById(roleId);
-        Preconditions.checkCondition(bo != null, "角色不存在，请刷新后重试");
-        Preconditions.checkCondition(!Boolean.TRUE.equals(bo.getBuiltIn()), "内置角色不允许修改");
+        Preconditions.checkCondition(bo != null, "The role no longer exists. Refresh and try again.");
+        Preconditions.checkCondition(!Boolean.TRUE.equals(bo.getBuiltIn()), "Built-in roles cannot be modified.");
         if (StringUtils.isNotBlank(code) && !code.equals(bo.getCode())) {
             RoleBo sameBo = getRoleByCode(code);
-            Preconditions.checkArgument(sameBo == null, "角色标识已存在");
+            Preconditions.checkArgument(sameBo == null, "A role with this code already exists.");
         }
         bo.setName(name);
         bo.setCode(code);
@@ -124,10 +124,10 @@ public class RoleServiceImpl extends ServiceImpl<RoleDao, RoleBo> implements Rol
     @Transactional
     @Override
     public void removeRole(Long id) {
-        Preconditions.checkArgument(id != null, "请选择角色");
+        Preconditions.checkArgument(id != null, "A role must be selected.");
         RoleBo bo = getById(id);
-        Preconditions.checkCondition(bo != null, "角色不存在，请刷新后重试");
-        Preconditions.checkCondition(!Boolean.TRUE.equals(bo.getBuiltIn()), "内置角色不允许删除");
+        Preconditions.checkCondition(bo != null, "The role no longer exists. Refresh and try again.");
+        Preconditions.checkCondition(!Boolean.TRUE.equals(bo.getBuiltIn()), "Built-in roles cannot be deleted.");
         bo.setCode(deletedCode(bo.getCode(), id));
         updateById(bo);
         removeById(id);
@@ -140,7 +140,7 @@ public class RoleServiceImpl extends ServiceImpl<RoleDao, RoleBo> implements Rol
 
     @Override
     public List<RoleBo> getRoles(Long userId) {
-        Preconditions.checkArgument(userId != null, "请选择用户");
+        Preconditions.checkArgument(userId != null, "A user must be selected.");
         List<Long> roleIds = userRoleService.getRoleIds(userId);
         if (CollectionUtils.isEmpty(roleIds)) {
             return List.of();

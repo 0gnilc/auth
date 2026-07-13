@@ -72,6 +72,6 @@ class AdminAuthApiIT extends AdminApiTestSupport {
                 .then()
                 .statusCode(200)
                 .body("code", equalTo(20001))
-                .body("error", equalTo("用户名或密码错误"));
+                .body("error", equalTo("Incorrect username or password."));
     }
 }
