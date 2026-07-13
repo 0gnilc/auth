@@ -10,7 +10,7 @@ Triage uses the default canonical labels: `needs-triage`, `needs-info`, `ready-f
 
 ### Testing
 
-Before writing, changing, reviewing, or running tests, read and follow [`docs/test/testing-guide.md`](docs/test/testing-guide.md). Java tests belong under the owning Maven module's `src/test`; do not use `src/intg-test`. Node engineering-tool tests are the documented exception and belong under the owning package's `scripts/test`.
+Before writing, changing, reviewing, or running tests, read and follow [`docs/test/testing-guide.md`](docs/test/testing-guide.md). All tests belong under the owning module's `src/test`; do not use `src/intg-test`.
 
 Run fast Surefire tests (`*Test` and `*ControllerTest`) with:
 

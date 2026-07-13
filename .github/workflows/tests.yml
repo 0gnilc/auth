@@ -38,31 +38,6 @@ jobs:
       - name: Build admin
         run: pnpm build:admin
 
-  server-task-runner:
-    name: Server task runner (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 5
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 11.7.0
-
-      - name: Set up Node.js 24
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-
-      - name: Test server task runner
-        run: pnpm --filter=@app/server run test:scripts
-
   fast-tests:
     name: Fast tests
     runs-on: ubuntu-latest

@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import process from 'node:process';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 
 const serverDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const commonArgs = ['--batch-mode', '--no-transfer-progress'];
@@ -19,7 +19,7 @@ const tasks = {
   verify: [[...commonArgs, 'verify']],
 };
 
-export function getTaskInvocations(task) {
+function getTaskInvocations(task) {
   const invocations = tasks[task];
 
   if (!invocations) {
@@ -31,15 +31,11 @@ export function getTaskInvocations(task) {
   return invocations.map((args) => [...args]);
 }
 
-export function resolveMavenExecutable({
-  fileExists = existsSync,
-  platform = process.platform,
-  serverDir: projectDir = serverDir,
-} = {}) {
-  const isWindows = platform === 'win32';
-  const wrapper = join(projectDir, isWindows ? 'mvnw.cmd' : 'mvnw');
+function resolveMavenExecutable() {
+  const isWindows = process.platform === 'win32';
+  const wrapper = join(serverDir, isWindows ? 'mvnw.cmd' : 'mvnw');
 
-  if (fileExists(wrapper)) {
+  if (existsSync(wrapper)) {
     return {
       command: isWindows ? '.\\mvnw.cmd' : wrapper,
       shell: isWindows,
@@ -54,16 +50,11 @@ export function resolveMavenExecutable({
   };
 }
 
-export function runTask(
-  task,
-  {
-    executable = resolveMavenExecutable(),
-    spawn = spawnSync,
-    stderr = process.stderr,
-  } = {},
-) {
+function runTask(task) {
+  const executable = resolveMavenExecutable();
+
   for (const args of getTaskInvocations(task)) {
-    const result = spawn(executable.command, args, {
+    const result = spawnSync(executable.command, args, {
       cwd: serverDir,
       env: process.env,
       shell: executable.shell,
@@ -75,7 +66,9 @@ export function runTask(
         executable.source === 'system'
           ? 'Install Maven or add mvn to PATH, or add Maven Wrapper files to apps/server.'
           : 'Check that the Maven Wrapper can be executed on this platform.';
-      stderr.write(`Failed to start Maven: ${result.error.message}\n${hint}\n`);
+      process.stderr.write(
+        `Failed to start Maven: ${result.error.message}\n${hint}\n`,
+      );
       return 1;
     }
 
@@ -105,9 +98,4 @@ function main() {
   }
 }
 
-if (
-  process.argv[1] &&
-  import.meta.url === pathToFileURL(resolve(process.argv[1])).href
-) {
-  process.exitCode = main();
-}
+process.exitCode = main();
