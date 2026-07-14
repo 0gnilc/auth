@@ -22,8 +22,8 @@ export const useUserStore = defineStore('core-user', {
       // 设置用户信息
       this.userInfo = userInfo;
       // 设置角色信息
-      const roles = userInfo?.roles ?? [];
-      this.setUserRoles(roles);
+      const roleCodes = userInfo?.roleCodes ?? [];
+      this.setUserRoles(roleCodes);
     },
     setUserRoles(roles: string[]) {
       this.userRoles = roles;

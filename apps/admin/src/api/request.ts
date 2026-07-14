@@ -17,7 +17,7 @@ import { ElMessage } from 'element-plus';
 
 import { useAuthStore } from '#/store';
 
-import { refreshTokenApi } from './core';
+import { refresh } from './core';
 
 const { apiURL } = useAppConfig(import.meta.env, import.meta.env.PROD);
 
@@ -35,6 +35,7 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
     const accessStore = useAccessStore();
     const authStore = useAuthStore();
     accessStore.setAccessToken(null);
+    accessStore.setRefreshToken(null);
     if (
       preferences.app.loginExpiredMode === 'modal' &&
       accessStore.isAccessChecked
@@ -50,10 +51,15 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
    */
   async function doRefreshToken() {
     const accessStore = useAccessStore();
-    const resp = await refreshTokenApi();
-    const newToken = resp.data;
-    accessStore.setAccessToken(newToken);
-    return newToken;
+    const currentRefreshToken = accessStore.refreshToken;
+    if (!currentRefreshToken) {
+      throw new Error('Refresh token is missing.');
+    }
+
+    const session = await refresh(currentRefreshToken);
+    accessStore.setAccessToken(session.accessToken);
+    accessStore.setRefreshToken(session.refreshToken);
+    return session.accessToken;
   }
 
   function formatToken(token: null | string) {

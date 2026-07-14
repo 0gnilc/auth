@@ -12,15 +12,15 @@ interface BasicUserInfo {
   /**
    * 头像
    */
-  avatar: string;
+  avatar?: string;
   /**
    * 用户昵称
    */
-  realName: string;
+  nickname: string;
   /**
-   * 用户角色
+   * 用户角色标识
    */
-  roles?: string[];
+  roleCodes?: string[];
   /**
    * 用户id
    */
