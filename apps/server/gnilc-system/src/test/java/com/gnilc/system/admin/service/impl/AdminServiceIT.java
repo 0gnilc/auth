@@ -126,6 +126,24 @@ class AdminServiceIT {
     }
 
     @Test
+    void updateKeepsPasswordWhenPasswordIsBlankOrNull() {
+        admins.createAdmin(admin("password-kept", "Initial#123", List.of()));
+        AdminBo stored = admins.getAdminByUsername("password-kept");
+
+        AdminDto blankPassword = new AdminDto();
+        blankPassword.setId(stored.getId());
+        blankPassword.setPassword("  ");
+        admins.updateAdmin(blankPassword);
+        assertThat(admins.login("password-kept", "Initial#123")).isNotNull();
+
+        AdminDto nullPassword = new AdminDto();
+        nullPassword.setId(stored.getId());
+        nullPassword.setPassword(null);
+        admins.updateAdmin(nullPassword);
+        assertThat(admins.login("password-kept", "Initial#123")).isNotNull();
+    }
+
+    @Test
     void roleReplacementSupportsEmptyListAndRejectsUnknownRole() {
         ensureRole("operator");
         admins.createAdmin(admin("carol", "Strong#123", List.of("operator")));
