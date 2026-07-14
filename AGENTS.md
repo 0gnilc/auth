@@ -26,6 +26,10 @@ mvn -f apps/server/pom.xml verify
 
 `mvn -f apps/server/pom.xml verify` requires Docker for Testcontainers MySQL 8 and Redis 8. Do not replace containers with H2, local services, or shared services.
 
+### Git commits
+
+All agents and automated tools must create commits with `pnpm run commit`, which uses the repository's `"commit": "czg"` script. Do not invoke `git commit` directly.
+
 ### Domain docs
 
 This repo uses a single-context domain docs layout: root `CONTEXT.md` plus root `docs/adr/`. See `docs/agents/domain.md`.
