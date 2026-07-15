@@ -73,6 +73,42 @@ class RbacSchemaIT {
                 "az_role_menu");
     }
 
+    @Test
+    void frameworkAndRbacPermissionsCanRunRepeatedly() {
+        runScript();
+        runScript("sql/schema/03_framework_permissions.sql");
+        runScript("sql/schema/04_rbac_permissions.sql");
+
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM az_permission", Integer.class))
+                .isEqualTo(21);
+        assertThat(jdbc.queryForObject("""
+                SELECT COUNT(*)
+                  FROM az_permission
+                 WHERE code = name
+                   AND code = CONCAT(target_qualifier, ':', target_identifier)
+                   AND public_access = 1
+                """, Integer.class)).isEqualTo(21);
+
+        jdbc.update("""
+                UPDATE az_permission
+                   SET name = 'Operator managed',
+                       public_access = 0
+                 WHERE code = 'POST:/authz/menu/create'
+                """);
+        runScript("sql/schema/03_framework_permissions.sql");
+        runScript("sql/schema/04_rbac_permissions.sql");
+
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM az_permission", Integer.class))
+                .isEqualTo(21);
+        assertThat(jdbc.queryForObject("""
+                SELECT COUNT(*)
+                  FROM az_permission
+                 WHERE code = 'POST:/authz/menu/create'
+                   AND name = 'Operator managed'
+                   AND public_access = 0
+                """, Integer.class)).isEqualTo(1);
+    }
+
     private java.util.List<String> tableNames() {
         return jdbc.queryForList("""
                 select table_name
@@ -82,7 +118,10 @@ class RbacSchemaIT {
     }
 
     private void runScript() {
-        new ResourceDatabasePopulator(new ClassPathResource("sql/schema/01_rbac.sql"))
-                .execute(dataSource);
+        runScript("sql/schema/01_rbac.sql");
+    }
+
+    private void runScript(String path) {
+        new ResourceDatabasePopulator(new ClassPathResource(path)).execute(dataSource);
     }
 }

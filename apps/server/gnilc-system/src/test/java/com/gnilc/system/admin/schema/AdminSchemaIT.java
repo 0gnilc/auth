@@ -125,6 +125,39 @@ class AdminSchemaIT {
         assertThat(defaultAdminRoleBindingCount()).isEqualTo(1);
     }
 
+    @Test
+    void adminPermissionsCanRunRepeatedly() {
+        runScript("sql/schema/05_admin_permissions.sql");
+
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM az_permission", Integer.class))
+                .isEqualTo(11);
+        assertThat(jdbc.queryForObject("""
+                SELECT COUNT(*)
+                  FROM az_permission
+                 WHERE code = name
+                   AND code = CONCAT(target_qualifier, ':', target_identifier)
+                   AND public_access = 1
+                """, Integer.class)).isEqualTo(11);
+
+        jdbc.update("""
+                UPDATE az_permission
+                   SET name = 'Operator managed',
+                       public_access = 0
+                 WHERE code = 'POST:/sys/admin/remove/{id}'
+                """);
+        runScript("sql/schema/05_admin_permissions.sql");
+
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM az_permission", Integer.class))
+                .isEqualTo(11);
+        assertThat(jdbc.queryForObject("""
+                SELECT COUNT(*)
+                  FROM az_permission
+                 WHERE code = 'POST:/sys/admin/remove/{id}'
+                   AND name = 'Operator managed'
+                   AND public_access = 0
+                """, Integer.class)).isEqualTo(1);
+    }
+
     private java.util.List<String> tableNames() {
         return jdbc.queryForList("""
                 SELECT table_name

@@ -96,6 +96,8 @@
                 <targetPath>sql/schema</targetPath>
                 <includes>
                     <include>01_rbac.sql</include>
+                    <include>03_framework_permissions.sql</include>
+                    <include>04_rbac_permissions.sql</include>
                 </includes>
             </testResource>
         </testResources>
