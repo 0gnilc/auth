@@ -1,17 +1,21 @@
 package com.gnilc.system.admin.schema;
 
 import com.gnilc.system.support.SystemTestApplication;
-import com.gnilc.test.container.MySqlContainerContextInitializer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.jdbc.JdbcTest;
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
+import org.testcontainers.containers.MySQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.utility.DockerImageName;
 
 import javax.sql.DataSource;
 
@@ -21,10 +25,18 @@ import static org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTest
 @JdbcTest
 @ActiveProfiles("test")
 @AutoConfigureTestDatabase(replace = NONE)
-@ContextConfiguration(
-        classes = SystemTestApplication.class,
-        initializers = MySqlContainerContextInitializer.class)
+@ContextConfiguration(classes = SystemTestApplication.class)
+@Testcontainers
+@SuppressWarnings("resource")
 class AdminSchemaIT {
+    @Container
+    @ServiceConnection
+    private static final MySQLContainer<?> MYSQL = new MySQLContainer<>(DockerImageName.parse(
+            System.getProperty("app.test.mysql.image", "mysql:8.4.0")))
+            .withDatabaseName("gnilc_admin_schema_test")
+            .withUsername("test")
+            .withPassword("test");
+
     @Autowired
     private JdbcTemplate jdbc;
     @Autowired
@@ -123,6 +135,39 @@ class AdminSchemaIT {
                 .containsEntry("status", true);
         assertThat(count("az_user", "id = " + userId + " AND del = 0")).isEqualTo(1);
         assertThat(defaultAdminRoleBindingCount()).isEqualTo(1);
+    }
+
+    @Test
+    void adminPermissionsCanRunRepeatedly() {
+        runScript("sql/schema/05_admin_permissions.sql");
+
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM az_permission", Integer.class))
+                .isEqualTo(11);
+        assertThat(jdbc.queryForObject("""
+                SELECT COUNT(*)
+                  FROM az_permission
+                 WHERE code = name
+                   AND code = CONCAT(target_qualifier, ':', target_identifier)
+                   AND public_access = 1
+                """, Integer.class)).isEqualTo(11);
+
+        jdbc.update("""
+                UPDATE az_permission
+                   SET name = 'Operator managed',
+                       public_access = 0
+                 WHERE code = 'POST:/sys/admin/remove/{id}'
+                """);
+        runScript("sql/schema/05_admin_permissions.sql");
+
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM az_permission", Integer.class))
+                .isEqualTo(11);
+        assertThat(jdbc.queryForObject("""
+                SELECT COUNT(*)
+                  FROM az_permission
+                 WHERE code = 'POST:/sys/admin/remove/{id}'
+                   AND name = 'Operator managed'
+                   AND public_access = 0
+                """, Integer.class)).isEqualTo(1);
     }
 
     private java.util.List<String> tableNames() {

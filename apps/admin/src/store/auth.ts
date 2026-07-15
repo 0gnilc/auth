@@ -10,7 +10,12 @@ import { resetAllStores, useAccessStore, useUserStore } from '@vben/stores';
 import { ElNotification } from 'element-plus';
 import { defineStore } from 'pinia';
 
-import { getAccessCodesApi, getUserInfoApi, loginApi, logoutApi } from '#/api';
+import {
+  getAdminUserInfo,
+  getMenuAccessCodes,
+  login as loginAdmin,
+  logout as logoutAdmin,
+} from '#/api';
 import { $t } from '#/locales';
 
 export const useAuthStore = defineStore('auth', () => {
@@ -25,7 +30,7 @@ export const useAuthStore = defineStore('auth', () => {
    * Asynchronously handle the login process
    * @param params 登录表单数据
    */
-  async function authLogin(
+  async function login(
     params: Recordable<any>,
     onSuccess?: () => Promise<void> | void,
   ) {
@@ -33,20 +38,24 @@ export const useAuthStore = defineStore('auth', () => {
     let userInfo: null | UserInfo = null;
     try {
       loginLoading.value = true;
-      const { accessToken } = await loginApi(params);
+      const { accessToken, refreshToken } = await loginAdmin(
+        params.username,
+        params.password,
+      );
 
       // 如果成功获取到 accessToken
       if (accessToken) {
         // 将 accessToken 存储到 accessStore 中
         accessStore.setAccessToken(accessToken);
+        accessStore.setRefreshToken(refreshToken);
 
         // 获取用户信息并存储到 accessStore 中
-        const [fetchUserInfoResult, accessCodes] = await Promise.all([
-          fetchUserInfo(),
-          getAccessCodesApi(),
+        const [userInfoResult, accessCodes] = await Promise.all([
+          getUserInfo(),
+          getMenuAccessCodes(),
         ]);
 
-        userInfo = fetchUserInfoResult;
+        userInfo = userInfoResult;
 
         userStore.setUserInfo(userInfo);
         accessStore.setAccessCodes(accessCodes);
@@ -61,9 +70,9 @@ export const useAuthStore = defineStore('auth', () => {
               );
         }
 
-        if (userInfo?.realName) {
+        if (userInfo?.nickname) {
           ElNotification({
-            message: `${$t('authentication.loginSuccessDesc')}:${userInfo?.realName}`,
+            message: `${$t('authentication.loginSuccessDesc')}:${userInfo?.nickname}`,
             title: $t('authentication.loginSuccess'),
             type: 'success',
           });
@@ -80,7 +89,9 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function logout(redirect: boolean = true) {
     try {
-      await logoutApi();
+      if (accessStore.refreshToken) {
+        await logoutAdmin(accessStore.refreshToken);
+      }
     } catch {
       // 不做任何处理
     }
@@ -98,8 +109,8 @@ export const useAuthStore = defineStore('auth', () => {
     });
   }
 
-  async function fetchUserInfo() {
-    const userInfo = await getUserInfoApi();
+  async function getUserInfo() {
+    const userInfo = await getAdminUserInfo();
     userStore.setUserInfo(userInfo);
     return userInfo;
   }
@@ -110,8 +121,8 @@ export const useAuthStore = defineStore('auth', () => {
 
   return {
     $reset,
-    authLogin,
-    fetchUserInfo,
+    getUserInfo,
+    login,
     loginLoading,
     logout,
   };

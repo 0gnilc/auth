@@ -1,18 +1,24 @@
 package com.gnilc.common.utils;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.gnilc.common.jackson.LongNumberSerializer;
 import lombok.Data;
 
 import java.util.List;
 
 @Data
 public class PageResult<T> {
+    @JsonSerialize(using = LongNumberSerializer.class)
     private long totalPage;
 
+    @JsonSerialize(using = LongNumberSerializer.class)
     private long totalCount;
 
+    @JsonSerialize(using = LongNumberSerializer.class)
     private long pageSize;
 
+    @JsonSerialize(using = LongNumberSerializer.class)
     private long currentPage;
 
     private List<T> list;

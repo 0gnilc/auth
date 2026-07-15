@@ -28,11 +28,10 @@ class RestExceptionControllerAdviceControllerTest {
 
     @BeforeEach
     void setUp() {
-        RestExceptionHandlingConfiguration configuration = new RestExceptionHandlingConfiguration();
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
         validator.afterPropertiesSet();
         mvc = MockMvcBuilders.standaloneSetup(new ThrowingController())
-                .setControllerAdvice(configuration.new RestExceptionControllerAdvice())
+                .setControllerAdvice(new RestExceptionHandlingConfiguration.RestExceptionControllerAdvice())
                 .setMessageConverters(new MappingJackson2HttpMessageConverter())
                 .setValidator(validator)
                 .build();

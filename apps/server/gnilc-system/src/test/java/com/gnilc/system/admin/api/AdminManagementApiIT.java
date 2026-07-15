@@ -86,7 +86,7 @@ class AdminManagementApiIT extends AdminApiTestSupport {
                 .post("/api/sys/admin/page")
                 .then()
                 .statusCode(200)
-                .body("data.totalCount", equalTo("1"))
+                .body("data.totalCount", equalTo(1))
                 .body("data.list.username", hasItem("api-user"));
 
         given()

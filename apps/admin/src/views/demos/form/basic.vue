@@ -6,7 +6,7 @@ import { Page, useVbenDrawer } from '@vben/common-ui';
 import { ElButton, ElCard, ElCheckbox, ElMessage } from 'element-plus';
 
 import { useVbenForm } from '#/adapter/form';
-import { getAllMenusApi } from '#/api';
+import { getAllMenus } from '#/api';
 
 const [Form, formApi] = useVbenForm({
   commonConfig: {
@@ -40,7 +40,7 @@ const [Form, formApi] = useVbenForm({
           }));
         },
         // 菜单接口
-        api: getAllMenusApi,
+        api: getAllMenus,
       },
       // 字段名
       fieldName: 'api',
@@ -52,7 +52,7 @@ const [Form, formApi] = useVbenForm({
       // 对应组件的参数
       componentProps: {
         // 菜单接口
-        api: getAllMenusApi,
+        api: getAllMenus,
         childrenField: 'children',
         // 菜单接口转options格式
         labelField: 'name',

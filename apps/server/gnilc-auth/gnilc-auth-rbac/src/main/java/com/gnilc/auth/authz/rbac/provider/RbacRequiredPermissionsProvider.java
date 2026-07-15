@@ -23,42 +23,42 @@ import java.util.Optional;
 @Component
 @Slf4j
 public class RbacRequiredPermissionsProvider implements RequiredPermissionsProvider {
-    private final AntPathMatcher matcher = new AntPathMatcher();
+  private final AntPathMatcher matcher = new AntPathMatcher();
 
-    @Autowired
-    private PermissionCache cache;
+  @Autowired
+  private PermissionCache cache;
 
-    /**
-     * RBAC provider 只参与 Servlet 访问环境。
-     */
-    @Override
-    public boolean supports(AccessContext context) {
-        return context != null && AccessEnvironment.SERVLET.equals(context.getEnvironment());
+  /**
+   * RBAC provider 只参与 Servlet 访问环境。
+   */
+  @Override
+  public boolean supports(AccessContext context) {
+    return context != null && AccessEnvironment.SERVLET.equals(context.getEnvironment());
+  }
+
+  /**
+   * 根据访问目标匹配目标权限，返回访问该目标需要的权限。
+   *
+   * @param context 访问上下文
+   * @return 访问目标所需的权限集合
+   */
+  @Override
+  public List<Permission> provide(AccessContext context) {
+    if (!supports(context)) {
+      return List.of();
     }
-
-    /**
-     * 根据访问目标匹配目标权限，返回访问该目标需要的权限。
-     *
-     * @param context 访问上下文
-     * @return 访问目标所需的权限集合
-     */
-    @Override
-    public List<Permission> provide(AccessContext context) {
-        if (!supports(context)) {
-            return List.of();
-        }
-        AccessTarget target = context == null ? null : context.getTarget();
-        if (target == null || StringUtils.isBlank(target.getIdentifier())) {
-            return List.of();
-        }
-        String path = target.getIdentifier();
-        List<TargetPermission> targetPermissions = cache.loadTargetPermissions();
-        targetPermissions = Optional.ofNullable(targetPermissions).orElse(List.of());
-        // RBAC 第一版只使用目标标识做路径匹配，目标限定符暂不参与匹配。
-        return targetPermissions.stream()
-                .filter(targetPermission -> matcher.match(targetPermission.getTargetIdentifier(), path))
-                .map(targetPermission -> new Permission(targetPermission.getCode()))
-                .distinct()
-                .toList();
+    AccessTarget target = context == null ? null : context.getTarget();
+    if (target == null || StringUtils.isBlank(target.getIdentifier())) {
+      return List.of();
     }
+    String path = target.getIdentifier();
+    List<TargetPermission> targetPermissions = cache.loadTargetPermissions();
+    targetPermissions = Optional.ofNullable(targetPermissions).orElse(List.of());
+    // RBAC 第一版只使用目标标识做路径匹配，目标限定符暂不参与匹配。
+    return targetPermissions.stream()
+      .filter(targetPermission -> matcher.match(targetPermission.getTargetIdentifier(), path))
+      .map(targetPermission -> new Permission(targetPermission.getCode()))
+      .distinct()
+      .toList();
+  }
 }

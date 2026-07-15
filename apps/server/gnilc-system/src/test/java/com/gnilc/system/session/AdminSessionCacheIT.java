@@ -4,6 +4,7 @@ import com.gnilc.system.support.SystemContainerContextInitializer;
 import com.gnilc.system.support.SystemTestApplication;
 import com.gnilc.test.cleanup.RedisCleaner;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -29,8 +30,17 @@ class AdminSessionCacheIT {
     @Autowired private StringRedisTemplate redis;
     @Autowired private RedisConnectionFactory connectionFactory;
 
+    @BeforeEach
+    void cleanRedisBeforeTest() {
+        cleanRedis();
+    }
+
     @AfterEach
-    void cleanRedis() {
+    void cleanRedisAfterTest() {
+        cleanRedis();
+    }
+
+    private void cleanRedis() {
         new RedisCleaner(connectionFactory).flushDatabase();
     }
 

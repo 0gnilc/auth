@@ -5,7 +5,7 @@ import type {
   SliderRotateVerifyPassingData,
 } from '../types';
 
-import { reactive, unref, useTemplateRef, watch, watchEffect } from 'vue';
+import { reactive, unref, useTemplateRef, watch } from 'vue';
 
 import { $t } from '@vben/locales';
 
@@ -68,9 +68,17 @@ watch(
   },
 );
 
-watchEffect(() => {
-  state.isPassing = !!modelValue.value;
-});
+watch(
+  modelValue,
+  (isPassing) => {
+    if (isPassing) {
+      state.isPassing = true;
+    } else if (state.isPassing) {
+      resume();
+    }
+  },
+  { immediate: true },
+);
 
 function getEventPageX(e: MouseEvent | TouchEvent): number {
   if ('pageX' in e) {

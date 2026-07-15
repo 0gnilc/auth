@@ -1,17 +1,21 @@
 package com.gnilc.auth.authz.rbac.schema;
 
 import com.gnilc.auth.authz.rbac.support.RbacTestApplication;
-import com.gnilc.test.container.MySqlContainerContextInitializer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.jdbc.JdbcTest;
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
+import org.testcontainers.containers.MySQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.utility.DockerImageName;
 
 import javax.sql.DataSource;
 
@@ -21,10 +25,18 @@ import static org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTest
 @JdbcTest
 @ActiveProfiles("test")
 @AutoConfigureTestDatabase(replace = NONE)
-@ContextConfiguration(
-        classes = RbacTestApplication.class,
-        initializers = MySqlContainerContextInitializer.class)
+@ContextConfiguration(classes = RbacTestApplication.class)
+@Testcontainers
+@SuppressWarnings("resource")
 class RbacSchemaIT {
+    @Container
+    @ServiceConnection
+    private static final MySQLContainer<?> MYSQL = new MySQLContainer<>(DockerImageName.parse(
+            System.getProperty("app.test.mysql.image", "mysql:8.4.0")))
+            .withDatabaseName("gnilc_rbac_schema_test")
+            .withUsername("test")
+            .withPassword("test");
+
     @Autowired
     private JdbcTemplate jdbc;
     @Autowired
@@ -73,6 +85,42 @@ class RbacSchemaIT {
                 "az_role_menu");
     }
 
+    @Test
+    void frameworkAndRbacPermissionsCanRunRepeatedly() {
+        runScript();
+        runScript("sql/schema/03_framework_permissions.sql");
+        runScript("sql/schema/04_rbac_permissions.sql");
+
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM az_permission", Integer.class))
+                .isEqualTo(21);
+        assertThat(jdbc.queryForObject("""
+                SELECT COUNT(*)
+                  FROM az_permission
+                 WHERE code = name
+                   AND code = CONCAT(target_qualifier, ':', target_identifier)
+                   AND public_access = 1
+                """, Integer.class)).isEqualTo(21);
+
+        jdbc.update("""
+                UPDATE az_permission
+                   SET name = 'Operator managed',
+                       public_access = 0
+                 WHERE code = 'POST:/authz/menu/create'
+                """);
+        runScript("sql/schema/03_framework_permissions.sql");
+        runScript("sql/schema/04_rbac_permissions.sql");
+
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM az_permission", Integer.class))
+                .isEqualTo(21);
+        assertThat(jdbc.queryForObject("""
+                SELECT COUNT(*)
+                  FROM az_permission
+                 WHERE code = 'POST:/authz/menu/create'
+                   AND name = 'Operator managed'
+                   AND public_access = 0
+                """, Integer.class)).isEqualTo(1);
+    }
+
     private java.util.List<String> tableNames() {
         return jdbc.queryForList("""
                 select table_name
@@ -82,7 +130,10 @@ class RbacSchemaIT {
     }
 
     private void runScript() {
-        new ResourceDatabasePopulator(new ClassPathResource("sql/schema/01_rbac.sql"))
-                .execute(dataSource);
+        runScript("sql/schema/01_rbac.sql");
+    }
+
+    private void runScript(String path) {
+        new ResourceDatabasePopulator(new ClassPathResource(path)).execute(dataSource);
     }
 }

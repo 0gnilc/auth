@@ -4,7 +4,7 @@ server:
     context-path: /api
 spring:
   application:
-    name: gnilc-auth-system
+    name: gnilc-auth
   profiles:
     active: dev
   datasource:

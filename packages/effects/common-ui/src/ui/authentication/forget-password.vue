@@ -12,11 +12,15 @@ import { VbenButton } from '@vben-core/shadcn-ui';
 import Title from './auth-title.vue';
 
 interface Props {
-  formSchema: VbenFormSchema[];
+  formSchema?: VbenFormSchema[];
   /**
    * @zh_CN 是否处于加载处理状态
    */
   loading?: boolean;
+  /**
+   * @zh_CN 是否显示提交按钮
+   */
+  showSubmitButton?: boolean;
   /**
    * @zh_CN 登录路径
    */
@@ -40,8 +44,10 @@ defineOptions({
 });
 
 const props = withDefaults(defineProps<Props>(), {
+  formSchema: () => [],
   loading: false,
   loginPath: '/auth/login',
+  showSubmitButton: true,
   submitButtonText: '',
   subTitle: '',
   title: '',
@@ -93,10 +99,11 @@ defineExpose({
         </slot>
       </template>
     </Title>
-    <Form />
+    <Form v-if="formSchema.length > 0" />
 
     <div>
       <VbenButton
+        v-if="showSubmitButton"
         :class="{
           'cursor-wait': loading,
         }"

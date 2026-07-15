@@ -36,6 +36,20 @@
 
 首次登录后必须立即修改默认密码。不要在公网环境中保留默认凭据。
 
+### `03_framework_permissions.sql`
+
+初始化 Spring Boot 框架默认端点权限。当前包含 `*:/error`；日志中两个 `/error` handler 共享同一个 RequestMapping，因此只初始化一条权限记录。
+
+### `04_rbac_permissions.sql`
+
+初始化 RBAC 模块的 20 条 RequestMapping 权限。
+
+### `05_admin_permissions.sql`
+
+初始化系统后台管理员模块的 11 条 RequestMapping 权限。
+
+三个权限脚本均依赖 `01_rbac.sql`。初始化记录的 `code` 和 `name` 为 `<HTTP method>:<path>`，`target_identifier` 为请求路径，`target_qualifier` 为 HTTP method，`public_access` 默认为 `1`。脚本按 `code` 判断是否已存在；已有记录保持原值，不会被覆盖。
+
 ## 首次部署
 
 准备一个空的 MySQL 8 数据库，并按以下顺序执行：
@@ -45,6 +59,12 @@ mysql --host=<host> --user=<user> --password --database=<database> \
   < deploy/sql/01_rbac.sql
 mysql --host=<host> --user=<user> --password --database=<database> \
   < deploy/sql/02_admin.sql
+mysql --host=<host> --user=<user> --password --database=<database> \
+  < deploy/sql/03_framework_permissions.sql
+mysql --host=<host> --user=<user> --password --database=<database> \
+  < deploy/sql/04_rbac_permissions.sql
+mysql --host=<host> --user=<user> --password --database=<database> \
+  < deploy/sql/05_admin_permissions.sql
 ```
 
 执行前确认目标数据库：
@@ -67,10 +87,11 @@ SELECT id, code, built_in FROM az_role WHERE code = 'admin' AND del = 0;
 
 ## 幂等性边界
 
-两个脚本都支持在当前版本结构上重复执行，但幂等只表示重复执行不会重复建表或重复插入默认数据：
+所有脚本都支持在当前版本结构上重复执行，但幂等只表示重复执行不会重复建表或重复插入默认数据：
 
 - `01_rbac.sql` 不会升级已有表结构；
 - `02_admin.sql` 不会覆盖已有管理员资料或密码，但会恢复默认记录的逻辑删除状态和默认管理员的启用状态；
+- `03_framework_permissions.sql`、`04_rbac_permissions.sql` 和 `05_admin_permissions.sql` 不会覆盖已有权限记录，即使已有记录已逻辑删除或字段值不同；
 - 脚本不会删除额外的业务数据；
 - 历史版本升级、字段变更和索引变更仍需专门的迁移脚本。
 
@@ -84,8 +105,8 @@ deploy/sql/<script>.sql -> sql/schema/<script>.sql
 
 当前测试加载方式如下：
 
-- `gnilc-auth-rbac` 的 `RbacSchemaIT` 及模块集成测试只加载 `sql/schema/01_rbac.sql`；
-- `gnilc-system` 的 `AdminSchemaIT` 及模块集成测试依次加载 `01_rbac.sql`、`02_admin.sql`；
+- `gnilc-auth-rbac` 的 `RbacSchemaIT` 验证 `01_rbac.sql`、`03_framework_permissions.sql` 和 `04_rbac_permissions.sql`，其他模块集成测试只加载 `01_rbac.sql`；
+- `gnilc-system` 的 `AdminSchemaIT` 验证 `02_admin.sql` 和 `05_admin_permissions.sql`，其他模块集成测试依次加载 `01_rbac.sql`、`02_admin.sql`；
 - `gnilc-system` 的 Admin API 测试恢复基线数据时会重新执行 `02_admin.sql`；
 - `gnilc-bootstrap` 只验证最终应用组合和启动，不再复制或执行部署 SQL。
 
@@ -102,6 +123,7 @@ mvn verify
 ## 安全要求
 
 - 不要把数据库密码写入 SQL、文档、脚本参数或提交记录；使用客户端交互式密码输入或安全的凭据管理方式。
+- 三个权限初始化脚本按要求将 `public_access` 设为 `1`，这些端点默认不要求角色授权；部署到公网前必须复核并将需要保护的权限改为 `0`，同时配置角色权限关系。
 - 不要在共享数据库或未备份的现有数据库上试运行初始化脚本。
 - 自动化测试只能连接由 Testcontainers 管理的临时数据库。
 - 本目录只处理 MySQL 结构和基础数据，不负责 Redis 初始化。

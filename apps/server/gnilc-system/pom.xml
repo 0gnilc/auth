@@ -76,6 +76,9 @@
                 <includes>
                     <include>01_rbac.sql</include>
                     <include>02_admin.sql</include>
+                    <include>03_framework_permissions.sql</include>
+                    <include>04_rbac_permissions.sql</include>
+                    <include>05_admin_permissions.sql</include>
                 </includes>
             </testResource>
         </testResources>

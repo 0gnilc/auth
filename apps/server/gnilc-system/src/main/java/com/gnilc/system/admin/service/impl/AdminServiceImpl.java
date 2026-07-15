@@ -220,6 +220,8 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
         if (StringUtils.isNotBlank(password)) {
             validateStrongPassword(password);
             bo.setPassword(PASSWORD_ENCODER.encode(password));
+        } else {
+            bo.setPassword(null);
         }
 
         updateById(bo);

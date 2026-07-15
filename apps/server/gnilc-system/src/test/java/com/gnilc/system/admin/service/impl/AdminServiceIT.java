@@ -17,6 +17,7 @@ import com.gnilc.system.support.SystemTestApplication;
 import com.gnilc.system.support.SystemContainerContextInitializer;
 import com.gnilc.test.cleanup.RedisCleaner;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -43,8 +44,17 @@ class AdminServiceIT {
     @Autowired private JdbcTemplate jdbc;
     @Autowired private AdminSessionManager sessions;
 
+    @BeforeEach
+    void cleanRedisBeforeTest() {
+        cleanRedis();
+    }
+
     @AfterEach
-    void cleanRedis() {
+    void cleanRedisAfterTest() {
+        cleanRedis();
+    }
+
+    private void cleanRedis() {
         new RedisCleaner(redis).flushDatabase();
     }
 
@@ -123,6 +133,24 @@ class AdminServiceIT {
         assertThat(sessions.validateAccessToken(enabledSession.getAccessToken()))
                 .isEqualTo(admins.getAdminByUsername("still-enabled").getUserId());
         assertThat(admins.refresh(enabledSession.getRefreshToken())).isNotNull();
+    }
+
+    @Test
+    void updateKeepsPasswordWhenPasswordIsBlankOrNull() {
+        admins.createAdmin(admin("password-kept", "Initial#123", List.of()));
+        AdminBo stored = admins.getAdminByUsername("password-kept");
+
+        AdminDto blankPassword = new AdminDto();
+        blankPassword.setId(stored.getId());
+        blankPassword.setPassword("  ");
+        admins.updateAdmin(blankPassword);
+        assertThat(admins.login("password-kept", "Initial#123")).isNotNull();
+
+        AdminDto nullPassword = new AdminDto();
+        nullPassword.setId(stored.getId());
+        nullPassword.setPassword(null);
+        admins.updateAdmin(nullPassword);
+        assertThat(admins.login("password-kept", "Initial#123")).isNotNull();
     }
 
     @Test

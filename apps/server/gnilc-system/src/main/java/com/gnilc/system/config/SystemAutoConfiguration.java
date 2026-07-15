@@ -29,7 +29,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 @ConditionalOnClass({SqlSessionFactory.class, StringRedisTemplate.class})
 @ComponentScan(basePackages = "com.gnilc.system",
         excludeFilters = @ComponentScan.Filter(type = FilterType.ANNOTATION, classes = Configuration.class))
-@Import(SystemControlConfiguration.class)
+@Import(SystemConfiguration.class)
 public class SystemAutoConfiguration {
 
 }

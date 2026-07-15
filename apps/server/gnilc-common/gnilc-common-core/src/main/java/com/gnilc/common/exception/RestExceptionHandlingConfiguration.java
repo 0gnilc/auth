@@ -5,9 +5,13 @@ import com.gnilc.common.utils.R;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Condition;
+import org.springframework.context.annotation.ConditionContext;
+import org.springframework.context.annotation.Conditional;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.core.type.AnnotatedTypeMetadata;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -34,7 +38,8 @@ public class RestExceptionHandlingConfiguration {
 
     @RestControllerAdvice
     @Order(Ordered.LOWEST_PRECEDENCE)
-    final class RestExceptionControllerAdvice {
+    @Conditional(ExplicitImportOnlyCondition.class)
+    static final class RestExceptionControllerAdvice {
 
         private final Logger log = LoggerFactory.getLogger(RestExceptionControllerAdvice.class);
         private static final String UNEXPECTED_ERROR_MESSAGE = "An unexpected error occurred.";
@@ -96,6 +101,17 @@ public class RestExceptionHandlingConfiguration {
             log.error("Unhandled exception", exception);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(R.error(ResponseCode.ERROR, UNEXPECTED_ERROR_MESSAGE));
+        }
+    }
+
+    /**
+     * Prevents component scanning from activating the advice. The configuration's
+     * {@link Bean} method remains the only registration path.
+     */
+    static final class ExplicitImportOnlyCondition implements Condition {
+        @Override
+        public boolean matches(ConditionContext context, AnnotatedTypeMetadata metadata) {
+            return false;
         }
     }
 }
