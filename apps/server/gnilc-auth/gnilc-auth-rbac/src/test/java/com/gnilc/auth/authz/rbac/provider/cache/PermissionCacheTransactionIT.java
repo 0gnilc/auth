@@ -22,6 +22,7 @@ import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabas
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -49,6 +50,7 @@ class PermissionCacheTransactionIT {
     @Autowired private RolePermissionDao rolePermissionDao;
     @Autowired private UserRoleDao userRoleDao;
     @Autowired private PlatformTransactionManager transactionManager;
+    @Autowired private JdbcTemplate jdbc;
     @Autowired private PermissionCache permissionCache;
     @Autowired private PermissionCacheRedisResetTransport redisResetTransport;
 
@@ -57,17 +59,14 @@ class PermissionCacheTransactionIT {
     @BeforeEach
     void setUp() {
         transactions = new TransactionTemplate(transactionManager);
+        cleanCommittedRelations();
         clearInvocations(permissionCache, redisResetTransport);
     }
 
     @AfterEach
     void cleanCommittedRelations() {
-        transactions.executeWithoutResult(status -> {
-            rolePermissionDao.delete(new LambdaQueryWrapper<RolePermissionBo>()
-                    .between(RolePermissionBo::getRoleId, 7101L, 7102L));
-            userRoleDao.delete(new LambdaQueryWrapper<UserRoleBo>()
-                    .between(UserRoleBo::getRoleId, 7101L, 7102L));
-        });
+        jdbc.update("delete from az_role_permission where role_id between 7101 and 7102");
+        jdbc.update("delete from az_user_role where role_id between 7101 and 7102");
     }
 
     @Test

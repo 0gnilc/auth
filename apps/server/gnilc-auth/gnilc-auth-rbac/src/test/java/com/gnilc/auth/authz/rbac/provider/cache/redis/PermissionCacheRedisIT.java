@@ -5,6 +5,7 @@ import com.gnilc.auth.authz.rbac.provider.cache.PermissionCacheResetExecutor;
 import com.gnilc.test.cleanup.RedisCleaner;
 import com.gnilc.test.container.RedisContainerContextInitializer;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
@@ -32,8 +33,17 @@ class PermissionCacheRedisIT {
     @Autowired private StringRedisTemplate redis;
     @Autowired private RedisConnectionFactory connectionFactory;
 
+    @BeforeEach
+    void cleanRedisBeforeTest() {
+        cleanRedis();
+    }
+
     @AfterEach
-    void cleanRedis() {
+    void cleanRedisAfterTest() {
+        cleanRedis();
+    }
+
+    private void cleanRedis() {
         new RedisCleaner(connectionFactory).flushDatabase();
     }
 

@@ -1,17 +1,21 @@
 package com.gnilc.system.admin.schema;
 
 import com.gnilc.system.support.SystemTestApplication;
-import com.gnilc.test.container.MySqlContainerContextInitializer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.jdbc.JdbcTest;
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
+import org.testcontainers.containers.MySQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.utility.DockerImageName;
 
 import javax.sql.DataSource;
 
@@ -21,10 +25,18 @@ import static org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTest
 @JdbcTest
 @ActiveProfiles("test")
 @AutoConfigureTestDatabase(replace = NONE)
-@ContextConfiguration(
-        classes = SystemTestApplication.class,
-        initializers = MySqlContainerContextInitializer.class)
+@ContextConfiguration(classes = SystemTestApplication.class)
+@Testcontainers
+@SuppressWarnings("resource")
 class AdminSchemaIT {
+    @Container
+    @ServiceConnection
+    private static final MySQLContainer<?> MYSQL = new MySQLContainer<>(DockerImageName.parse(
+            System.getProperty("app.test.mysql.image", "mysql:8.4.0")))
+            .withDatabaseName("gnilc_admin_schema_test")
+            .withUsername("test")
+            .withPassword("test");
+
     @Autowired
     private JdbcTemplate jdbc;
     @Autowired
