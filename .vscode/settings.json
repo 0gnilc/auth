@@ -157,7 +157,7 @@
   "scss.validate": false,
 
   // Extensions
-  "extensions.ignoreRecommendations": false,
+  "extensions.ignoreRecommendations": true,
   "emmet.showSuggestionsAsSnippets": true,
   "emmet.triggerExpansionOnTab": false,
   "errorLens.enabledDiagnosticLevels": ["warning", "error"],
