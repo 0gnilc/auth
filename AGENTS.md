@@ -30,6 +30,10 @@ mvn -f apps/server/pom.xml verify
 
 All agents and automated tools must create commits with `pnpm run commit`, which uses the repository's `"commit": "czg"` script. Do not invoke `git commit` directly.
 
+### Pull requests
+
+All agents and automated tools must deliver remote changes through a pull request. Never push directly to `main` or another target branch. Push the working branch to `origin`, then create or update a pull request; use `main` as the default base unless the user specifies another target branch.
+
 ### Domain docs
 
 This repo uses a single-context domain docs layout: root `CONTEXT.md` plus root `docs/adr/`. See `docs/agents/domain.md`.
