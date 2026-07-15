@@ -7,8 +7,8 @@ import org.springframework.context.annotation.Import;
 
 @SpringBootApplication(scanBasePackages = "com.gnilc.bootstrap")
 @Import(RestExceptionHandlingConfiguration.class)
-public class AccessControlApplication {
+public class AuthApplication {
     public static void main(String[] args) {
-        SpringApplication.run(AccessControlApplication.class, args);
+        SpringApplication.run(AuthApplication.class, args);
     }
 }
