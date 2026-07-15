@@ -1,10 +1,8 @@
 {
   "auth": {
     "login": "登录",
-    "register": "注册",
-    "codeLogin": "验证码登录",
-    "qrcodeLogin": "二维码登录",
     "forgetPassword": "忘记密码",
+    "forgetPasswordContactAdmin": "忘记密码时，请联系系统管理员重置密码。",
     "profile": "个人中心"
   },
   "dashboard": {
