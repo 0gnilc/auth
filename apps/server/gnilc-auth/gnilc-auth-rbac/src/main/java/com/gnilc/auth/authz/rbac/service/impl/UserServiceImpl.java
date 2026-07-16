@@ -9,6 +9,7 @@ import com.gnilc.auth.authz.rbac.entity.bo.UserBo;
 import com.gnilc.auth.authz.rbac.event.RbacAuthzEvent;
 import com.gnilc.auth.authz.rbac.service.MenuService;
 import com.gnilc.auth.authz.rbac.service.PermissionService;
+import com.gnilc.auth.authz.rbac.service.RoleMenuService;
 import com.gnilc.auth.authz.rbac.service.RoleService;
 import com.gnilc.auth.authz.rbac.service.UserRoleService;
 import com.gnilc.auth.authz.rbac.service.UserService;
@@ -27,17 +28,20 @@ public class UserServiceImpl extends ServiceImpl<UserDao, UserBo> implements Use
     private final UserRoleService userRoleService;
     private final PermissionService permissionService;
     private final MenuService menuService;
+    private final RoleMenuService roleMenuService;
 
     public UserServiceImpl(ApplicationEventPublisher eventPublisher,
                            RoleService roleService,
                            UserRoleService userRoleService,
                            PermissionService permissionService,
-                           MenuService menuService) {
+                           MenuService menuService,
+                           RoleMenuService roleMenuService) {
         this.eventPublisher = eventPublisher;
         this.roleService = roleService;
         this.userRoleService = userRoleService;
         this.permissionService = permissionService;
         this.menuService = menuService;
+        this.roleMenuService = roleMenuService;
     }
 
     @Transactional
@@ -117,7 +121,8 @@ public class UserServiceImpl extends ServiceImpl<UserDao, UserBo> implements Use
         if (userId == null) {
             return List.of();
         }
-        return menuService.getMenus(userId);
+        List<Long> roleIds = userRoleService.getRoleIds(userId);
+        return menuService.getMenus(roleMenuService.getMenuIds(roleIds));
     }
 
     @Override

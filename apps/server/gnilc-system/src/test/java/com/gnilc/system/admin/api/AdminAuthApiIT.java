@@ -1,5 +1,6 @@
 package com.gnilc.system.admin.api;
 
+import com.gnilc.auth.authz.rbac.provider.cache.PermissionCache;
 import com.gnilc.common.exception.RestExceptionHandlingConfiguration;
 import com.gnilc.system.admin.support.AdminApiTestConfiguration;
 import com.gnilc.system.admin.support.AdminApiTestSupport;
@@ -8,11 +9,14 @@ import com.gnilc.system.support.SystemTestApplication;
 import com.gnilc.test.annotation.ApiTest;
 import io.restassured.http.ContentType;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ContextConfiguration;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
 
@@ -25,6 +29,11 @@ import static org.hamcrest.Matchers.nullValue;
         classes = SystemTestApplication.class,
         initializers = SystemContainerContextInitializer.class)
 class AdminAuthApiIT extends AdminApiTestSupport {
+    @Autowired
+    private JdbcTemplate jdbc;
+    @Autowired
+    private PermissionCache permissionCache;
+
     @Test
     void loginRefreshAndLogoutRunThroughTheRealHttpAndRedisStack() {
         TokenPair pair = loginAsDefaultAdmin();
@@ -78,6 +87,117 @@ class AdminAuthApiIT extends AdminApiTestSupport {
                 .statusCode(200)
                 .body("code", equalTo(20001))
                 .body("error", equalTo("Incorrect username or password."));
+    }
+
+    @Test
+    void currentAdministratorReceivesTheirBackendNavigationRoutes() {
+        TokenPair pair = loginAsDefaultAdmin();
+
+        given()
+                .header("Authorization", bearer(pair.accessToken()))
+                .when()
+                .get("/api/sys/admin/menu/routes")
+                .then()
+                .statusCode(200)
+                .body("code", equalTo(0))
+                .body("data.size()", equalTo(2))
+                .body("data[0].name", equalTo("Dashboard"))
+                .body("data[0].path", equalTo("/dashboard"))
+                .body("data[0].component", equalTo("/dashboard/index"))
+                .body("data[0].meta.title", equalTo("page.dashboard.title"))
+                .body("data[1].name", equalTo("Profile"))
+                .body("data[1].path", equalTo("/profile"))
+                .body("data[1].meta.hideInMenu", equalTo(true));
+    }
+
+    @Test
+    void backendNavigationRoutesUseTheCurrentSessionUserMenuBindings() {
+        Long limitedRoleId = jdbc.queryForObject(
+                "select id from az_role where code = 'limited' and del = 0", Long.class);
+        Long routePermissionId = jdbc.queryForObject("""
+                select id from az_permission
+                where code = 'GET:/sys/admin/menu/routes' and del = 0
+                """, Long.class);
+        jdbc.update("""
+                insert into az_role_permission
+                    (del, create_time, role_id, permission_id)
+                values (0, now(), ?, ?)
+                """, limitedRoleId, routePermissionId);
+        jdbc.update("""
+                insert into az_menu
+                    (del, create_time, pid, type, status, name, path, component,
+                     iframe_src, link, `order`, title)
+                values
+                    (0, now(), 0, 'catalog', 1, 'LimitedCatalog', '/limited', null,
+                     null, null, 1, 'Limited'),
+                    (0, now(), 0, 'embedded', 1, 'LimitedDocs', '/limited-docs', null,
+                     'https://example.test/docs', null, 2, 'Limited docs'),
+                    (0, now(), 0, 'link', 1, 'LimitedRepository', '/limited-repository', null,
+                     null, 'https://example.test/repository', 3, 'Limited repository'),
+                    (0, now(), 0, 'catalog', 1, 'LimitedEmpty', '/limited-empty', null,
+                     null, null, 4, 'Limited empty'),
+                    (0, now(), 0, 'catalog', 0, 'LimitedDisabled', '/limited-disabled', null,
+                     null, null, 5, 'Limited disabled'),
+                    (0, now(), 0, 'menu', 1, 'LimitedUnauthorized', '/limited-unauthorized',
+                     '/dashboard/index', null, null, 6, 'Limited unauthorized')
+                """);
+        Long catalogId = menuId("LimitedCatalog");
+        Long disabledId = menuId("LimitedDisabled");
+        jdbc.update("""
+                insert into az_menu
+                    (del, create_time, pid, type, status, access_code, name, path, component,
+                     query, `order`, title)
+                values
+                    (0, now(), ?, 'menu', 1, null, 'LimitedHome', 'home',
+                     '/dashboard/index', '{"tab":"recent"}', 1, 'Limited home'),
+                    (0, now(), ?, 'button', 1, 'limited:export', 'LimitedExport', null,
+                     null, null, 2, 'Limited export'),
+                    (0, now(), ?, 'menu', 1, null, 'LimitedDisabledChild', 'child',
+                     '/dashboard/index', null, 1, 'Limited disabled child')
+                """, catalogId, catalogId, disabledId);
+        jdbc.update("""
+                insert into az_role_menu
+                    (del, create_time, role_id, menu_id)
+                select 0, now(), ?, id
+                from az_menu
+                where name in ('LimitedHome', 'LimitedExport', 'LimitedDocs',
+                               'LimitedRepository', 'LimitedEmpty', 'LimitedDisabledChild')
+                  and del = 0
+                """, limitedRoleId);
+        permissionCache.resetAll();
+        TokenPair pair = loginAsLimitedAdmin();
+
+        given()
+                .header("Authorization", bearer(pair.accessToken()))
+                .when()
+                .get("/api/sys/admin/menu/routes")
+                .then()
+                .statusCode(200)
+                .body("code", equalTo(0))
+                .body("data.size()", equalTo(4))
+                .body("data[0].name", equalTo("LimitedCatalog"))
+                .body("data[0].children.size()", equalTo(1))
+                .body("data[0].children[0].name", equalTo("LimitedHome"))
+                .body("data[0].children[0].component", equalTo("/dashboard/index"))
+                .body("data[0].children[0].meta.query.tab", equalTo("recent"))
+                .body("data[0].children[0].children.size()", equalTo(0))
+                .body("data[1].name", equalTo("LimitedDocs"))
+                .body("data[1].component", equalTo("IFrameView"))
+                .body("data[1].meta.iframeSrc", equalTo("https://example.test/docs"))
+                .body("data[2].name", equalTo("LimitedRepository"))
+                .body("data[2].component", equalTo("IFrameView"))
+                .body("data[2].meta.link", equalTo("https://example.test/repository"))
+                .body("data[3].name", equalTo("LimitedEmpty"))
+                .body("data[3].children.size()", equalTo(0))
+                .body("data.name", not(hasItem("LimitedExport")))
+                .body("data.name", not(hasItem("LimitedDisabled")))
+                .body("data.name", not(hasItem("LimitedDisabledChild")))
+                .body("data.name", not(hasItem("LimitedUnauthorized")));
+    }
+
+    private Long menuId(String name) {
+        return jdbc.queryForObject(
+                "select id from az_menu where name = ? and del = 0", Long.class, name);
     }
 
     @Test

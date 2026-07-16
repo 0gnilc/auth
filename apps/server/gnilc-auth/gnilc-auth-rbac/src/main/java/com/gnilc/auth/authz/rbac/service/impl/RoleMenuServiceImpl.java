@@ -5,6 +5,7 @@ import com.gnilc.common.base.Preconditions;
 import com.gnilc.auth.authz.rbac.dao.RoleMenusDao;
 import com.gnilc.auth.authz.rbac.entity.bo.RoleMenuBo;
 import com.gnilc.auth.authz.rbac.entity.dto.RoleMenuDto;
+import com.gnilc.auth.authz.rbac.service.MenuService;
 import com.gnilc.auth.authz.rbac.service.RoleMenuService;
 import com.google.common.collect.Sets;
 import org.springframework.stereotype.Service;
@@ -18,6 +19,11 @@ import java.util.stream.Collectors;
 
 @Service("roleMenuServiceImpl")
 public class RoleMenuServiceImpl extends ServiceImpl<RoleMenusDao, RoleMenuBo> implements RoleMenuService {
+    private final MenuService menuService;
+
+    public RoleMenuServiceImpl(MenuService menuService) {
+        this.menuService = menuService;
+    }
 
     @Override
     public List<Long> getMenuIds(Long roleId) {
@@ -61,7 +67,9 @@ public class RoleMenuServiceImpl extends ServiceImpl<RoleMenusDao, RoleMenuBo> i
                 .stream()
                 .map(RoleMenuBo::getMenuId)
                 .collect(Collectors.toSet());
-        Set<Long> newSet = CollectionUtils.isEmpty(menuIds) ? Set.of() : Sets.newHashSet(menuIds);
+        Set<Long> newSet = menuService.getMenusWithAncestors(menuIds).stream()
+                .map(com.gnilc.auth.authz.rbac.entity.bo.MenuBo::getId)
+                .collect(Collectors.toSet());
 
         Set<Long> removeSet = Sets.difference(oldSet, newSet);
         if (!removeSet.isEmpty()) {
@@ -82,5 +90,16 @@ public class RoleMenuServiceImpl extends ServiceImpl<RoleMenusDao, RoleMenuBo> i
         if (!bos.isEmpty()) {
             saveBatch(bos);
         }
+    }
+
+    @Transactional
+    @Override
+    public void removeByMenuIds(List<Long> menuIds) {
+        if (CollectionUtils.isEmpty(menuIds)) {
+            return;
+        }
+        lambdaUpdate()
+                .in(RoleMenuBo::getMenuId, menuIds)
+                .remove();
     }
 }

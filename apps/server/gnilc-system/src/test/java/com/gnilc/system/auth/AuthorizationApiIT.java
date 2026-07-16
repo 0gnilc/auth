@@ -62,6 +62,13 @@ class AuthorizationApiIT extends AdminApiTestSupport {
                 .then()
                 .statusCode(403)
                 .body("code", equalTo(20003));
+        given()
+                .header("Authorization", bearer(pair.accessToken()))
+                .when()
+                .get("/api/sys/admin/menu/routes")
+                .then()
+                .statusCode(403)
+                .body("code", equalTo(20003));
     }
 
     @Test

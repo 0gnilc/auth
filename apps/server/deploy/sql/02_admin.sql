@@ -105,6 +105,42 @@ SET @default_admin_role_id := (
     LIMIT 1
 );
 
+INSERT INTO az_menu (
+    del, create_time, update_time, pid, type, status, name, path, component,
+    affix_tab, hide_in_menu, icon, `order`, title
+)
+SELECT
+    0, NOW(), NULL, 0, 'menu', 1, 'Dashboard', '/dashboard', '/dashboard/index',
+    1, 0, 'lucide:layout-dashboard', -1, 'page.dashboard.title'
+WHERE NOT EXISTS (
+    SELECT 1 FROM az_menu WHERE name = 'Dashboard'
+);
+
+INSERT INTO az_menu (
+    del, create_time, update_time, pid, type, status, name, path, component,
+    affix_tab, hide_in_menu, icon, `order`, title
+)
+SELECT
+    0, NOW(), NULL, 0, 'menu', 1, 'Profile', '/profile', '/_core/profile/index',
+    0, 1, 'lucide:user', 999, 'page.auth.profile'
+WHERE NOT EXISTS (
+    SELECT 1 FROM az_menu WHERE name = 'Profile'
+);
+
+INSERT INTO az_role_menu (del, create_time, update_time, role_id, menu_id)
+SELECT 0, NOW(), NULL, @default_admin_role_id, m.id
+FROM az_menu m
+WHERE m.name IN ('Dashboard', 'Profile')
+  AND m.del = 0
+  AND @default_admin_role_id IS NOT NULL
+  AND NOT EXISTS (
+      SELECT 1
+      FROM az_role_menu rm
+      WHERE rm.role_id = @default_admin_role_id
+        AND rm.menu_id = m.id
+        AND rm.del = 0
+  );
+
 UPDATE az_user_role
 SET del = 0,
     update_time = NOW()

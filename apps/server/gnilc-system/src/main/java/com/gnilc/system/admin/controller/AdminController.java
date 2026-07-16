@@ -9,6 +9,7 @@ import com.gnilc.system.admin.entity.dto.AdminPageDto;
 import com.gnilc.system.admin.entity.dto.AdminRoleDto;
 import com.gnilc.system.admin.entity.vo.AdminTokenVo;
 import com.gnilc.system.admin.entity.vo.AdminVo;
+import com.gnilc.auth.authz.rbac.entity.vo.MenuRouteVo;
 import com.gnilc.system.admin.service.AdminService;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.HttpStatus;
@@ -167,6 +168,14 @@ public class AdminController {
     @GetMapping("/menu/access-codes")
     public R<List<String>> getMenuAccessCodes() {
         return R.success(adminService.getMenuAccessCodes());
+    }
+
+    /**
+     * 查询当前管理员导航路由树。
+     */
+    @GetMapping("/menu/routes")
+    public R<List<MenuRouteVo>> getMenuRoutes() {
+        return R.success(adminService.getMenuRoutes());
     }
 
     private static ResponseEntity<R<?>> unauthorized() {

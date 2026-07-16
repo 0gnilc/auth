@@ -3,6 +3,7 @@
 -- 相同 code 已存在时保留原记录；当前管理员自助接口会统一收紧为非公开访问。
 
 INSERT INTO az_permission (create_time, code, name, target_identifier, target_qualifier, public_access) SELECT NOW(), 'GET:/sys/admin/menu/access-codes', 'GET:/sys/admin/menu/access-codes', '/sys/admin/menu/access-codes', 'GET', 1 WHERE NOT EXISTS (SELECT 1 FROM az_permission WHERE code = 'GET:/sys/admin/menu/access-codes');
+INSERT INTO az_permission (create_time, code, name, target_identifier, target_qualifier, public_access) SELECT NOW(), 'GET:/sys/admin/menu/routes', 'GET:/sys/admin/menu/routes', '/sys/admin/menu/routes', 'GET', 1 WHERE NOT EXISTS (SELECT 1 FROM az_permission WHERE code = 'GET:/sys/admin/menu/routes');
 INSERT INTO az_permission (create_time, code, name, target_identifier, target_qualifier, public_access) SELECT NOW(), 'GET:/sys/admin/role-codes', 'GET:/sys/admin/role-codes', '/sys/admin/role-codes', 'GET', 1 WHERE NOT EXISTS (SELECT 1 FROM az_permission WHERE code = 'GET:/sys/admin/role-codes');
 INSERT INTO az_permission (create_time, code, name, target_identifier, target_qualifier, public_access) SELECT NOW(), 'GET:/sys/admin/user-info', 'GET:/sys/admin/user-info', '/sys/admin/user-info', 'GET', 1 WHERE NOT EXISTS (SELECT 1 FROM az_permission WHERE code = 'GET:/sys/admin/user-info');
 INSERT INTO az_permission (create_time, code, name, target_identifier, target_qualifier, public_access) SELECT NOW(), 'POST:/sys/admin/create', 'POST:/sys/admin/create', '/sys/admin/create', 'POST', 1 WHERE NOT EXISTS (SELECT 1 FROM az_permission WHERE code = 'POST:/sys/admin/create');
@@ -20,6 +21,7 @@ UPDATE az_permission
 SET public_access = 0
 WHERE code IN (
     'GET:/sys/admin/menu/access-codes',
+    'GET:/sys/admin/menu/routes',
     'GET:/sys/admin/role-codes',
     'GET:/sys/admin/user-info',
     'POST:/sys/admin/password/update',
@@ -31,6 +33,7 @@ SELECT 0, NOW(), NULL, r.id, p.id
 FROM az_role r
 JOIN az_permission p ON p.code IN (
     'GET:/sys/admin/menu/access-codes',
+    'GET:/sys/admin/menu/routes',
     'GET:/sys/admin/role-codes',
     'GET:/sys/admin/user-info',
     'POST:/sys/admin/password/update',

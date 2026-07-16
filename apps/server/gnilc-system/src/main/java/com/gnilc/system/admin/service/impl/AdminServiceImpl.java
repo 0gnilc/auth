@@ -11,7 +11,9 @@ import com.gnilc.auth.authz.rbac.entity.bo.MenuBo;
 import com.gnilc.auth.authz.rbac.entity.bo.RoleBo;
 import com.gnilc.auth.authz.rbac.entity.dto.UserRoleDto;
 import com.gnilc.auth.authz.rbac.entity.enums.MenuType;
+import com.gnilc.auth.authz.rbac.entity.vo.MenuRouteVo;
 import com.gnilc.auth.authz.rbac.service.MenuService;
+import com.gnilc.auth.authz.rbac.service.RoleMenuService;
 import com.gnilc.auth.authz.rbac.service.RoleService;
 import com.gnilc.auth.authz.rbac.service.UserRoleService;
 import com.gnilc.auth.authz.rbac.service.UserService;
@@ -50,17 +52,20 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
     private final AdminSessionManager sessionManager;
     private final RoleService roleService;
     private final MenuService menuService;
+    private final RoleMenuService roleMenuService;
     private final UserService userService;
     private final UserRoleService userRoleService;
 
     public AdminServiceImpl(AdminSessionManager sessionManager,
                             RoleService roleService,
                             MenuService menuService,
+                            RoleMenuService roleMenuService,
                             UserService userService,
                             UserRoleService userRoleService) {
         this.sessionManager = sessionManager;
         this.roleService = roleService;
         this.menuService = menuService;
+        this.roleMenuService = roleMenuService;
         this.userService = userService;
         this.userRoleService = userRoleService;
     }
@@ -213,7 +218,7 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
      */
     @Override
     public List<String> getMenuAccessCodes(Long userId) {
-        return Optional.ofNullable(menuService.getMenus(userId)).orElse(List.of()).stream()
+        return Optional.ofNullable(userService.getMenus(userId)).orElse(List.of()).stream()
                 .filter(menu -> menu.getType() == MenuType.BUTTON)
                 .filter(MenuBo::getStatus)
                 .map(MenuBo::getAccessCode)
@@ -221,6 +226,14 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
                 .map(String::trim)
                 .distinct()
                 .toList();
+    }
+
+    @Override
+    public List<MenuRouteVo> getMenuRoutes() {
+        Long userId = authenticatedUserId();
+        List<Long> roleIds = userRoleService.getRoleIds(userId);
+        List<Long> menuIds = roleMenuService.getMenuIds(roleIds);
+        return menuService.getMenuRoutes(menuIds);
     }
 
     /**

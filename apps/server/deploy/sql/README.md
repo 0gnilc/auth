@@ -25,6 +25,7 @@
 - 创建 `sys_admin` 表；
 - 创建内置 `admin` 角色；
 - 创建默认 RBAC 用户和管理员账号；
+- 创建默认 `Dashboard` 和隐藏的 `Profile` 菜单；
 - 建立默认管理员与 `admin` 角色的绑定关系。
 
 该脚本依赖 `01_rbac.sql`，可以重复执行。它不会覆盖已有默认管理员资料，并会确保默认管理员、RBAC 用户、内置角色及三者的有效关系存在；如果这些默认记录被逻辑删除，脚本会恢复其 `del` 状态，并恢复默认管理员的启用状态。它不会覆盖已有记录的密码或其他资料字段，也不能替代数据库迁移。
@@ -46,9 +47,9 @@
 
 ### `05_admin_permissions.sql`
 
-初始化系统后台管理员模块的 13 条 RequestMapping 权限。当前用户资料、角色码、按钮访问码、基本信息修改和密码修改共 5 项权限为非公开权限，并绑定到内置 `admin` 角色；其余登录传输和后台管理员管理权限保持原有公开策略。
+初始化系统后台管理员模块的 14 条 RequestMapping 权限。当前用户资料、角色码、按钮访问码、导航路由树、基本信息修改和密码修改共 6 项权限为非公开权限，并绑定到内置 `admin` 角色；其余登录传输和后台管理员管理权限保持原有公开策略。
 
-三个权限脚本均依赖 `01_rbac.sql`。初始化记录的 `code` 和 `name` 为 `<HTTP method>:<path>`，`target_identifier` 为请求路径，`target_qualifier` 为 HTTP method。脚本按 `code` 判断是否已存在；`05_admin_permissions.sql` 会将上述 5 项当前用户权限规范化为非公开并幂等补齐 `admin` 角色绑定，其他既有权限记录保持原值。
+三个权限脚本均依赖 `01_rbac.sql`。初始化记录的 `code` 和 `name` 为 `<HTTP method>:<path>`，`target_identifier` 为请求路径，`target_qualifier` 为 HTTP method。脚本按 `code` 判断是否已存在；`05_admin_permissions.sql` 会将上述 6 项当前用户权限规范化为非公开并幂等补齐 `admin` 角色绑定，其他既有权限记录保持原值。
 
 ## 首次部署
 
@@ -92,7 +93,7 @@ SELECT id, code, built_in FROM az_role WHERE code = 'admin' AND del = 0;
 - `01_rbac.sql` 不会升级已有表结构；
 - `02_admin.sql` 不会覆盖已有管理员资料或密码，但会恢复默认记录的逻辑删除状态和默认管理员的启用状态；
 - `03_framework_permissions.sql` 和 `04_rbac_permissions.sql` 不会覆盖已有权限记录；
-- `05_admin_permissions.sql` 会规范化 5 项当前用户权限的公开状态并补齐有效 `admin` 角色绑定，其他已有权限字段保持不变；
+- `05_admin_permissions.sql` 会规范化 6 项当前用户权限的公开状态并补齐有效 `admin` 角色绑定，其他已有权限字段保持不变；
 - 脚本不会删除额外的业务数据；
 - 历史版本升级、字段变更和索引变更仍需专门的迁移脚本。
 

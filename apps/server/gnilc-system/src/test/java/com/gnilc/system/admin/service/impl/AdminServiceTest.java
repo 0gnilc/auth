@@ -8,7 +8,9 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.conditions.query.LambdaQueryChainWrapper;
 import com.baomidou.mybatisplus.extension.conditions.update.LambdaUpdateChainWrapper;
 import com.gnilc.auth.authn.context.DefaultAccessPrincipal;
+import com.gnilc.auth.authz.rbac.entity.vo.MenuRouteVo;
 import com.gnilc.auth.authz.rbac.service.MenuService;
+import com.gnilc.auth.authz.rbac.service.RoleMenuService;
 import com.gnilc.auth.authz.rbac.service.RoleService;
 import com.gnilc.auth.authz.rbac.service.UserRoleService;
 import com.gnilc.auth.authz.rbac.service.UserService;
@@ -29,6 +31,8 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -55,6 +59,8 @@ class AdminServiceTest {
     @Mock
     private MenuService menus;
     @Mock
+    private RoleMenuService roleMenus;
+    @Mock
     private UserService users;
     @Mock
     private UserRoleService userRoles;
@@ -68,7 +74,7 @@ class AdminServiceTest {
                     new MapperBuilderAssistant(new MybatisConfiguration(), "admin-service-test"),
                     AdminBo.class);
         }
-        admins = spy(new AdminServiceImpl(sessions, roles, menus, users, userRoles));
+        admins = spy(new AdminServiceImpl(sessions, roles, menus, roleMenus, users, userRoles));
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setUserPrincipal(DefaultAccessPrincipal.of(USER_ID));
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
@@ -159,6 +165,20 @@ class AdminServiceTest {
                 .hasMessage("Current password is incorrect.");
         verify(adminDao, never()).update(isNull(), any());
         verify(sessions, never()).cleanupUserSessions(any());
+    }
+
+    @Test
+    void getMenuRoutesUsesTheCurrentUserRoleMenuBindings() {
+        MenuRouteVo route = new MenuRouteVo();
+        route.setName("Dashboard");
+        when(userRoles.getRoleIds(USER_ID)).thenReturn(List.of(21L));
+        when(roleMenus.getMenuIds(List.of(21L))).thenReturn(List.of(31L));
+        when(menus.getMenuRoutes(List.of(31L))).thenReturn(List.of(route));
+
+        assertThat(admins.getMenuRoutes()).containsExactly(route);
+        verify(userRoles).getRoleIds(USER_ID);
+        verify(roleMenus).getMenuIds(List.of(21L));
+        verify(menus).getMenuRoutes(List.of(31L));
     }
 
     private void stubQueryChain() {

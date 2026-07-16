@@ -1,6 +1,9 @@
 package com.gnilc.auth.authz.rbac.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gnilc.common.base.Preconditions;
 import com.gnilc.auth.authz.rbac.constant.MenuConstant;
 import com.gnilc.common.utils.BeanCopyUtils;
@@ -8,33 +11,45 @@ import com.gnilc.auth.authz.rbac.dao.MenuDao;
 import com.gnilc.auth.authz.rbac.entity.bo.MenuBo;
 import com.gnilc.auth.authz.rbac.entity.dto.MenuDto;
 import com.gnilc.auth.authz.rbac.entity.enums.MenuType;
+import com.gnilc.auth.authz.rbac.entity.vo.MenuRouteVo;
 import com.gnilc.auth.authz.rbac.entity.vo.MenuVo;
+import com.gnilc.auth.authz.rbac.event.MenuSubtreeRemovingEvent;
 import com.gnilc.auth.authz.rbac.service.MenuService;
-import com.gnilc.auth.authz.rbac.service.RoleMenuService;
-import com.gnilc.auth.authz.rbac.service.UserRoleService;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 
 @Service("menuService")
 public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements MenuService {
+    private static final String IFRAME_VIEW = "IFrameView";
+    private static final TypeReference<Map<String, Object>> QUERY_TYPE = new TypeReference<>() {
+    };
 
-    private final UserRoleService userRoleService;
-    private final RoleMenuService roleMenuService;
+    private final MenuDao menuDao;
+    private final ApplicationEventPublisher eventPublisher;
+    private final ObjectMapper objectMapper;
 
-    public MenuServiceImpl(UserRoleService userRoleService, RoleMenuService roleMenuService) {
-        this.userRoleService = userRoleService;
-        this.roleMenuService = roleMenuService;
+    public MenuServiceImpl(MenuDao menuDao,
+                           ApplicationEventPublisher eventPublisher,
+                           ObjectMapper objectMapper) {
+        this.menuDao = menuDao;
+        this.eventPublisher = eventPublisher;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -73,32 +88,24 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
         Preconditions.checkArgument(dto != null, "Menu information is required.");
         Long menuId = dto.getId();
         Preconditions.checkArgument(menuId != null, "A menu must be selected.");
-        MenuBo bo = getById(menuId);
-        Preconditions.checkArgument(bo != null, "The menu no longer exists. Refresh and try again.");
+        MenuBo existing = getById(menuId);
+        Preconditions.checkArgument(existing != null, "The menu no longer exists. Refresh and try again.");
+        MenuBo bo = new MenuBo();
+        BeanUtils.copyProperties(existing, bo);
         BeanCopyUtils.copyNonNullProperties(dto, bo);
         validateMenu(bo);
         updateById(bo);
     }
 
+    @Transactional
     @Override
     public void removeMenu(Long id) {
         Preconditions.checkArgument(id != null, "A menu must be selected.");
         MenuBo bo = getById(id);
         Preconditions.checkArgument(bo != null, "The menu no longer exists. Refresh and try again.");
-        removeById(id);
-    }
-
-    @Override
-    public List<MenuBo> getMenus(Long userId) {
-        List<Long> roleIds = userRoleService.getRoleIds(userId);
-        if (CollectionUtils.isEmpty(roleIds)) {
-            return List.of();
-        }
-        List<Long> menuIds = roleMenuService.getMenuIds(roleIds);
-        if (CollectionUtils.isEmpty(menuIds)) {
-            return List.of();
-        }
-        return getMenus(menuIds);
+        List<Long> menuIds = getSubtreeIds(id);
+        eventPublisher.publishEvent(new MenuSubtreeRemovingEvent(menuIds));
+        removeByIds(menuIds);
     }
 
     @Override
@@ -110,6 +117,85 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
                 .in(MenuBo::getId, menuIds)
                 .orderByAsc(MenuBo::getOrder)
                 .list();
+    }
+
+    @Override
+    public List<MenuBo> getMenusWithAncestors(List<Long> menuIds) {
+        return resolveMenusWithAncestors(menuIds, true);
+    }
+
+    private List<MenuBo> resolveMenusWithAncestors(List<Long> menuIds, boolean strict) {
+        if (CollectionUtils.isEmpty(menuIds)) {
+            return List.of();
+        }
+        Map<Long, MenuBo> menuMap = list().stream()
+                .collect(Collectors.toMap(MenuBo::getId, menu -> menu));
+        Map<Long, MenuBo> result = new LinkedHashMap<>();
+        for (Long menuId : menuIds) {
+            MenuBo menu = menuMap.get(menuId);
+            if (menu == null) {
+                if (strict) {
+                    Preconditions.checkArgument(false,
+                            "A selected menu no longer exists. Refresh and try again.");
+                }
+                continue;
+            }
+            Set<Long> visited = new HashSet<>();
+            List<MenuBo> hierarchy = new ArrayList<>();
+            boolean complete = false;
+            while (true) {
+                if (!visited.add(menu.getId())) {
+                    if (strict) {
+                        Preconditions.checkArgument(false,
+                                "The selected menu hierarchy is invalid.");
+                    }
+                    break;
+                }
+                hierarchy.add(menu);
+                if (Objects.equals(menu.getPid(), MenuConstant.ROOT_PARENT_ID)) {
+                    complete = true;
+                    break;
+                }
+                menu = menuMap.get(menu.getPid());
+                if (menu == null) {
+                    if (strict) {
+                        Preconditions.checkArgument(false,
+                                "The selected menu hierarchy is incomplete.");
+                    }
+                    break;
+                }
+            }
+            if (complete) {
+                hierarchy.forEach(item -> result.putIfAbsent(item.getId(), item));
+            }
+        }
+        return result.values().stream()
+                .sorted(Comparator.comparingInt(menu -> Optional.ofNullable(menu.getOrder()).orElse(999)))
+                .toList();
+    }
+
+    @Override
+    public List<MenuRouteVo> getMenuRoutes(List<Long> menuIds) {
+        List<MenuBo> menus = resolveMenusWithAncestors(menuIds, false).stream()
+                .filter(menu -> Boolean.TRUE.equals(menu.getStatus()))
+                .filter(menu -> menu.getType() != MenuType.BUTTON)
+                .toList();
+        Map<Long, MenuRouteVo> routeMap = menus.stream()
+                .collect(Collectors.toMap(MenuBo::getId, this::toMenuRouteVo));
+        List<MenuRouteVo> roots = new ArrayList<>();
+        for (MenuBo menu : menus) {
+            MenuRouteVo route = routeMap.get(menu.getId());
+            if (Objects.equals(menu.getPid(), MenuConstant.ROOT_PARENT_ID)) {
+                roots.add(route);
+                continue;
+            }
+            MenuRouteVo parent = routeMap.get(menu.getPid());
+            if (parent != null) {
+                parent.getChildren().add(route);
+            }
+        }
+        sortMenuRoutes(roots);
+        return roots;
     }
 
     @Override
@@ -153,9 +239,7 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
         String iframeSrc = bo.getIframeSrc();
         String link = bo.getLink();
         Preconditions.checkArgument(pid != null, "A parent menu must be selected.");
-        if (!Objects.equals(pid, MenuConstant.ROOT_PARENT_ID)) {
-            Preconditions.checkArgument(getById(pid) != null, "The parent menu no longer exists. Select another menu.");
-        }
+        validateParent(menuId, pid);
         Preconditions.checkArgument(type != null, "A menu type must be selected.");
         Preconditions.checkArgument(StringUtils.isNotBlank(name), "Menu name is required.");
         Preconditions.checkArgument(StringUtils.isNotBlank(title), "Menu title is required.");
@@ -170,7 +254,10 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
                 Preconditions.checkArgument(StringUtils.isNotBlank(path), "Route path is required.");
                 Preconditions.checkArgument(StringUtils.isNotBlank(iframeSrc), "Embedded page URL is required.");
             }
-            case LINK -> Preconditions.checkArgument(StringUtils.isNotBlank(link), "External URL is required.");
+            case LINK -> {
+                Preconditions.checkArgument(StringUtils.isNotBlank(path), "Route path is required.");
+                Preconditions.checkArgument(StringUtils.isNotBlank(link), "External URL is required.");
+            }
         }
         MenuBo nameBo = getMenuByName(name);
         Preconditions.checkArgument(nameBo == null || Objects.equals(nameBo.getId(), menuId),
@@ -181,6 +268,68 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
         MenuBo accessBo = getMenuByAccessCode(accessCode);
         Preconditions.checkArgument(accessBo == null || Objects.equals(accessBo.getId(), menuId),
                 "A menu with this permission code already exists.");
+    }
+
+    private void validateParent(Long menuId, Long pid) {
+        if (Objects.equals(pid, MenuConstant.ROOT_PARENT_ID)) {
+            return;
+        }
+        MenuBo parent = getById(pid);
+        Preconditions.checkArgument(parent != null,
+                "The parent menu no longer exists. Select another menu.");
+        Set<Long> visited = new HashSet<>();
+        while (parent != null) {
+            Preconditions.checkArgument(visited.add(parent.getId()),
+                    "The parent menu hierarchy is invalid.");
+            Preconditions.checkArgument(!Objects.equals(parent.getId(), menuId),
+                    "A menu cannot use itself or one of its descendants as its parent.");
+            if (Objects.equals(parent.getPid(), MenuConstant.ROOT_PARENT_ID)) {
+                return;
+            }
+            parent = getById(parent.getPid());
+            Preconditions.checkArgument(parent != null,
+                    "The parent menu hierarchy is incomplete.");
+        }
+    }
+
+    private List<Long> getSubtreeIds(Long rootId) {
+        // IService queries hide logically deleted rows, but deletion must traverse through them.
+        return menuDao.selectSubtreeIdsIncludingDeleted(rootId);
+    }
+
+    private MenuRouteVo toMenuRouteVo(MenuBo menu) {
+        MenuRouteVo route = new MenuRouteVo();
+        route.setName(menu.getName());
+        route.setPath(menu.getPath());
+        route.setRedirect(menu.getRedirect());
+        route.setComponent(switch (menu.getType()) {
+            case MENU -> menu.getComponent();
+            case EMBEDDED, LINK -> IFRAME_VIEW;
+            case BUTTON, CATALOG -> null;
+        });
+        MenuRouteVo.Meta meta = new MenuRouteVo.Meta();
+        BeanUtils.copyProperties(menu, meta, "query");
+        meta.setQuery(parseQuery(menu.getQuery()));
+        route.setMeta(meta);
+        return route;
+    }
+
+    private Map<String, Object> parseQuery(String query) {
+        if (StringUtils.isBlank(query)) {
+            return null;
+        }
+        try {
+            return objectMapper.readValue(query, QUERY_TYPE);
+        } catch (JsonProcessingException exception) {
+            throw new IllegalStateException("Menu route query must be a JSON object.", exception);
+        }
+    }
+
+    private void sortMenuRoutes(List<MenuRouteVo> routes) {
+        routes.sort(Comparator.comparingInt(route -> Optional.ofNullable(route.getMeta().getOrder()).orElse(999)));
+        for (MenuRouteVo route : routes) {
+            sortMenuRoutes(route.getChildren());
+        }
     }
 
     private void sortMenuTree(List<MenuVo> vos) {

@@ -12,6 +12,7 @@ import com.gnilc.auth.authz.rbac.entity.dto.RoleMenuDto;
 import com.gnilc.auth.authz.rbac.entity.dto.RolePermissionDto;
 import com.gnilc.auth.authz.rbac.entity.dto.UserRoleDto;
 import com.gnilc.auth.authz.rbac.entity.enums.MenuType;
+import com.gnilc.auth.authz.rbac.entity.vo.MenuRouteVo;
 import com.gnilc.common.exception.IllegalConditionException;
 import com.gnilc.common.exception.InvalidArgumentException;
 import com.gnilc.auth.authz.rbac.provider.TargetPermission;
@@ -258,10 +259,195 @@ class RbacServiceIT {
         RoleBo editor = roles.getRoleByCode("editor");
         RoleMenuDto binding = new RoleMenuDto();
         binding.setRoleId(editor.getId());
-        binding.setMenuIds(List.of(rootBo.getId(), menus.getMenuByAccessCode("dashboard:edit").getId()));
+        Long buttonId = menus.getMenuByAccessCode("dashboard:edit").getId();
+        binding.setMenuIds(List.of(buttonId));
         roleMenus.updateRoleMenu(binding);
 
-        assertThat(roleMenus.getMenuIds(editor.getId())).hasSize(2);
+        assertThat(roleMenus.getMenuIds(editor.getId()))
+                .containsExactlyInAnyOrder(rootBo.getId(), buttonId);
+    }
+
+    @Test
+    void roleMenuBindingsRejectMissingMenusWithoutReplacingTheExistingSet() {
+        MenuDto menu = menu("reports", "Reports", "/reports", MenuType.CATALOG, 0L, 10);
+        menus.createMenu(menu);
+        Long menuId = menus.getMenuByPath("/reports").getId();
+        roles.createRole(role("reporter", "Reporter"));
+        Long roleId = roles.getRoleByCode("reporter").getId();
+        RoleMenuDto binding = new RoleMenuDto();
+        binding.setRoleId(roleId);
+        binding.setMenuIds(List.of(menuId));
+        roleMenus.updateRoleMenu(binding);
+
+        binding.setMenuIds(List.of(Long.MAX_VALUE));
+
+        assertThatThrownBy(() -> roleMenus.updateRoleMenu(binding))
+                .isInstanceOf(InvalidArgumentException.class);
+        assertThat(roleMenus.getMenuIds(roleId)).containsExactly(menuId);
+    }
+
+    @Test
+    void roleMenuBindingsPreserveDisabledMenus() {
+        MenuDto disabled = menu("archived-reports", "Archived reports", "/archived-reports",
+                MenuType.CATALOG, 0L, 10);
+        disabled.setStatus(false);
+        menus.createMenu(disabled);
+        Long disabledMenuId = menus.getMenuByPath("/archived-reports").getId();
+        roles.createRole(role("archivist", "Archivist"));
+        Long roleId = roles.getRoleByCode("archivist").getId();
+        RoleMenuDto binding = new RoleMenuDto();
+        binding.setRoleId(roleId);
+        binding.setMenuIds(List.of(disabledMenuId));
+
+        roleMenus.updateRoleMenu(binding);
+
+        assertThat(roleMenus.getMenuIds(roleId)).containsExactly(disabledMenuId);
+    }
+
+    @Test
+    void roleMenuBindingsRejectDeletedMenusWithoutReplacingTheExistingSet() {
+        MenuDto existing = menu("current-reports", "Current reports", "/current-reports",
+                MenuType.CATALOG, 0L, 10);
+        menus.createMenu(existing);
+        Long existingMenuId = menus.getMenuByPath("/current-reports").getId();
+        MenuDto deleted = menu("deleted-reports", "Deleted reports", "/deleted-reports",
+                MenuType.CATALOG, 0L, 20);
+        menus.createMenu(deleted);
+        Long deletedMenuId = menus.getMenuByPath("/deleted-reports").getId();
+        roles.createRole(role("report-owner", "Report owner"));
+        Long roleId = roles.getRoleByCode("report-owner").getId();
+        RoleMenuDto binding = new RoleMenuDto();
+        binding.setRoleId(roleId);
+        binding.setMenuIds(List.of(existingMenuId));
+        roleMenus.updateRoleMenu(binding);
+        jdbc.update("update az_menu set del = 1 where id = ?", deletedMenuId);
+
+        binding.setMenuIds(List.of(deletedMenuId));
+
+        assertThatThrownBy(() -> roleMenus.updateRoleMenu(binding))
+                .isInstanceOf(InvalidArgumentException.class);
+        assertThat(roleMenus.getMenuIds(roleId)).containsExactly(existingMenuId);
+    }
+
+    @Test
+    void menuUpdateRejectsMovingAParentBelowItsDescendant() {
+        MenuDto root = menu("settings", "Settings", "/settings", MenuType.CATALOG, 0L, 10);
+        menus.createMenu(root);
+        MenuBo rootBo = menus.getMenuByPath("/settings");
+        MenuDto child = menu("users", "Users", "/settings/users", MenuType.MENU, rootBo.getId(), 10);
+        child.setComponent("/settings/users/index");
+        menus.createMenu(child);
+
+        MenuDto update = new MenuDto();
+        update.setId(rootBo.getId());
+        update.setPid(menus.getMenuByPath("/settings/users").getId());
+
+        assertThatThrownBy(() -> menus.updateMenu(update))
+                .isInstanceOf(InvalidArgumentException.class);
+        assertThat(menus.getById(rootBo.getId()).getPid()).isZero();
+    }
+
+    @Test
+    void menuRemovalDeletesTheWholeSubtreeAndItsRoleBindings() {
+        MenuDto root = menu("operations", "Operations", "/operations", MenuType.CATALOG, 0L, 10);
+        menus.createMenu(root);
+        MenuBo rootBo = menus.getMenuByPath("/operations");
+        MenuDto child = menu("jobs", "Jobs", "/operations/jobs", MenuType.MENU, rootBo.getId(), 10);
+        child.setComponent("/operations/jobs/index");
+        menus.createMenu(child);
+        MenuBo childBo = menus.getMenuByPath("/operations/jobs");
+        MenuDto button = menu("jobs-run", "Run jobs", null, MenuType.BUTTON, childBo.getId(), 10);
+        button.setAccessCode("jobs:run");
+        menus.createMenu(button);
+        Long buttonId = menus.getMenuByAccessCode("jobs:run").getId();
+        roles.createRole(role("operator", "Operator"));
+        Long roleId = roles.getRoleByCode("operator").getId();
+        RoleMenuDto binding = new RoleMenuDto();
+        binding.setRoleId(roleId);
+        binding.setMenuIds(List.of(buttonId));
+        roleMenus.updateRoleMenu(binding);
+        jdbc.update("update az_menu set del = 1 where id = ?", childBo.getId());
+
+        menus.removeMenu(rootBo.getId());
+
+        assertThat(menus.getById(rootBo.getId())).isNull();
+        assertThat(menus.getById(childBo.getId())).isNull();
+        assertThat(menus.getById(buttonId)).isNull();
+        assertThat(roleMenus.getMenuIds(roleId)).isEmpty();
+        assertThat(jdbc.queryForObject("""
+                select count(*) from az_menu
+                where id in (?, ?, ?) and del = 1
+                """, Integer.class, rootBo.getId(), childBo.getId(), buttonId)).isEqualTo(3);
+    }
+
+    @Test
+    void menuRoutesKeepReachableEnabledNavigationAndMapVbenComponents() {
+        MenuDto tools = menu("Tools", "Tools", "/tools", MenuType.CATALOG, 0L, 10);
+        menus.createMenu(tools);
+        Long toolsId = menus.getMenuByPath("/tools").getId();
+        MenuDto audit = menu("Audit", "Audit", "audit", MenuType.MENU, toolsId, 1);
+        audit.setComponent("/tools/audit/index");
+        audit.setQuery("{\"tab\":\"recent\"}");
+        menus.createMenu(audit);
+        Long auditId = menus.getMenuByPath("audit").getId();
+        MenuDto button = menu("AuditExport", "Export", null, MenuType.BUTTON, auditId, 1);
+        button.setAccessCode("audit:export");
+        menus.createMenu(button);
+        Long buttonId = menus.getMenuByAccessCode("audit:export").getId();
+
+        MenuDto embedded = menu("Documentation", "Documentation", "/docs", MenuType.EMBEDDED, 0L, 20);
+        embedded.setIframeSrc("https://example.test/docs");
+        menus.createMenu(embedded);
+        Long embeddedId = menus.getMenuByPath("/docs").getId();
+        MenuDto link = menu("Repository", "Repository", "/repository", MenuType.LINK, 0L, 30);
+        link.setLink("https://example.test/repository");
+        menus.createMenu(link);
+        Long linkId = menus.getMenuByPath("/repository").getId();
+        MenuDto empty = menu("Empty", "Empty", "/empty", MenuType.CATALOG, 0L, 40);
+        menus.createMenu(empty);
+        Long emptyId = menus.getMenuByPath("/empty").getId();
+
+        MenuDto disabled = menu("Disabled", "Disabled", "/disabled", MenuType.CATALOG, 0L, 50);
+        disabled.setStatus(false);
+        menus.createMenu(disabled);
+        Long disabledId = menus.getMenuByPath("/disabled").getId();
+        MenuDto hiddenChild = menu("HiddenChild", "Hidden child", "child", MenuType.MENU, disabledId, 1);
+        hiddenChild.setComponent("/disabled/child/index");
+        menus.createMenu(hiddenChild);
+        Long hiddenChildId = menus.getMenuByPath("child").getId();
+
+        List<MenuRouteVo> routes = menus.getMenuRoutes(List.of(
+                auditId, buttonId, embeddedId, linkId, emptyId, hiddenChildId, Long.MAX_VALUE));
+
+        assertThat(routes).extracting(MenuRouteVo::getName)
+                .containsExactly("Tools", "Documentation", "Repository", "Empty");
+        MenuRouteVo toolsRoute = routes.get(0);
+        assertThat(toolsRoute.getComponent()).isNull();
+        assertThat(toolsRoute.getChildren()).singleElement().satisfies(route -> {
+            assertThat(route.getName()).isEqualTo("Audit");
+            assertThat(route.getComponent()).isEqualTo("/tools/audit/index");
+            assertThat(route.getMeta().getQuery()).containsEntry("tab", "recent");
+            assertThat(route.getChildren()).isEmpty();
+        });
+        assertThat(routes.get(1).getComponent()).isEqualTo("IFrameView");
+        assertThat(routes.get(2).getComponent()).isEqualTo("IFrameView");
+        assertThat(routes.get(3).getChildren()).isEmpty();
+    }
+
+    @Test
+    void linkMenusRequireAndPersistTheFrontendGeneratedPath() {
+        MenuDto link = menu("Support", "Support", null, MenuType.LINK, 0L, 10);
+        link.setLink("https://example.test/support");
+
+        assertThatThrownBy(() -> menus.createMenu(link))
+                .isInstanceOf(InvalidArgumentException.class);
+
+        link.setPath("/support");
+        menus.createMenu(link);
+
+        assertThat(menus.getMenuByPath("/support"))
+                .extracting(MenuBo::getLink)
+                .isEqualTo("https://example.test/support");
     }
 
     @Test

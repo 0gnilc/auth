@@ -3,6 +3,7 @@ package com.gnilc.auth.authz.rbac.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.gnilc.auth.authz.rbac.entity.bo.MenuBo;
 import com.gnilc.auth.authz.rbac.entity.dto.MenuDto;
+import com.gnilc.auth.authz.rbac.entity.vo.MenuRouteVo;
 import com.gnilc.auth.authz.rbac.entity.vo.MenuVo;
 
 import java.util.List;
@@ -21,7 +22,9 @@ public interface MenuService extends IService<MenuBo> {
 
     void removeMenu(Long id);
 
-    List<MenuBo> getMenus(Long userId);
-
     List<MenuBo> getMenus(List<Long> menuIds);
+
+    List<MenuBo> getMenusWithAncestors(List<Long> menuIds);
+
+    List<MenuRouteVo> getMenuRoutes(List<Long> menuIds);
 }

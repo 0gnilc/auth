@@ -74,6 +74,10 @@ class AdminSchemaIT {
                    AND u.del = 0
                 """, Integer.class)).isEqualTo(1);
         assertThat(defaultAdminRoleBindingCount()).isEqualTo(1);
+        assertThat(jdbc.queryForList("SELECT name FROM az_menu WHERE del = 0 ORDER BY `order`", String.class))
+                .containsExactly("Dashboard", "Profile");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM az_role_menu WHERE del = 0", Integer.class))
+                .isEqualTo(2);
     }
 
     @Test
@@ -181,7 +185,7 @@ class AdminSchemaIT {
         runScript("sql/schema/05_admin_permissions.sql");
 
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM az_permission", Integer.class))
-                .isEqualTo(13);
+                .isEqualTo(14);
         assertThat(jdbc.queryForObject("""
                 SELECT COUNT(*)
                   FROM az_permission
@@ -196,10 +200,11 @@ class AdminSchemaIT {
                        'GET:/sys/admin/user-info',
                        'GET:/sys/admin/role-codes',
                        'GET:/sys/admin/menu/access-codes',
+                       'GET:/sys/admin/menu/routes',
                        'POST:/sys/admin/user-info/update',
                        'POST:/sys/admin/password/update')
                    AND public_access = 0
-                """, Integer.class)).isEqualTo(5);
+                """, Integer.class)).isEqualTo(6);
         assertThat(jdbc.queryForObject("""
                 SELECT COUNT(*)
                   FROM az_role_permission rp
@@ -212,9 +217,10 @@ class AdminSchemaIT {
                        'GET:/sys/admin/user-info',
                        'GET:/sys/admin/role-codes',
                        'GET:/sys/admin/menu/access-codes',
+                       'GET:/sys/admin/menu/routes',
                        'POST:/sys/admin/user-info/update',
                        'POST:/sys/admin/password/update')
-                """, Integer.class)).isEqualTo(5);
+                """, Integer.class)).isEqualTo(6);
 
         jdbc.update("""
                 UPDATE az_permission
@@ -225,7 +231,7 @@ class AdminSchemaIT {
         runScript("sql/schema/05_admin_permissions.sql");
 
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM az_permission", Integer.class))
-                .isEqualTo(13);
+                .isEqualTo(14);
         assertThat(jdbc.queryForObject("""
                 SELECT COUNT(*)
                   FROM az_permission

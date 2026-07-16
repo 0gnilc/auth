@@ -4,6 +4,7 @@ import com.gnilc.common.utils.PageResult;
 import com.gnilc.system.admin.entity.dto.AdminDto;
 import com.gnilc.system.admin.entity.vo.AdminTokenVo;
 import com.gnilc.system.admin.entity.vo.AdminVo;
+import com.gnilc.auth.authz.rbac.entity.vo.MenuRouteVo;
 import com.gnilc.system.admin.service.AdminService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -72,6 +73,9 @@ class AdminControllerTest {
         when(service.getUserInfo()).thenReturn(admin);
         when(service.getRoleCodes()).thenReturn(List.of("admin"));
         when(service.getMenuAccessCodes()).thenReturn(List.of("user:create"));
+        MenuRouteVo route = new MenuRouteVo();
+        route.setName("Dashboard");
+        when(service.getMenuRoutes()).thenReturn(List.of(route));
 
         mvc.perform(get("/sys/admin/user-info"))
                 .andExpect(jsonPath("$.data.username").value("alice"));
@@ -79,6 +83,8 @@ class AdminControllerTest {
                 .andExpect(jsonPath("$.data[0]").value("admin"));
         mvc.perform(get("/sys/admin/menu/access-codes"))
                 .andExpect(jsonPath("$.data[0]").value("user:create"));
+        mvc.perform(get("/sys/admin/menu/routes"))
+                .andExpect(jsonPath("$.data[0].name").value("Dashboard"));
     }
 
     @Test
