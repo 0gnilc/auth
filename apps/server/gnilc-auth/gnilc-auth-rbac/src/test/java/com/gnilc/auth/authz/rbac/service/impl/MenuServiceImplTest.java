@@ -5,15 +5,13 @@ import com.gnilc.auth.authz.rbac.dao.MenuDao;
 import com.gnilc.auth.authz.rbac.entity.bo.MenuBo;
 import com.gnilc.auth.authz.rbac.entity.enums.MenuType;
 import com.gnilc.auth.authz.rbac.entity.vo.MenuRouteVo;
-import com.gnilc.auth.authz.rbac.event.MenuSubtreeRemovingEvent;
+import com.gnilc.auth.authz.rbac.service.RoleMenuService;
 import com.gnilc.common.exception.InvalidArgumentException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.List;
 
@@ -29,13 +27,13 @@ class MenuServiceImplTest {
     @Mock
     private MenuDao menuDao;
     @Mock
-    private ApplicationEventPublisher eventPublisher;
+    private RoleMenuService roleMenuService;
 
     private MenuServiceImpl menus;
 
     @BeforeEach
     void setUp() {
-        menus = spy(new MenuServiceImpl(menuDao, eventPublisher, new ObjectMapper()));
+        menus = spy(new MenuServiceImpl(menuDao, roleMenuService, new ObjectMapper()));
     }
 
     @Test
@@ -93,10 +91,7 @@ class MenuServiceImplTest {
         menus.removeMenu(1L);
 
         verify(menuDao).selectSubtreeIdsWithDeleted(1L);
-        ArgumentCaptor<MenuSubtreeRemovingEvent> event =
-                ArgumentCaptor.forClass(MenuSubtreeRemovingEvent.class);
-        verify(eventPublisher).publishEvent(event.capture());
-        assertThat(event.getValue().menuIds()).containsExactlyElementsOf(subtreeIds);
+        verify(roleMenuService).removeByMenuIds(subtreeIds);
         verify(menus).removeByIds(subtreeIds);
     }
 

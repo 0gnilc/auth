@@ -1,13 +1,15 @@
 package com.gnilc.auth.authz.rbac.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.gnilc.common.base.Preconditions;
 import com.gnilc.auth.authz.rbac.dao.RoleMenusDao;
+import com.gnilc.auth.authz.rbac.entity.bo.MenuBo;
 import com.gnilc.auth.authz.rbac.entity.bo.RoleMenuBo;
 import com.gnilc.auth.authz.rbac.entity.dto.RoleMenuDto;
 import com.gnilc.auth.authz.rbac.service.MenuService;
 import com.gnilc.auth.authz.rbac.service.RoleMenuService;
+import com.gnilc.common.base.Preconditions;
 import com.google.common.collect.Sets;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
@@ -21,7 +23,7 @@ import java.util.stream.Collectors;
 public class RoleMenuServiceImpl extends ServiceImpl<RoleMenusDao, RoleMenuBo> implements RoleMenuService {
     private final MenuService menuService;
 
-    public RoleMenuServiceImpl(MenuService menuService) {
+    public RoleMenuServiceImpl(@Lazy MenuService menuService) {
         this.menuService = menuService;
     }
 
@@ -67,8 +69,9 @@ public class RoleMenuServiceImpl extends ServiceImpl<RoleMenusDao, RoleMenuBo> i
                 .stream()
                 .map(RoleMenuBo::getMenuId)
                 .collect(Collectors.toSet());
+
         Set<Long> newSet = menuService.getMenusWithAncestors(menuIds).stream()
-                .map(com.gnilc.auth.authz.rbac.entity.bo.MenuBo::getId)
+                .map(MenuBo::getId)
                 .collect(Collectors.toSet());
 
         Set<Long> removeSet = Sets.difference(oldSet, newSet);

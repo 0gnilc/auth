@@ -11,14 +11,13 @@ import com.gnilc.auth.authz.rbac.entity.dto.MenuDto;
 import com.gnilc.auth.authz.rbac.entity.enums.MenuType;
 import com.gnilc.auth.authz.rbac.entity.vo.MenuRouteVo;
 import com.gnilc.auth.authz.rbac.entity.vo.MenuVo;
-import com.gnilc.auth.authz.rbac.event.MenuSubtreeRemovingEvent;
 import com.gnilc.auth.authz.rbac.service.MenuService;
+import com.gnilc.auth.authz.rbac.service.RoleMenuService;
 import com.gnilc.common.base.Preconditions;
 import com.gnilc.common.exception.InvalidArgumentException;
 import com.gnilc.common.utils.BeanCopyUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
@@ -42,14 +41,14 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
     };
 
     private final MenuDao menuDao;
-    private final ApplicationEventPublisher eventPublisher;
+    private final RoleMenuService roleMenuService;
     private final ObjectMapper objectMapper;
 
     public MenuServiceImpl(MenuDao menuDao,
-                           ApplicationEventPublisher eventPublisher,
+                           RoleMenuService roleMenuService,
                            ObjectMapper objectMapper) {
         this.menuDao = menuDao;
-        this.eventPublisher = eventPublisher;
+        this.roleMenuService = roleMenuService;
         this.objectMapper = objectMapper;
     }
 
@@ -109,7 +108,7 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
         MenuBo bo = getById(id);
         Preconditions.checkArgument(bo != null, "The menu no longer exists. Refresh and try again.");
         List<Long> menuIds = getSubtreeIds(id);
-        eventPublisher.publishEvent(new MenuSubtreeRemovingEvent(menuIds));
+        roleMenuService.removeByMenuIds(menuIds);
         removeByIds(menuIds);
     }
 
@@ -130,9 +129,24 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
     }
 
     /**
-     * 收集所选菜单及其到根节点的完整层级。
+     * 收集所选菜单及其到根节点的完整可达层级。
+     * <p>
+     * 处理过程如下：
+     * <ol>
+     *     <li>通过 {@link #list()} 读取全部有效菜单；
+     *     MyBatis-Plus 会自动排除逻辑删除菜单。</li>
+     *     <li>从每个所选菜单开始沿 {@code pid} 向上回溯，直到根节点。</li>
+     *     <li>使用当前路径的已访问 ID 检测父子循环。</li>
+     *     <li>只有能够完整到达根节点的路径才会加入结果，
+     *     多个路径共享的祖先只保留一次。</li>
+     *     <li>最终按菜单顺序排序，供角色授权保存或导航路由构建使用。</li>
+     * </ol>
+     * 角色授权修改使用严格模式，任何不存在、已删除、断裂或循环的层级都会使操作失败；
+     * 导航查询使用非严格模式，直接丢弃这些无效路径，避免把孤立节点提升为根节点。
      *
+     * @param menuIds                所选菜单 ID
      * @param failOnInvalidHierarchy 是否在菜单不存在、层级断裂或成环时抛出异常
+     * @return 所选菜单及其有效祖先组成的去重集合
      */
     private List<MenuBo> collectReachableMenuHierarchy(List<Long> menuIds,
                                                        boolean failOnInvalidHierarchy) {
@@ -192,7 +206,7 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
                 .filter(menu -> menu.getType() != MenuType.BUTTON)
                 .toList();
         Map<Long, MenuRouteVo> routeMap = menus.stream()
-                .collect(Collectors.toMap(MenuBo::getId, this::buildMenuRoute));
+                .collect(Collectors.toMap(MenuBo::getId, this::toMenuRouteVo));
         List<MenuRouteVo> roots = new ArrayList<>();
         for (MenuBo menu : menus) {
             MenuRouteVo route = routeMap.get(menu.getId());
@@ -312,7 +326,7 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
         return menuDao.selectSubtreeIdsWithDeleted(rootId);
     }
 
-    private MenuRouteVo buildMenuRoute(MenuBo menu) {
+    private MenuRouteVo toMenuRouteVo(MenuBo menu) {
         MenuRouteVo route = new MenuRouteVo();
         route.setName(menu.getName());
         route.setPath(menu.getPath());
@@ -331,6 +345,7 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
 
     /**
      * 将数据库 JSON 字段转换为 Vben {@code RouteMeta.query} 所需的对象结构。
+     * Jackson 会把返回的 Map 序列化为 JSON 对象；如果保留 String，则会序列化为带转义的 JSON 字符串。
      */
     private Map<String, Object> parseQuery(String query) {
         if (StringUtils.isBlank(query)) {
