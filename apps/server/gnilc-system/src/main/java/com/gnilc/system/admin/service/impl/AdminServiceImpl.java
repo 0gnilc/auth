@@ -2,8 +2,6 @@ package com.gnilc.system.admin.service.impl;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.gnilc.auth.authn.context.AccessPrincipal;
-import com.gnilc.auth.authn.servlet.context.DefaultAccessPrincipalHolder;
 import com.gnilc.common.base.Preconditions;
 import com.gnilc.common.utils.BeanCopyUtils;
 import com.gnilc.common.utils.PageResult;
@@ -27,6 +25,7 @@ import com.gnilc.system.admin.entity.dto.AdminRoleDto;
 import com.gnilc.system.admin.entity.vo.AdminTokenVo;
 import com.gnilc.system.admin.entity.vo.AdminVo;
 import com.gnilc.system.admin.service.AdminService;
+import com.gnilc.system.auth.AccessPrincipalUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -120,7 +119,7 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
      */
     @Override
     public AdminVo getUserInfo() {
-        Long userId = authenticatedUserId();
+        Long userId = AccessPrincipalUtils.getUserId();
         AdminBo bo = getAdminByUserId(userId);
         if (bo == null) {
             return null;
@@ -143,7 +142,7 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
         Preconditions.checkArgument(description == null || description.length() <= PROFILE_TEXT_MAX_LENGTH,
                 "Description must be at most 500 characters.");
 
-        AdminBo bo = getAdminByUserId(authenticatedUserId());
+        AdminBo bo = getAdminByUserId(AccessPrincipalUtils.getUserId());
         Preconditions.checkCondition(bo != null,
                 "The administrator no longer exists. Sign in again.");
         lambdaUpdate()
@@ -160,7 +159,7 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
         Preconditions.checkArgument(StringUtils.isNotBlank(oldPassword), "Current password is required.");
         validateStrongPassword(newPassword);
 
-        Long userId = authenticatedUserId();
+        Long userId = AccessPrincipalUtils.getUserId();
         AdminBo bo = getAdminByUserId(userId);
         Preconditions.checkCondition(bo != null,
                 "The administrator no longer exists. Sign in again.");
@@ -179,7 +178,7 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
      */
     @Override
     public List<String> getRoleCodes() {
-        return getRoleCodes(authenticatedUserId());
+        return getRoleCodes(AccessPrincipalUtils.getUserId());
     }
 
     /**
@@ -187,7 +186,7 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
      */
     @Override
     public List<String> getMenuAccessCodes() {
-        return getMenuAccessCodes(authenticatedUserId());
+        return getMenuAccessCodes(AccessPrincipalUtils.getUserId());
     }
 
     /**
@@ -230,7 +229,7 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
 
     @Override
     public List<MenuRouteVo> getMenuRoutes() {
-        Long userId = authenticatedUserId();
+        Long userId = AccessPrincipalUtils.getUserId();
         List<Long> roleIds = userRoleService.getRoleIds(userId);
         List<Long> menuIds = roleMenuService.getMenuIds(roleIds);
         return menuService.getMenuRoutes(menuIds);
@@ -341,18 +340,6 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
                 .map(bo -> toAdminVo(bo, true, true))
                 .toList();
         return PageResult.of(page, vos);
-    }
-
-    /**
-     * 解析当前会话 user_id。
-     */
-    private Long authenticatedUserId() {
-        AccessPrincipal principal = DefaultAccessPrincipalHolder.getPrincipal();
-        Preconditions.checkArgument(principal != null, "Your session is no longer valid. Sign in again.");
-        String identifier = principal.getIdentifier();
-        Preconditions.checkArgument(StringUtils.isNotBlank(identifier),
-                "Your session is no longer valid. Sign in again.");
-        return Long.valueOf(identifier);
     }
 
     @Override

@@ -87,12 +87,12 @@ class MenuServiceImplTest {
         MenuBo root = menu(1L, 0L, MenuType.CATALOG, "Root", "/root", 1);
         List<Long> subtreeIds = List.of(1L, 2L, 3L);
         doReturn(root).when(menus).getById(1L);
-        when(menuDao.selectSubtreeIdsIncludingDeleted(1L)).thenReturn(subtreeIds);
+        when(menuDao.selectSubtreeIdsWithDeleted(1L)).thenReturn(subtreeIds);
         doReturn(true).when(menus).removeByIds(subtreeIds);
 
         menus.removeMenu(1L);
 
-        verify(menuDao).selectSubtreeIdsIncludingDeleted(1L);
+        verify(menuDao).selectSubtreeIdsWithDeleted(1L);
         ArgumentCaptor<MenuSubtreeRemovingEvent> event =
                 ArgumentCaptor.forClass(MenuSubtreeRemovingEvent.class);
         verify(eventPublisher).publishEvent(event.capture());

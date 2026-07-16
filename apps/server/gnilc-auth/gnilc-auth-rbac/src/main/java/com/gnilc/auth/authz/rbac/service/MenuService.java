@@ -24,6 +24,9 @@ public interface MenuService extends IService<MenuBo> {
 
     List<MenuBo> getMenus(List<Long> menuIds);
 
+    /**
+     * 校验所选菜单，并返回包含全部祖先节点的菜单授权集合。
+     */
     List<MenuBo> getMenusWithAncestors(List<Long> menuIds);
 
     List<MenuRouteVo> getMenuRoutes(List<Long> menuIds);

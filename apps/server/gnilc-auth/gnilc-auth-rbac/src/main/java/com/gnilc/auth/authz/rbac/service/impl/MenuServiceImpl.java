@@ -4,9 +4,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.gnilc.common.base.Preconditions;
 import com.gnilc.auth.authz.rbac.constant.MenuConstant;
-import com.gnilc.common.utils.BeanCopyUtils;
 import com.gnilc.auth.authz.rbac.dao.MenuDao;
 import com.gnilc.auth.authz.rbac.entity.bo.MenuBo;
 import com.gnilc.auth.authz.rbac.entity.dto.MenuDto;
@@ -15,6 +13,9 @@ import com.gnilc.auth.authz.rbac.entity.vo.MenuRouteVo;
 import com.gnilc.auth.authz.rbac.entity.vo.MenuVo;
 import com.gnilc.auth.authz.rbac.event.MenuSubtreeRemovingEvent;
 import com.gnilc.auth.authz.rbac.service.MenuService;
+import com.gnilc.common.base.Preconditions;
+import com.gnilc.common.exception.InvalidArgumentException;
+import com.gnilc.common.utils.BeanCopyUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.context.ApplicationEventPublisher;
@@ -55,7 +56,11 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
     @Override
     public List<MenuVo> getMenuTree() {
         List<MenuVo> vos = list().stream()
-                .map(this::toMenuVo)
+                .map(bo -> {
+                    MenuVo vo = new MenuVo();
+                    BeanUtils.copyProperties(bo, vo);
+                    return vo;
+                })
                 .toList();
         Map<Long, MenuVo> voMap = vos.stream()
                 .collect(Collectors.toMap(MenuVo::getId, vo -> vo));
@@ -121,10 +126,16 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
 
     @Override
     public List<MenuBo> getMenusWithAncestors(List<Long> menuIds) {
-        return resolveMenusWithAncestors(menuIds, true);
+        return collectReachableMenuHierarchy(menuIds, true);
     }
 
-    private List<MenuBo> resolveMenusWithAncestors(List<Long> menuIds, boolean strict) {
+    /**
+     * 收集所选菜单及其到根节点的完整层级。
+     *
+     * @param failOnInvalidHierarchy 是否在菜单不存在、层级断裂或成环时抛出异常
+     */
+    private List<MenuBo> collectReachableMenuHierarchy(List<Long> menuIds,
+                                                       boolean failOnInvalidHierarchy) {
         if (CollectionUtils.isEmpty(menuIds)) {
             return List.of();
         }
@@ -134,8 +145,8 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
         for (Long menuId : menuIds) {
             MenuBo menu = menuMap.get(menuId);
             if (menu == null) {
-                if (strict) {
-                    Preconditions.checkArgument(false,
+                if (failOnInvalidHierarchy) {
+                    throw new InvalidArgumentException(
                             "A selected menu no longer exists. Refresh and try again.");
                 }
                 continue;
@@ -145,8 +156,8 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
             boolean complete = false;
             while (true) {
                 if (!visited.add(menu.getId())) {
-                    if (strict) {
-                        Preconditions.checkArgument(false,
+                    if (failOnInvalidHierarchy) {
+                        throw new InvalidArgumentException(
                                 "The selected menu hierarchy is invalid.");
                     }
                     break;
@@ -158,8 +169,8 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
                 }
                 menu = menuMap.get(menu.getPid());
                 if (menu == null) {
-                    if (strict) {
-                        Preconditions.checkArgument(false,
+                    if (failOnInvalidHierarchy) {
+                        throw new InvalidArgumentException(
                                 "The selected menu hierarchy is incomplete.");
                     }
                     break;
@@ -176,12 +187,12 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
 
     @Override
     public List<MenuRouteVo> getMenuRoutes(List<Long> menuIds) {
-        List<MenuBo> menus = resolveMenusWithAncestors(menuIds, false).stream()
+        List<MenuBo> menus = collectReachableMenuHierarchy(menuIds, false).stream()
                 .filter(menu -> Boolean.TRUE.equals(menu.getStatus()))
                 .filter(menu -> menu.getType() != MenuType.BUTTON)
                 .toList();
         Map<Long, MenuRouteVo> routeMap = menus.stream()
-                .collect(Collectors.toMap(MenuBo::getId, this::toMenuRouteVo));
+                .collect(Collectors.toMap(MenuBo::getId, this::buildMenuRoute));
         List<MenuRouteVo> roots = new ArrayList<>();
         for (MenuBo menu : menus) {
             MenuRouteVo route = routeMap.get(menu.getId());
@@ -270,6 +281,9 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
                 "A menu with this permission code already exists.");
     }
 
+    /**
+     * 校验候选父节点存在、层级完整，并确保调整父级后不会形成循环。
+     */
     private void validateParent(Long menuId, Long pid) {
         if (Objects.equals(pid, MenuConstant.ROOT_PARENT_ID)) {
             return;
@@ -278,7 +292,8 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
         Preconditions.checkArgument(parent != null,
                 "The parent menu no longer exists. Select another menu.");
         Set<Long> visited = new HashSet<>();
-        while (parent != null) {
+        // 从候选父节点回溯到根节点；途中遇到当前菜单即表示会形成父子环。
+        while (true) {
             Preconditions.checkArgument(visited.add(parent.getId()),
                     "The parent menu hierarchy is invalid.");
             Preconditions.checkArgument(!Objects.equals(parent.getId(), menuId),
@@ -294,10 +309,10 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
 
     private List<Long> getSubtreeIds(Long rootId) {
         // IService queries hide logically deleted rows, but deletion must traverse through them.
-        return menuDao.selectSubtreeIdsIncludingDeleted(rootId);
+        return menuDao.selectSubtreeIdsWithDeleted(rootId);
     }
 
-    private MenuRouteVo toMenuRouteVo(MenuBo menu) {
+    private MenuRouteVo buildMenuRoute(MenuBo menu) {
         MenuRouteVo route = new MenuRouteVo();
         route.setName(menu.getName());
         route.setPath(menu.getPath());
@@ -314,6 +329,9 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
         return route;
     }
 
+    /**
+     * 将数据库 JSON 字段转换为 Vben {@code RouteMeta.query} 所需的对象结构。
+     */
     private Map<String, Object> parseQuery(String query) {
         if (StringUtils.isBlank(query)) {
             return null;
@@ -340,11 +358,5 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
                 sortMenuTree(children);
             }
         }
-    }
-
-    private MenuVo toMenuVo(MenuBo bo) {
-        MenuVo vo = new MenuVo();
-        BeanUtils.copyProperties(bo, vo);
-        return vo;
     }
 }

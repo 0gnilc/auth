@@ -31,9 +31,9 @@ class MenuMapperIT {
         menus.insert(activeLeaf);
         menus.deleteById(deletedBridge.getId());
 
-        assertThat(menus.selectSubtreeIdsIncludingDeleted(root.getId()))
+        assertThat(menus.selectSubtreeIdsWithDeleted(root.getId()))
                 .containsExactlyInAnyOrder(root.getId(), deletedBridge.getId(), activeLeaf.getId());
-        assertThat(menus.selectSubtreeIdsIncludingDeleted(Long.MAX_VALUE)).isEmpty();
+        assertThat(menus.selectSubtreeIdsWithDeleted(Long.MAX_VALUE)).isEmpty();
     }
 
     private MenuBo menu(String name, String path, Long pid) {
