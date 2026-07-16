@@ -46,9 +46,9 @@
 
 ### `05_admin_permissions.sql`
 
-初始化系统后台管理员模块的 11 条 RequestMapping 权限。
+初始化系统后台管理员模块的 13 条 RequestMapping 权限。当前用户资料、角色码、按钮访问码、基本信息修改和密码修改共 5 项权限为非公开权限，并绑定到内置 `admin` 角色；其余登录传输和后台管理员管理权限保持原有公开策略。
 
-三个权限脚本均依赖 `01_rbac.sql`。初始化记录的 `code` 和 `name` 为 `<HTTP method>:<path>`，`target_identifier` 为请求路径，`target_qualifier` 为 HTTP method，`public_access` 默认为 `1`。脚本按 `code` 判断是否已存在；已有记录保持原值，不会被覆盖。
+三个权限脚本均依赖 `01_rbac.sql`。初始化记录的 `code` 和 `name` 为 `<HTTP method>:<path>`，`target_identifier` 为请求路径，`target_qualifier` 为 HTTP method。脚本按 `code` 判断是否已存在；`05_admin_permissions.sql` 会将上述 5 项当前用户权限规范化为非公开并幂等补齐 `admin` 角色绑定，其他既有权限记录保持原值。
 
 ## 首次部署
 
@@ -91,7 +91,8 @@ SELECT id, code, built_in FROM az_role WHERE code = 'admin' AND del = 0;
 
 - `01_rbac.sql` 不会升级已有表结构；
 - `02_admin.sql` 不会覆盖已有管理员资料或密码，但会恢复默认记录的逻辑删除状态和默认管理员的启用状态；
-- `03_framework_permissions.sql`、`04_rbac_permissions.sql` 和 `05_admin_permissions.sql` 不会覆盖已有权限记录，即使已有记录已逻辑删除或字段值不同；
+- `03_framework_permissions.sql` 和 `04_rbac_permissions.sql` 不会覆盖已有权限记录；
+- `05_admin_permissions.sql` 会规范化 5 项当前用户权限的公开状态并补齐有效 `admin` 角色绑定，其他已有权限字段保持不变；
 - 脚本不会删除额外的业务数据；
 - 历史版本升级、字段变更和索引变更仍需专门的迁移脚本。
 
@@ -107,7 +108,7 @@ deploy/sql/<script>.sql -> sql/schema/<script>.sql
 
 - `gnilc-auth-rbac` 的 `RbacSchemaIT` 验证 `01_rbac.sql`、`03_framework_permissions.sql` 和 `04_rbac_permissions.sql`，其他模块集成测试只加载 `01_rbac.sql`；
 - `gnilc-system` 的 `AdminSchemaIT` 验证 `02_admin.sql` 和 `05_admin_permissions.sql`，其他模块集成测试依次加载 `01_rbac.sql`、`02_admin.sql`；
-- `gnilc-system` 的 Admin API 测试恢复基线数据时会重新执行 `02_admin.sql`；
+- `gnilc-system` 的 Admin API 测试恢复基线数据时会重新执行 `02_admin.sql` 和 `05_admin_permissions.sql`；
 - `gnilc-bootstrap` 只验证最终应用组合和启动，不再复制或执行部署 SQL。
 
 测试数据库固定为 Testcontainers 创建的 `gnilc_auth_test`，测试不会使用 H2、本机 MySQL、开发数据库或共享数据库。
@@ -123,7 +124,7 @@ mvn verify
 ## 安全要求
 
 - 不要把数据库密码写入 SQL、文档、脚本参数或提交记录；使用客户端交互式密码输入或安全的凭据管理方式。
-- 三个权限初始化脚本按要求将 `public_access` 设为 `1`，这些端点默认不要求角色授权；部署到公网前必须复核并将需要保护的权限改为 `0`，同时配置角色权限关系。
+- 当前用户相关的 5 项权限默认要求 `admin` 角色；登录、刷新、退出及现有后台管理员管理权限仍按当前策略公开，部署到公网前必须复核公开边界。
 - 不要在共享数据库或未备份的现有数据库上试运行初始化脚本。
 - 自动化测试只能连接由 Testcontainers 管理的临时数据库。
 - 本目录只处理 MySQL 结构和基础数据，不负责 Redis 初始化。

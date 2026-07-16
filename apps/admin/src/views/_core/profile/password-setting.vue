@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { Recordable } from '@vben/types';
+
 import type { VbenFormSchema } from '#/adapter/form';
 
 import { computed } from 'vue';
@@ -6,6 +8,25 @@ import { computed } from 'vue';
 import { ProfilePasswordSetting, z } from '@vben/common-ui';
 
 import { ElMessage } from 'element-plus';
+
+import { updateAdminPassword } from '#/api';
+import { useAuthStore } from '#/store';
+
+const authStore = useAuthStore();
+
+const strongPassword = z
+  .string()
+  .min(8, { message: '密码至少 8 个字符' })
+  .max(32, { message: '密码最多 32 个字符' })
+  .refine(
+    (value) =>
+      !/\s/.test(value) &&
+      /[a-z]/.test(value) &&
+      /[A-Z]/.test(value) &&
+      /\d/.test(value) &&
+      /[^A-Za-z0-9]/.test(value),
+    { message: '密码需包含大小写字母、数字和特殊字符，且不能含空白' },
+  );
 
 const formSchema = computed((): VbenFormSchema[] => {
   return [
@@ -16,6 +37,7 @@ const formSchema = computed((): VbenFormSchema[] => {
       componentProps: {
         placeholder: '请输入旧密码',
       },
+      rules: z.string().min(1, { message: '请输入旧密码' }),
     },
     {
       fieldName: 'newPassword',
@@ -25,6 +47,7 @@ const formSchema = computed((): VbenFormSchema[] => {
         passwordStrength: true,
         placeholder: '请输入新密码',
       },
+      rules: strongPassword,
     },
     {
       fieldName: 'confirmPassword',
@@ -50,13 +73,18 @@ const formSchema = computed((): VbenFormSchema[] => {
   ];
 });
 
-function handleSubmit() {
-  ElMessage.success('密码修改成功');
+async function handleSubmit(values: Recordable<any>) {
+  await updateAdminPassword({
+    newPassword: values.newPassword,
+    oldPassword: values.oldPassword,
+  });
+  ElMessage.success('密码已修改，请重新登录');
+  await authStore.resetSessionToLogin();
 }
 </script>
 <template>
   <ProfilePasswordSetting
-    class="w-1/3"
+    class="w-full max-w-xl"
     :form-schema="formSchema"
     @submit="handleSubmit"
   />

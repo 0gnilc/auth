@@ -115,6 +115,12 @@ export const useAuthStore = defineStore('auth', () => {
     return userInfo;
   }
 
+  async function resetSessionToLogin() {
+    resetAllStores();
+    accessStore.setLoginExpired(false);
+    await router.replace(LOGIN_PATH);
+  }
+
   function $reset() {
     loginLoading.value = false;
   }
@@ -125,5 +131,6 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     loginLoading,
     logout,
+    resetSessionToLogin,
   };
 });

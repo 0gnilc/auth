@@ -14,6 +14,7 @@ import org.springframework.test.context.ContextConfiguration;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.nullValue;
 
 @ApiTest
 @Import({
@@ -90,5 +91,124 @@ class AdminAuthApiIT extends AdminApiTestSupport {
                 .statusCode(400)
                 .body("code", equalTo(10001))
                 .body("error", equalTo("The request body is malformed."));
+    }
+
+    @Test
+    void currentAdministratorCanUpdateOnlyTheirEditableProfileFields() {
+        TokenPair pair = loginAsDefaultAdmin();
+
+        given()
+                .header("Authorization", bearer(pair.accessToken()))
+                .contentType(ContentType.JSON)
+                .body("""
+                        {
+                          "id": 999999,
+                          "username": "hijacked",
+                          "password": "Changed#456",
+                          "nickname": "Updated Administrator",
+                          "avatar": "  ",
+                          "desc": " ",
+                          "homePath": "/hijacked",
+                          "status": false,
+                          "roleCodes": []
+                        }
+                        """)
+                .when()
+                .post("/api/sys/admin/user-info/update")
+                .then()
+                .statusCode(200)
+                .body("code", equalTo(0));
+
+        given()
+                .header("Authorization", bearer(pair.accessToken()))
+                .when()
+                .get("/api/sys/admin/user-info")
+                .then()
+                .statusCode(200)
+                .body("data.username", equalTo("admin"))
+                .body("data.nickname", equalTo("Updated Administrator"))
+                .body("data.avatar", nullValue())
+                .body("data.desc", nullValue())
+                .body("data.homePath", equalTo("/dashboard"));
+    }
+
+    @Test
+    void currentAdministratorProfileRejectsBlankNickname() {
+        TokenPair pair = loginAsDefaultAdmin();
+
+        given()
+                .header("Authorization", bearer(pair.accessToken()))
+                .contentType(ContentType.JSON)
+                .body("{\"nickname\":\"   \",\"avatar\":\"https://example.test/changed.png\"}")
+                .when()
+                .post("/api/sys/admin/user-info/update")
+                .then()
+                .statusCode(200)
+                .body("code", equalTo(10001))
+                .body("error", equalTo("Nickname is required."));
+    }
+
+    @Test
+    void currentAdministratorPasswordUpdateRevokesEveryExistingSession() {
+        TokenPair first = loginAsDefaultAdmin();
+        TokenPair second = loginAsDefaultAdmin();
+
+        given()
+                .header("Authorization", bearer(first.accessToken()))
+                .contentType(ContentType.JSON)
+                .body("""
+                        {"oldPassword":"123456","newPassword":"Changed#456"}
+                        """)
+                .when()
+                .post("/api/sys/admin/password/update")
+                .then()
+                .statusCode(200)
+                .body("code", equalTo(0));
+
+        given().header("Authorization", bearer(first.accessToken()))
+                .get("/api/sys/admin/user-info").then().statusCode(401);
+        given().header("Authorization", bearer(second.accessToken()))
+                .get("/api/sys/admin/user-info").then().statusCode(401);
+        given().header("X-Refresh-Token", first.refreshToken())
+                .post("/api/sys/admin/refresh").then().statusCode(401);
+        given().header("X-Refresh-Token", second.refreshToken())
+                .post("/api/sys/admin/refresh").then().statusCode(401);
+
+        given()
+                .contentType(ContentType.JSON)
+                .body("{\"username\":\"admin\",\"password\":\"123456\"}")
+                .post("/api/sys/admin/login")
+                .then()
+                .statusCode(200)
+                .body("code", equalTo(20001));
+        given()
+                .contentType(ContentType.JSON)
+                .body("{\"username\":\"admin\",\"password\":\"Changed#456\"}")
+                .post("/api/sys/admin/login")
+                .then()
+                .statusCode(200)
+                .body("code", equalTo(0));
+    }
+
+    @Test
+    void invalidCurrentPasswordDoesNotChangePasswordOrRevokeSession() {
+        TokenPair pair = loginAsDefaultAdmin();
+
+        given()
+                .header("Authorization", bearer(pair.accessToken()))
+                .contentType(ContentType.JSON)
+                .body("{\"oldPassword\":\"Wrong#123\",\"newPassword\":\"Changed#456\"}")
+                .post("/api/sys/admin/password/update")
+                .then()
+                .statusCode(200)
+                .body("code", equalTo(10001))
+                .body("error", equalTo("Current password is incorrect."));
+
+        given()
+                .header("Authorization", bearer(pair.accessToken()))
+                .get("/api/sys/admin/user-info")
+                .then()
+                .statusCode(200)
+                .body("data.username", equalTo("admin"));
     }
 }

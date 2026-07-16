@@ -1,4 +1,4 @@
-import { initPreferences } from '@vben/preferences';
+import { initPreferences, updatePreferences } from '@vben/preferences';
 import { unmountGlobalLoading } from '@vben/utils';
 
 import { overridesPreferences } from './preferences';
@@ -18,6 +18,8 @@ async function initApplication() {
     namespace,
     overrides: overridesPreferences,
   });
+  // Product-level constraints must override preferences cached by older builds.
+  updatePreferences(overridesPreferences);
 
   // 启动应用并挂载
   // vue应用主要逻辑及视图

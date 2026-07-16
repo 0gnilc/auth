@@ -1,6 +1,7 @@
 package com.gnilc.system.admin.service.impl;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.gnilc.auth.authn.context.AccessPrincipal;
 import com.gnilc.auth.authn.servlet.context.DefaultAccessPrincipalHolder;
@@ -31,6 +32,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 
@@ -40,6 +42,10 @@ import java.util.Optional;
  */
 @Service
 public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements AdminService {
+    private static final String ADMIN_BASELINE_ROLE_CODE = "admin";
+    private static final String DEFAULT_HOME_PATH = "/dashboard";
+    private static final int NICKNAME_MAX_LENGTH = 255;
+    private static final int PROFILE_TEXT_MAX_LENGTH = 500;
     private static final BCryptPasswordEncoder PASSWORD_ENCODER = new BCryptPasswordEncoder();
 
     private final AdminSessionManager sessionManager;
@@ -118,6 +124,50 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
         return toAdminVo(bo, false, true);
     }
 
+    @Override
+    @Transactional
+    public void updateUserInfo(AdminDto dto) {
+        Preconditions.checkArgument(dto != null, "Profile information is required.");
+        String nickname = StringUtils.trimToNull(dto.getNickname());
+        Preconditions.checkArgument(nickname != null, "Nickname is required.");
+        Preconditions.checkArgument(nickname.length() <= NICKNAME_MAX_LENGTH,
+                "Nickname must be at most 255 characters.");
+        String avatar = StringUtils.trimToNull(dto.getAvatar());
+        Preconditions.checkArgument(avatar == null || avatar.length() <= PROFILE_TEXT_MAX_LENGTH,
+                "Avatar URL must be at most 500 characters.");
+        String description = StringUtils.trimToNull(dto.getDesc());
+        Preconditions.checkArgument(description == null || description.length() <= PROFILE_TEXT_MAX_LENGTH,
+                "Description must be at most 500 characters.");
+
+        AdminBo bo = getAdminByUserId(authenticatedUserId());
+        Preconditions.checkCondition(bo != null,
+                "The administrator no longer exists. Sign in again.");
+        baseMapper.update(null, Wrappers.<AdminBo>lambdaUpdate()
+                .set(AdminBo::getNickname, nickname)
+                .set(AdminBo::getAvatar, avatar)
+                .set(AdminBo::getDescription, description)
+                .eq(AdminBo::getId, bo.getId()));
+    }
+
+    @Override
+    @Transactional
+    public void updatePassword(String oldPassword, String newPassword) {
+        Preconditions.checkArgument(StringUtils.isNotBlank(oldPassword), "Current password is required.");
+        validateStrongPassword(newPassword);
+
+        Long userId = authenticatedUserId();
+        AdminBo bo = getAdminByUserId(userId);
+        Preconditions.checkCondition(bo != null,
+                "The administrator no longer exists. Sign in again.");
+        Preconditions.checkArgument(PASSWORD_ENCODER.matches(oldPassword, bo.getPassword()),
+                "Current password is incorrect.");
+
+        baseMapper.update(null, Wrappers.<AdminBo>lambdaUpdate()
+                .set(AdminBo::getPassword, PASSWORD_ENCODER.encode(newPassword))
+                .eq(AdminBo::getId, bo.getId()));
+        sessionManager.cleanupUserSessions(userId);
+    }
+
     /**
      * 查询当前管理员角色标识。
      */
@@ -193,10 +243,10 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
         bo.setNickname(dto.getNickname());
         bo.setAvatar(dto.getAvatar());
         bo.setDescription(dto.getDesc());
-        bo.setHomePath(dto.getHomePath());
+        bo.setHomePath(StringUtils.defaultIfBlank(dto.getHomePath(), DEFAULT_HOME_PATH));
         bo.setStatus(dto.getStatus());
         save(bo);
-        updateRolesIfProvided(userId, dto.getRoleCodes());
+        replaceAdminRoles(userId, dto.getRoleCodes());
     }
 
     /**
@@ -241,7 +291,7 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
     public void updateAdminRoles(AdminRoleDto dto) {
         AdminBo bo = getById(dto.getId());
         Preconditions.checkCondition(bo != null, "The administrator no longer exists. Refresh and try again.");
-        replaceRoles(bo.getUserId(), dto.getRoleCodes());
+        replaceAdminRoles(bo.getUserId(), dto.getRoleCodes());
     }
 
     /**
@@ -296,7 +346,8 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
         if (userId == null) {
             return null;
         }
-        return lambdaQuery().eq(AdminBo::getUserId, userId).one();
+        return baseMapper.selectOne(Wrappers.<AdminBo>lambdaQuery()
+                .eq(AdminBo::getUserId, userId));
     }
 
     @Override
@@ -332,7 +383,16 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
         if (roleCodes == null) {
             return;
         }
-        replaceRoles(userId, roleCodes);
+        replaceAdminRoles(userId, roleCodes);
+    }
+
+    private void replaceAdminRoles(Long userId, List<String> roleCodes) {
+        LinkedHashSet<String> codes = new LinkedHashSet<>();
+        codes.add(ADMIN_BASELINE_ROLE_CODE);
+        if (roleCodes != null) {
+            codes.addAll(roleCodes);
+        }
+        replaceRoles(userId, codes.stream().toList());
     }
 
     private void replaceRoles(Long userId, List<String> roleCodes) {

@@ -46,6 +46,17 @@ export namespace AdminApi {
     username?: string;
   }
 
+  export interface UpdateCurrentProfile {
+    avatar?: string;
+    desc?: string;
+    nickname: string;
+  }
+
+  export interface UpdateCurrentPassword {
+    newPassword: string;
+    oldPassword: string;
+  }
+
   export interface AdminSession {
     accessToken: string;
     refreshToken: string;
@@ -109,6 +120,18 @@ export async function logout(refreshToken: string) {
 
 export async function getAdminUserInfo() {
   return requestClient.get<AdminApi.Admin>('/sys/admin/user-info');
+}
+
+export async function updateAdminUserInfo(
+  profile: AdminApi.UpdateCurrentProfile,
+) {
+  return requestClient.post<null>('/sys/admin/user-info/update', profile);
+}
+
+export async function updateAdminPassword(
+  passwords: AdminApi.UpdateCurrentPassword,
+) {
+  return requestClient.post<null>('/sys/admin/password/update', passwords);
 }
 
 export async function getRoleCodes() {

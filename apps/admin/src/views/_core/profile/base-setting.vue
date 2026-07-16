@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { BasicOption } from '@vben/types';
+import type { Recordable } from '@vben/types';
 
 import type { VbenFormSchema } from '#/adapter/form';
 
@@ -7,53 +7,59 @@ import { computed, onMounted, ref } from 'vue';
 
 import { ProfileBaseSetting } from '@vben/common-ui';
 
-import { getAdminUserInfo } from '#/api';
+import { ElMessage } from 'element-plus';
+
+import { getAdminUserInfo, updateAdminUserInfo } from '#/api';
+import { z } from '#/adapter/form';
+import { useAuthStore } from '#/store';
 
 const profileBaseSettingRef = ref();
-
-const MOCK_ROLES_OPTIONS: BasicOption[] = [
-  {
-    label: '管理员',
-    value: 'super',
-  },
-  {
-    label: '用户',
-    value: 'user',
-  },
-  {
-    label: '测试',
-    value: 'test',
-  },
-];
+const authStore = useAuthStore();
 
 const formSchema = computed((): VbenFormSchema[] => {
   return [
     {
       fieldName: 'nickname',
       component: 'Input',
-      label: '姓名',
-    },
-    {
-      fieldName: 'username',
-      component: 'Input',
-      label: '用户名',
-    },
-    {
-      fieldName: 'roleCodes',
-      component: 'Select',
       componentProps: {
-        mode: 'tags',
-        options: MOCK_ROLES_OPTIONS,
+        maxlength: 255,
+        placeholder: '请输入昵称',
       },
-      label: '角色',
+      label: '昵称',
+      rules: z.string().trim().min(1, { message: '请输入昵称' }),
+    },
+    {
+      fieldName: 'avatar',
+      component: 'Input',
+      componentProps: {
+        maxlength: 500,
+        placeholder: '请输入头像 URL，留空可清除',
+      },
+      label: '头像 URL',
     },
     {
       fieldName: 'desc',
-      component: 'Textarea',
+      component: 'Input',
+      componentProps: {
+        maxlength: 500,
+        rows: 4,
+        type: 'textarea',
+      },
       label: '个人简介',
     },
   ];
 });
+
+async function handleSubmit(values: Recordable<any>) {
+  await updateAdminUserInfo({
+    avatar: values.avatar,
+    desc: values.desc,
+    nickname: values.nickname,
+  });
+  const userInfo = await authStore.getUserInfo();
+  profileBaseSettingRef.value?.getFormApi().setValues(userInfo);
+  ElMessage.success('基本资料已更新');
+}
 
 onMounted(async () => {
   const data = await getAdminUserInfo();
@@ -61,5 +67,9 @@ onMounted(async () => {
 });
 </script>
 <template>
-  <ProfileBaseSetting ref="profileBaseSettingRef" :form-schema="formSchema" />
+  <ProfileBaseSetting
+    ref="profileBaseSettingRef"
+    :form-schema="formSchema"
+    @submit="handleSubmit"
+  />
 </template>

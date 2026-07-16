@@ -1,6 +1,7 @@
 package com.gnilc.system.admin.controller;
 
 import com.gnilc.common.utils.PageResult;
+import com.gnilc.system.admin.entity.dto.AdminDto;
 import com.gnilc.system.admin.entity.vo.AdminTokenVo;
 import com.gnilc.system.admin.entity.vo.AdminVo;
 import com.gnilc.system.admin.service.AdminService;
@@ -12,7 +13,9 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -76,6 +79,46 @@ class AdminControllerTest {
                 .andExpect(jsonPath("$.data[0]").value("admin"));
         mvc.perform(get("/sys/admin/menu/access-codes"))
                 .andExpect(jsonPath("$.data[0]").value("user:create"));
+    }
+
+    @Test
+    void currentProfileUpdateAcceptsAdminDtoAndDelegatesToCurrentUserService() throws Exception {
+        doNothing().when(service).updateUserInfo(any());
+
+        mvc.perform(jsonPost("/sys/admin/user-info/update", """
+                        {
+                          "id": 99,
+                          "username": "ignored",
+                          "nickname": "Alice",
+                          "avatar": "https://example.test/alice.png",
+                          "desc": "Platform administrator",
+                          "status": false,
+                          "roleCodes": ["ignored"]
+                        }
+                        """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0));
+
+        var captor = org.mockito.ArgumentCaptor.forClass(AdminDto.class);
+        verify(service).updateUserInfo(captor.capture());
+        assertThat(captor.getValue().getNickname()).isEqualTo("Alice");
+        assertThat(captor.getValue().getAvatar()).isEqualTo("https://example.test/alice.png");
+        assertThat(captor.getValue().getDesc()).isEqualTo("Platform administrator");
+    }
+
+    @Test
+    void currentPasswordUpdateAcceptsOnlySimplePasswordParameters() throws Exception {
+        mvc.perform(jsonPost("/sys/admin/password/update", """
+                        {
+                          "id": 99,
+                          "oldPassword": "Initial#123",
+                          "newPassword": "Changed#456"
+                        }
+                        """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0));
+
+        verify(service).updatePassword("Initial#123", "Changed#456");
     }
 
     @Test

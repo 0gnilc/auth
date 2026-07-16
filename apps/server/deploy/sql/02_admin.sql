@@ -13,13 +13,15 @@ CREATE TABLE IF NOT EXISTS sys_admin (
     nickname varchar(255) NOT NULL COMMENT '昵称',
     avatar varchar(500) DEFAULT NULL COMMENT '头像地址',
     description varchar(500) DEFAULT NULL COMMENT '管理员描述',
-    home_path varchar(500) NOT NULL DEFAULT '/workspace' COMMENT '默认首页路径',
+    home_path varchar(500) NOT NULL DEFAULT '/dashboard' COMMENT '默认首页路径',
     status tinyint(1) NOT NULL DEFAULT '1' COMMENT '启用状态',
     PRIMARY KEY (id),
     UNIQUE KEY uk_username (username),
     UNIQUE KEY uk_user_id (user_id),
     KEY idx_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='后台管理员';
+
+ALTER TABLE sys_admin ALTER COLUMN home_path SET DEFAULT '/dashboard';
 
 UPDATE az_role
 SET del = 0,
@@ -85,7 +87,7 @@ SELECT
     '管理员',
     NULL,
     '系统管理员',
-    '/workspace',
+    '/dashboard',
     1
 WHERE @default_admin_existing_user_id IS NULL;
 
@@ -122,4 +124,18 @@ WHERE @default_admin_user_id IS NOT NULL
       WHERE user_id = @default_admin_user_id
         AND role_id = @default_admin_role_id
         AND del = 0
+  );
+
+-- Every active admin user retains the built-in admin access baseline role.
+INSERT INTO az_user_role (del, create_time, update_time, user_id, role_id)
+SELECT 0, NOW(), NULL, a.user_id, @default_admin_role_id
+FROM sys_admin a
+WHERE a.del = 0
+  AND @default_admin_role_id IS NOT NULL
+  AND NOT EXISTS (
+      SELECT 1
+      FROM az_user_role ur
+      WHERE ur.user_id = a.user_id
+        AND ur.role_id = @default_admin_role_id
+        AND ur.del = 0
   );

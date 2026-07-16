@@ -11,8 +11,24 @@ import {
 export const overridesPreferences = defineOverridesPreferences({
   // overrides
   app: {
+    accessMode: 'frontend',
+    defaultAvatar: '',
+    defaultHomePath: '/dashboard',
     enableRefreshToken: true,
     name: import.meta.env.VITE_APP_TITLE,
   },
-  copyright: appCopyrightPreferences,
+  copyright: {
+    ...appCopyrightPreferences,
+    companyName: 'Gnilc',
+    companySiteLink: 'https://github.com/gnil0416/auth',
+    date: '2026',
+    enable: false,
+    settingShow: false,
+  },
+  shortcutKeys: {
+    globalLockScreen: false,
+  },
+  widget: {
+    lockScreen: false,
+  },
 });

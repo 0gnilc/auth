@@ -65,6 +65,51 @@ class AuthorizationApiIT extends AdminApiTestSupport {
     }
 
     @Test
+    void anonymousAndLimitedUsersCannotUpdateCurrentAdministratorProfile() {
+        given()
+                .contentType("application/json")
+                .body("{\"nickname\":\"Anonymous\"}")
+                .when()
+                .post("/api/sys/admin/user-info/update")
+                .then()
+                .statusCode(403)
+                .body("code", equalTo(20003));
+
+        TokenPair pair = loginAsLimitedAdmin();
+        given()
+                .header("Authorization", bearer(pair.accessToken()))
+                .contentType("application/json")
+                .body("{\"nickname\":\"Limited\"}")
+                .when()
+                .post("/api/sys/admin/user-info/update")
+                .then()
+                .statusCode(403)
+                .body("code", equalTo(20003));
+    }
+
+    @Test
+    void anonymousAndLimitedUsersCannotUpdateCurrentAdministratorPassword() {
+        String request = "{\"oldPassword\":\"123456\",\"newPassword\":\"Changed#456\"}";
+        given()
+                .contentType("application/json")
+                .body(request)
+                .post("/api/sys/admin/password/update")
+                .then()
+                .statusCode(403)
+                .body("code", equalTo(20003));
+
+        TokenPair pair = loginAsLimitedAdmin();
+        given()
+                .header("Authorization", bearer(pair.accessToken()))
+                .contentType("application/json")
+                .body(request)
+                .post("/api/sys/admin/password/update")
+                .then()
+                .statusCode(403)
+                .body("code", equalTo(20003));
+    }
+
+    @Test
     void revokedNamespacedAccessTokenReturns401BeforeAuthorization() {
         TokenPair pair = loginAsDefaultAdmin();
         given().header("X-Refresh-Token", pair.refreshToken())

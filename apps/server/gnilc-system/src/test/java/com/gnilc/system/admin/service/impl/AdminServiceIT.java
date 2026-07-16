@@ -2,6 +2,7 @@ package com.gnilc.system.admin.service.impl;
 
 import com.gnilc.auth.authz.rbac.entity.bo.RoleBo;
 import com.gnilc.auth.authz.rbac.entity.dto.RoleDto;
+import com.gnilc.auth.authn.context.DefaultAccessPrincipal;
 import com.gnilc.common.exception.IllegalConditionException;
 import com.gnilc.common.exception.InvalidArgumentException;
 import com.gnilc.auth.authz.rbac.service.RoleService;
@@ -26,6 +27,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -47,10 +51,12 @@ class AdminServiceIT {
     @BeforeEach
     void cleanRedisBeforeTest() {
         cleanRedis();
+        ensureRole("admin");
     }
 
     @AfterEach
     void cleanRedisAfterTest() {
+        RequestContextHolder.resetRequestAttributes();
         cleanRedis();
     }
 
@@ -67,7 +73,8 @@ class AdminServiceIT {
 
         assertThat(stored.getUserId()).isNotNull();
         assertThat(new BCryptPasswordEncoder().matches("Strong#123", stored.getPassword())).isTrue();
-        assertThat(admins.getRoleCodes(stored.getUserId())).containsExactly("operator");
+        assertThat(admins.getRoleCodes(stored.getUserId()))
+                .containsExactlyInAnyOrder("admin", "operator");
 
         AdminTokenVo token = admins.login("alice", "Strong#123");
         assertThat(token).isNotNull();
@@ -124,7 +131,8 @@ class AdminServiceIT {
         admins.updateAdmin(update);
 
         assertThat(admins.getAdmin(bob.getId()).getNickname()).isEqualTo("Robert");
-        assertThat(admins.getRoleCodes(bob.getUserId())).containsExactly("reviewer");
+        assertThat(admins.getRoleCodes(bob.getUserId()))
+                .containsExactlyInAnyOrder("admin", "reviewer");
         assertThat(admins.login("bob", "Changed#456")).isNull();
         assertThat(sessions.validateAccessToken(firstBobSession.getAccessToken())).isNull();
         assertThat(sessions.validateAccessToken(secondBobSession.getAccessToken())).isNull();
@@ -163,23 +171,25 @@ class AdminServiceIT {
         profileOnly.setId(carol.getId());
         profileOnly.setNickname("Carol Updated");
         admins.updateAdmin(profileOnly);
-        assertThat(admins.getRoleCodes(carol.getUserId())).containsExactly("operator");
+        assertThat(admins.getRoleCodes(carol.getUserId()))
+                .containsExactlyInAnyOrder("admin", "operator");
 
         AdminRoleDto clear = new AdminRoleDto();
         clear.setId(carol.getId());
         clear.setRoleCodes(List.of());
         admins.updateAdminRoles(clear);
-        assertThat(admins.getRoleCodes(carol.getUserId())).isEmpty();
+        assertThat(admins.getRoleCodes(carol.getUserId())).containsExactly("admin");
 
         clear.setRoleCodes(List.of("operator"));
         admins.updateAdminRoles(clear);
-        assertThat(admins.getRoleCodes(carol.getUserId())).containsExactly("operator");
+        assertThat(admins.getRoleCodes(carol.getUserId()))
+                .containsExactlyInAnyOrder("admin", "operator");
 
         AdminDto clearThroughUpdate = new AdminDto();
         clearThroughUpdate.setId(carol.getId());
         clearThroughUpdate.setRoleCodes(List.of());
         admins.updateAdmin(clearThroughUpdate);
-        assertThat(admins.getRoleCodes(carol.getUserId())).isEmpty();
+        assertThat(admins.getRoleCodes(carol.getUserId())).containsExactly("admin");
 
         clear.setRoleCodes(List.of("missing"));
         assertThatThrownBy(() -> admins.updateAdminRoles(clear))
@@ -194,6 +204,122 @@ class AdminServiceIT {
         admins.createAdmin(admin("unique", "Strong#123", null));
         assertThatThrownBy(() -> admins.createAdmin(admin("unique", "Another#123", null)))
                 .isInstanceOf(InvalidArgumentException.class);
+    }
+
+    @Test
+    void createDefaultsBlankHomePathToDashboard() {
+        AdminDto missing = admin("home-missing", "Strong#123", List.of());
+        missing.setHomePath(null);
+        admins.createAdmin(missing);
+        assertThat(admins.getAdminByUsername("home-missing").getHomePath())
+                .isEqualTo("/dashboard");
+
+        AdminDto blank = admin("home-blank", "Strong#123", List.of());
+        blank.setHomePath("  ");
+        admins.createAdmin(blank);
+        assertThat(admins.getAdminByUsername("home-blank").getHomePath())
+                .isEqualTo("/dashboard");
+    }
+
+    @Test
+    void currentProfileUpdateUsesPrincipalUserIdAndOnlyChangesEditableFields() {
+        ensureRole("operator");
+        AdminDto current = admin("profile-owner", "Initial#123", List.of("operator"));
+        current.setAvatar("https://example.test/old.png");
+        current.setDesc("Old description");
+        admins.createAdmin(current);
+        AdminBo owner = admins.getAdminByUsername("profile-owner");
+
+        admins.createAdmin(admin("other-profile", "Other#123", List.of()));
+        AdminBo other = admins.getAdminByUsername("other-profile");
+        authenticateAs(owner.getUserId());
+
+        AdminDto update = new AdminDto();
+        update.setId(other.getId());
+        update.setUsername("hijacked");
+        update.setPassword("Changed#456");
+        update.setNickname("Updated Owner");
+        update.setAvatar("  ");
+        update.setDesc(" ");
+        update.setHomePath("/hijacked");
+        update.setStatus(false);
+        update.setRoleCodes(List.of());
+        admins.updateUserInfo(update);
+
+        AdminBo updated = admins.getAdmin(owner.getId());
+        assertThat(updated.getUsername()).isEqualTo("profile-owner");
+        assertThat(updated.getNickname()).isEqualTo("Updated Owner");
+        assertThat(updated.getAvatar()).isNull();
+        assertThat(updated.getDescription()).isNull();
+        assertThat(updated.getHomePath()).isEqualTo("/workspace");
+        assertThat(updated.getStatus()).isTrue();
+        assertThat(admins.getRoleCodes(owner.getUserId()))
+                .containsExactlyInAnyOrder("admin", "operator");
+        assertThat(admins.login("profile-owner", "Initial#123")).isNotNull();
+        assertThat(admins.getAdmin(other.getId()).getNickname()).isEqualTo("other-profile");
+    }
+
+    @Test
+    void currentProfileUpdateRejectsBlankNicknameWithoutChangingProfile() {
+        admins.createAdmin(admin("invalid-profile", "Initial#123", List.of()));
+        AdminBo owner = admins.getAdminByUsername("invalid-profile");
+        authenticateAs(owner.getUserId());
+
+        AdminDto update = new AdminDto();
+        update.setNickname("   ");
+        update.setAvatar("https://example.test/changed.png");
+
+        assertThatThrownBy(() -> admins.updateUserInfo(update))
+                .isInstanceOf(InvalidArgumentException.class)
+                .hasMessage("Nickname is required.");
+        assertThat(admins.getAdmin(owner.getId()).getNickname()).isEqualTo("invalid-profile");
+        assertThat(admins.getAdmin(owner.getId()).getAvatar()).isNull();
+    }
+
+    @Test
+    void currentPasswordUpdateChangesPasswordAndRevokesOnlyCurrentUsersSessions() {
+        admins.createAdmin(admin("password-owner", "Initial#123", List.of()));
+        AdminBo owner = admins.getAdminByUsername("password-owner");
+        AdminTokenVo firstSession = admins.login("password-owner", "Initial#123");
+        AdminTokenVo secondSession = admins.login("password-owner", "Initial#123");
+
+        admins.createAdmin(admin("password-other", "Other#123", List.of()));
+        AdminTokenVo otherSession = admins.login("password-other", "Other#123");
+        AdminBo other = admins.getAdminByUsername("password-other");
+        authenticateAs(owner.getUserId());
+
+        admins.updatePassword("Initial#123", "Changed#456");
+
+        assertThat(admins.login("password-owner", "Initial#123")).isNull();
+        assertThat(admins.login("password-owner", "Changed#456")).isNotNull();
+        assertThat(sessions.validateAccessToken(firstSession.getAccessToken())).isNull();
+        assertThat(sessions.validateAccessToken(secondSession.getAccessToken())).isNull();
+        assertThat(admins.refresh(firstSession.getRefreshToken())).isNull();
+        assertThat(admins.refresh(secondSession.getRefreshToken())).isNull();
+        assertThat(sessions.validateAccessToken(otherSession.getAccessToken()))
+                .isEqualTo(other.getUserId());
+        assertThat(admins.refresh(otherSession.getRefreshToken())).isNotNull();
+    }
+
+    @Test
+    void currentPasswordUpdateRejectsInvalidCredentialsWithoutChangingPasswordOrSessions() {
+        admins.createAdmin(admin("password-invalid", "Initial#123", List.of()));
+        AdminBo owner = admins.getAdminByUsername("password-invalid");
+        AdminTokenVo session = admins.login("password-invalid", "Initial#123");
+        authenticateAs(owner.getUserId());
+
+        assertThatThrownBy(() -> admins.updatePassword("Wrong#123", "Changed#456"))
+                .isInstanceOf(InvalidArgumentException.class)
+                .hasMessage("Current password is incorrect.");
+        assertThatThrownBy(() -> admins.updatePassword("Initial#123", "weak"))
+                .isInstanceOf(InvalidArgumentException.class)
+                .hasMessageContaining("Password must be 8 to 32 characters");
+
+        assertThat(admins.login("password-invalid", "Initial#123")).isNotNull();
+        assertThat(admins.login("password-invalid", "Changed#456")).isNull();
+        assertThat(sessions.validateAccessToken(session.getAccessToken()))
+                .isEqualTo(owner.getUserId());
+        assertThat(admins.refresh(session.getRefreshToken())).isNotNull();
     }
 
     @Test
@@ -231,7 +357,8 @@ class AdminServiceIT {
         assertThat(page.get(1).getDesc()).isEqualTo("First operator");
         assertThat(page.get(1).getHomePath()).isEqualTo("/workspace");
         assertThat(page.get(1).getStatus()).isTrue();
-        assertThat(page.get(1).getRoleCodes()).containsExactly("operator");
+        assertThat(page.get(1).getRoleCodes())
+                .containsExactlyInAnyOrder("admin", "operator");
     }
 
     private AdminDto admin(String username, String password, List<String> roleCodes) {
@@ -253,5 +380,11 @@ class AdminServiceIT {
         dto.setCode(code);
         dto.setName(code);
         roles.createRole(dto);
+    }
+
+    private void authenticateAs(Long userId) {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setUserPrincipal(DefaultAccessPrincipal.of(userId));
+        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
     }
 }

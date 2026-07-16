@@ -162,7 +162,11 @@ const handleClear = () => {
         >
           {{ $t('ui.widgets.clearNotifications') }}
         </VbenButton>
-        <VbenButton size="sm" @click="handleViewAll">
+        <VbenButton
+          :disabled="notifications.length <= 0"
+          size="sm"
+          @click="handleViewAll"
+        >
           {{ $t('ui.widgets.viewAll') }}
         </VbenButton>
       </div>

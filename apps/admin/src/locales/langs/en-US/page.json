@@ -6,8 +6,6 @@
     "profile": "Profile"
   },
   "dashboard": {
-    "title": "Dashboard",
-    "analytics": "Analytics",
-    "workspace": "Workspace"
+    "title": "Dashboard"
   }
 }

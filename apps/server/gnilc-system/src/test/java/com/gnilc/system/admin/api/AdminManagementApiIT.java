@@ -63,7 +63,8 @@ class AdminManagementApiIT extends AdminApiTestSupport {
                 .then()
                 .statusCode(200)
                 .body("code", equalTo(0));
-        assertThat(activeRoleBindingCount(userId)).isZero();
+        assertThat(activeRoleBindingCount(userId)).isEqualTo(1);
+        assertThat(activeRoleCodes(userId)).containsExactly("admin");
 
         given()
                 .header("Authorization", auth)
@@ -117,5 +118,16 @@ class AdminManagementApiIT extends AdminApiTestSupport {
                 "select count(*) from az_user_role where user_id = ? and del = 0",
                 Integer.class,
                 userId);
+    }
+
+    private java.util.List<String> activeRoleCodes(Long userId) {
+        return jdbc.queryForList("""
+                select r.code
+                  from az_user_role ur
+                  join az_role r on r.id = ur.role_id
+                 where ur.user_id = ?
+                   and ur.del = 0
+                   and r.del = 0
+                """, String.class, userId);
     }
 }

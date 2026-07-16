@@ -36,6 +36,16 @@ public interface AdminService extends IService<AdminBo> {
     AdminVo getUserInfo();
 
     /**
+     * 更新当前管理员的基本资料。
+     */
+    void updateUserInfo(AdminDto dto);
+
+    /**
+     * 更新当前管理员密码并撤销其全部会话。
+     */
+    void updatePassword(String oldPassword, String newPassword);
+
+    /**
      * 查询当前管理员角色标识。
      */
     List<String> getRoleCodes();
