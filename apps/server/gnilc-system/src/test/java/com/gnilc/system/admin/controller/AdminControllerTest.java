@@ -83,7 +83,7 @@ class AdminControllerTest {
 
     @Test
     void currentProfileUpdateAcceptsAdminDtoAndDelegatesToCurrentUserService() throws Exception {
-        doNothing().when(service).updateUserInfo(any());
+        doNothing().when(service).updateProfile(any());
 
         mvc.perform(jsonPost("/sys/admin/user-info/update", """
                         {
@@ -100,7 +100,7 @@ class AdminControllerTest {
                 .andExpect(jsonPath("$.code").value(0));
 
         var captor = org.mockito.ArgumentCaptor.forClass(AdminDto.class);
-        verify(service).updateUserInfo(captor.capture());
+        verify(service).updateProfile(captor.capture());
         assertThat(captor.getValue().getNickname()).isEqualTo("Alice");
         assertThat(captor.getValue().getAvatar()).isEqualTo("https://example.test/alice.png");
         assertThat(captor.getValue().getDesc()).isEqualTo("Platform administrator");

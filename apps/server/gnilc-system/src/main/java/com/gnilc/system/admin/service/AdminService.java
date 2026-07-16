@@ -38,7 +38,7 @@ public interface AdminService extends IService<AdminBo> {
     /**
      * 更新当前管理员的基本资料。
      */
-    void updateUserInfo(AdminDto dto);
+    void updateProfile(AdminDto dto);
 
     /**
      * 更新当前管理员密码并撤销其全部会话。

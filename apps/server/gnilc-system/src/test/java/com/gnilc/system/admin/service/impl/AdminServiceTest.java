@@ -4,6 +4,9 @@ import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.extension.conditions.query.LambdaQueryChainWrapper;
+import com.baomidou.mybatisplus.extension.conditions.update.LambdaUpdateChainWrapper;
 import com.gnilc.auth.authn.context.DefaultAccessPrincipal;
 import com.gnilc.auth.authz.rbac.service.MenuService;
 import com.gnilc.auth.authz.rbac.service.RoleService;
@@ -24,7 +27,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
@@ -32,7 +34,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -64,8 +68,7 @@ class AdminServiceTest {
                     new MapperBuilderAssistant(new MybatisConfiguration(), "admin-service-test"),
                     AdminBo.class);
         }
-        admins = new AdminServiceImpl(sessions, roles, menus, users, userRoles);
-        ReflectionTestUtils.setField(admins, "baseMapper", adminDao);
+        admins = spy(new AdminServiceImpl(sessions, roles, menus, users, userRoles));
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setUserPrincipal(DefaultAccessPrincipal.of(USER_ID));
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
@@ -77,7 +80,9 @@ class AdminServiceTest {
     }
 
     @Test
-    void updateUserInfoUsesCurrentUserAndOnlyWritesEditableFields() {
+    void updateProfileUsesCurrentUserAndOnlyWritesEditableFields() {
+        stubQueryChain();
+        stubUpdateChain();
         when(adminDao.selectOne(any())).thenReturn(currentAdmin());
         when(adminDao.update(isNull(), any())).thenReturn(1);
         AdminDto profile = new AdminDto();
@@ -89,7 +94,7 @@ class AdminServiceTest {
         profile.setHomePath("/other");
         profile.setStatus(false);
 
-        admins.updateUserInfo(profile);
+        admins.updateProfile(profile);
 
         ArgumentCaptor<Wrapper<AdminBo>> update = wrapperCaptor();
         verify(adminDao).update(isNull(), update.capture());
@@ -105,23 +110,23 @@ class AdminServiceTest {
     }
 
     @Test
-    void updateUserInfoRejectsOversizedProfileFieldsBeforeWriting() {
+    void updateProfileRejectsOversizedProfileFieldsBeforeWriting() {
         AdminDto profile = new AdminDto();
         profile.setNickname("n".repeat(256));
 
-        assertThatThrownBy(() -> admins.updateUserInfo(profile))
+        assertThatThrownBy(() -> admins.updateProfile(profile))
                 .isInstanceOf(InvalidArgumentException.class)
                 .hasMessage("Nickname must be at most 255 characters.");
 
         profile.setNickname("Admin");
         profile.setAvatar("a".repeat(501));
-        assertThatThrownBy(() -> admins.updateUserInfo(profile))
+        assertThatThrownBy(() -> admins.updateProfile(profile))
                 .isInstanceOf(InvalidArgumentException.class)
                 .hasMessage("Avatar URL must be at most 500 characters.");
 
         profile.setAvatar(null);
         profile.setDesc("d".repeat(501));
-        assertThatThrownBy(() -> admins.updateUserInfo(profile))
+        assertThatThrownBy(() -> admins.updateProfile(profile))
                 .isInstanceOf(InvalidArgumentException.class)
                 .hasMessage("Description must be at most 500 characters.");
         verify(adminDao, never()).update(isNull(), any());
@@ -129,6 +134,8 @@ class AdminServiceTest {
 
     @Test
     void updatePasswordEncodesPasswordAndRevokesAllCurrentUserSessions() {
+        stubQueryChain();
+        stubUpdateChain();
         when(adminDao.selectOne(any())).thenReturn(currentAdmin());
         when(adminDao.update(isNull(), any())).thenReturn(1);
 
@@ -144,6 +151,7 @@ class AdminServiceTest {
 
     @Test
     void updatePasswordRejectsWrongCurrentPasswordWithoutWritingOrRevokingSessions() {
+        stubQueryChain();
         when(adminDao.selectOne(any())).thenReturn(currentAdmin());
 
         assertThatThrownBy(() -> admins.updatePassword("Wrong#123", "Changed#456"))
@@ -151,6 +159,18 @@ class AdminServiceTest {
                 .hasMessage("Current password is incorrect.");
         verify(adminDao, never()).update(isNull(), any());
         verify(sessions, never()).cleanupUserSessions(any());
+    }
+
+    private void stubQueryChain() {
+        doAnswer(invocation -> new LambdaQueryChainWrapper<>(
+                adminDao, Wrappers.lambdaQuery(AdminBo.class)))
+                .when(admins).lambdaQuery();
+    }
+
+    private void stubUpdateChain() {
+        doAnswer(invocation -> new LambdaUpdateChainWrapper<>(
+                adminDao, Wrappers.lambdaUpdate(AdminBo.class)))
+                .when(admins).lambdaUpdate();
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})

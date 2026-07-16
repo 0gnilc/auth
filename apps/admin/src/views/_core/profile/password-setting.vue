@@ -9,7 +9,7 @@ import { ProfilePasswordSetting, z } from '@vben/common-ui';
 
 import { ElMessage } from 'element-plus';
 
-import { updateAdminPassword } from '#/api';
+import { updatePassword } from '#/api';
 import { useAuthStore } from '#/store';
 
 const authStore = useAuthStore();
@@ -74,10 +74,7 @@ const formSchema = computed((): VbenFormSchema[] => {
 });
 
 async function handleSubmit(values: Recordable<any>) {
-  await updateAdminPassword({
-    newPassword: values.newPassword,
-    oldPassword: values.oldPassword,
-  });
+  await updatePassword(values.oldPassword, values.newPassword);
   ElMessage.success('密码已修改，请重新登录');
   await authStore.resetSessionToLogin();
 }

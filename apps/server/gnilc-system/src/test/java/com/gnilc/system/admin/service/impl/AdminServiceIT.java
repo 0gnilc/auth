@@ -244,7 +244,7 @@ class AdminServiceIT {
         update.setHomePath("/hijacked");
         update.setStatus(false);
         update.setRoleCodes(List.of());
-        admins.updateUserInfo(update);
+        admins.updateProfile(update);
 
         AdminBo updated = admins.getAdmin(owner.getId());
         assertThat(updated.getUsername()).isEqualTo("profile-owner");
@@ -269,7 +269,7 @@ class AdminServiceIT {
         update.setNickname("   ");
         update.setAvatar("https://example.test/changed.png");
 
-        assertThatThrownBy(() -> admins.updateUserInfo(update))
+        assertThatThrownBy(() -> admins.updateProfile(update))
                 .isInstanceOf(InvalidArgumentException.class)
                 .hasMessage("Nickname is required.");
         assertThat(admins.getAdmin(owner.getId()).getNickname()).isEqualTo("invalid-profile");

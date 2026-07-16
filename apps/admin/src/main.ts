@@ -18,7 +18,7 @@ async function initApplication() {
     namespace,
     overrides: overridesPreferences,
   });
-  // Product-level constraints must override preferences cached by older builds.
+  // 产品级约束必须覆盖旧版本缓存中的偏好设置
   updatePreferences(overridesPreferences);
 
   // 启动应用并挂载

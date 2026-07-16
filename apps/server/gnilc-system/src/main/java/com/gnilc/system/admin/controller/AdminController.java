@@ -137,8 +137,8 @@ public class AdminController {
      * 更新当前管理员资料。
      */
     @PostMapping("/user-info/update")
-    public R<?> updateAdminUserInfo(@RequestBody AdminDto dto) {
-        adminService.updateUserInfo(dto);
+    public R<?> updateProfile(@RequestBody AdminDto dto) {
+        adminService.updateProfile(dto);
         return R.success();
     }
 
@@ -146,7 +146,7 @@ public class AdminController {
      * 更新当前管理员密码。
      */
     @PostMapping("/password/update")
-    public R<?> updateAdminPassword(@RequestBody(required = false) JSONObject body) {
+    public R<?> updatePassword(@RequestBody(required = false) JSONObject body) {
         String oldPassword = body == null ? null : body.getString("oldPassword");
         String newPassword = body == null ? null : body.getString("newPassword");
         adminService.updatePassword(oldPassword, newPassword);

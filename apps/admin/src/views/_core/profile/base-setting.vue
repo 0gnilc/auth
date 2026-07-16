@@ -9,7 +9,7 @@ import { ProfileBaseSetting } from '@vben/common-ui';
 
 import { ElMessage } from 'element-plus';
 
-import { getAdminUserInfo, updateAdminUserInfo } from '#/api';
+import { getAdminUserInfo, updateProfile } from '#/api';
 import { z } from '#/adapter/form';
 import { useAuthStore } from '#/store';
 
@@ -51,7 +51,7 @@ const formSchema = computed((): VbenFormSchema[] => {
 });
 
 async function handleSubmit(values: Recordable<any>) {
-  await updateAdminUserInfo({
+  await updateProfile({
     avatar: values.avatar,
     desc: values.desc,
     nickname: values.nickname,

@@ -15,48 +15,6 @@ export namespace AdminApi {
     status?: boolean;
   }
 
-  export interface AdminPageQuery extends PageParams {
-    nickname?: string;
-    status?: boolean;
-    username?: string;
-  }
-
-  export type AdminPage = PageResult<Admin>;
-
-  export interface CreateAdmin {
-    avatar?: string;
-    desc?: string;
-    homePath?: string;
-    nickname: string;
-    password: string;
-    roleCodes?: string[];
-    status?: boolean;
-    username: string;
-  }
-
-  export interface UpdateAdmin {
-    id: string;
-    avatar?: string;
-    desc?: string;
-    homePath?: string;
-    nickname?: string;
-    password?: null | string;
-    roleCodes?: string[];
-    status?: boolean;
-    username?: string;
-  }
-
-  export interface UpdateCurrentProfile {
-    avatar?: string;
-    desc?: string;
-    nickname: string;
-  }
-
-  export interface UpdateCurrentPassword {
-    newPassword: string;
-    oldPassword: string;
-  }
-
   export interface AdminSession {
     accessToken: string;
     refreshToken: string;
@@ -65,15 +23,33 @@ export namespace AdminApi {
 
 const REFRESH_TOKEN_HEADER = 'X-Refresh-Token';
 
-export async function getAdminPage(params?: AdminApi.AdminPageQuery) {
-  return requestClient.post<AdminApi.AdminPage>('/sys/admin/page', params);
+export async function getAdminPage(
+  params?: PageParams &
+    Partial<Pick<AdminApi.Admin, 'nickname' | 'status' | 'username'>>,
+) {
+  return requestClient.post<PageResult<AdminApi.Admin>>(
+    '/sys/admin/page',
+    params,
+  );
 }
 
-export async function createAdmin(admin: AdminApi.CreateAdmin) {
+export async function createAdmin(
+  admin: Omit<
+    AdminApi.Admin,
+    'createTime' | 'homePath' | 'id' | 'roleCodes' | 'userId'
+  > & {
+    homePath?: string;
+    password: string;
+    roleCodes?: string[];
+  },
+) {
   return requestClient.post<null>('/sys/admin/create', admin);
 }
 
-export async function updateAdmin(admin: AdminApi.UpdateAdmin) {
+export async function updateAdmin(
+  admin: Partial<Omit<AdminApi.Admin, 'createTime' | 'id' | 'userId'>> &
+    Pick<AdminApi.Admin, 'id'> & { password?: null | string },
+) {
   const { password, ...profile } = admin;
   const data = isEmpty(password?.trim()) ? profile : admin;
 
@@ -122,16 +98,17 @@ export async function getAdminUserInfo() {
   return requestClient.get<AdminApi.Admin>('/sys/admin/user-info');
 }
 
-export async function updateAdminUserInfo(
-  profile: AdminApi.UpdateCurrentProfile,
+export async function updateProfile(
+  profile: Pick<AdminApi.Admin, 'avatar' | 'desc' | 'nickname'>,
 ) {
   return requestClient.post<null>('/sys/admin/user-info/update', profile);
 }
 
-export async function updateAdminPassword(
-  passwords: AdminApi.UpdateCurrentPassword,
-) {
-  return requestClient.post<null>('/sys/admin/password/update', passwords);
+export async function updatePassword(oldPassword: string, newPassword: string) {
+  return requestClient.post<null>('/sys/admin/password/update', {
+    newPassword,
+    oldPassword,
+  });
 }
 
 export async function getRoleCodes() {

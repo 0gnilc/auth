@@ -1,7 +1,6 @@
 package com.gnilc.system.admin.service.impl;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.gnilc.auth.authn.context.AccessPrincipal;
 import com.gnilc.auth.authn.servlet.context.DefaultAccessPrincipalHolder;
@@ -42,7 +41,7 @@ import java.util.Optional;
  */
 @Service
 public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements AdminService {
-    private static final String ADMIN_BASELINE_ROLE_CODE = "admin";
+    private static final String ADMIN_DEFAULT_ROLE_CODE = "admin";
     private static final String DEFAULT_HOME_PATH = "/dashboard";
     private static final int NICKNAME_MAX_LENGTH = 255;
     private static final int PROFILE_TEXT_MAX_LENGTH = 500;
@@ -126,7 +125,7 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
 
     @Override
     @Transactional
-    public void updateUserInfo(AdminDto dto) {
+    public void updateProfile(AdminDto dto) {
         Preconditions.checkArgument(dto != null, "Profile information is required.");
         String nickname = StringUtils.trimToNull(dto.getNickname());
         Preconditions.checkArgument(nickname != null, "Nickname is required.");
@@ -142,11 +141,12 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
         AdminBo bo = getAdminByUserId(authenticatedUserId());
         Preconditions.checkCondition(bo != null,
                 "The administrator no longer exists. Sign in again.");
-        baseMapper.update(null, Wrappers.<AdminBo>lambdaUpdate()
+        lambdaUpdate()
                 .set(AdminBo::getNickname, nickname)
                 .set(AdminBo::getAvatar, avatar)
                 .set(AdminBo::getDescription, description)
-                .eq(AdminBo::getId, bo.getId()));
+                .eq(AdminBo::getId, bo.getId())
+                .update();
     }
 
     @Override
@@ -162,9 +162,10 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
         Preconditions.checkArgument(PASSWORD_ENCODER.matches(oldPassword, bo.getPassword()),
                 "Current password is incorrect.");
 
-        baseMapper.update(null, Wrappers.<AdminBo>lambdaUpdate()
+        lambdaUpdate()
                 .set(AdminBo::getPassword, PASSWORD_ENCODER.encode(newPassword))
-                .eq(AdminBo::getId, bo.getId()));
+                .eq(AdminBo::getId, bo.getId())
+                .update();
         sessionManager.cleanupUserSessions(userId);
     }
 
@@ -346,8 +347,9 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
         if (userId == null) {
             return null;
         }
-        return baseMapper.selectOne(Wrappers.<AdminBo>lambdaQuery()
-                .eq(AdminBo::getUserId, userId));
+        return lambdaQuery()
+                .eq(AdminBo::getUserId, userId)
+                .one();
     }
 
     @Override
@@ -388,7 +390,7 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
 
     private void replaceAdminRoles(Long userId, List<String> roleCodes) {
         LinkedHashSet<String> codes = new LinkedHashSet<>();
-        codes.add(ADMIN_BASELINE_ROLE_CODE);
+        codes.add(ADMIN_DEFAULT_ROLE_CODE);
         if (roleCodes != null) {
             codes.addAll(roleCodes);
         }

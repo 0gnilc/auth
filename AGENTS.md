@@ -37,3 +37,9 @@ All agents and automated tools must deliver remote changes through a pull reques
 ### Domain docs
 
 This repo uses a single-context domain docs layout: root `CONTEXT.md` plus root `docs/adr/`. See `docs/agents/domain.md`.
+
+### Coding style
+
+Before modifying code, inspect the neighboring implementation and preserve the project's established style wherever possible. In MyBatis-Plus service implementations, prefer service-level APIs such as `lambdaQuery()`, `lambdaUpdate()`, `save()`, and `updateById()` instead of accessing `baseMapper` directly.
+
+Frontend API modules should define cohesive resource types and derive operation-specific inputs inline with TypeScript utility types such as `Pick` and `Omit`. Do not create one interface for every API behavior. Follow the organization used by [Vben Admin's system API modules](https://github.com/vbenjs/vue-vben-admin/tree/main/playground/src/api/system).
