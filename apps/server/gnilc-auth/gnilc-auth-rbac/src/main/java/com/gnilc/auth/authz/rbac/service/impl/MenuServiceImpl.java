@@ -300,7 +300,7 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
 
     private List<Long> getSubtreeIds(Long rootId) {
         // IService queries hide logically deleted rows, but deletion must traverse through them.
-        return menuDao.selectSubtreeIdsWithDeleted(rootId);
+        return menuDao.selectCompleteSubtreeIds(rootId);
     }
 
     private MenuRouteVo toMenuRouteVo(MenuBo menu) {

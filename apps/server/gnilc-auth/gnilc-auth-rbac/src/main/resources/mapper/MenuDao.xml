@@ -3,7 +3,7 @@
 
 <mapper namespace="com.gnilc.auth.authz.rbac.dao.MenuDao">
 
-    <select id="selectSubtreeIdsWithDeleted" resultType="java.lang.Long">
+    <select id="selectCompleteSubtreeIds" resultType="java.lang.Long">
         WITH RECURSIVE menu_subtree (id) AS (
             SELECT id
             FROM az_menu

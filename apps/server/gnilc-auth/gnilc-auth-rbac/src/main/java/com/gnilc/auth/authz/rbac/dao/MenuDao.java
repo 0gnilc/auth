@@ -18,5 +18,5 @@ public interface MenuDao extends BaseMapper<MenuBo> {
     /**
      * 查询包含逻辑删除节点在内的完整菜单子树。
      */
-    List<Long> selectSubtreeIdsWithDeleted(@Param("rootId") Long rootId);
+    List<Long> selectCompleteSubtreeIds(@Param("rootId") Long rootId);
 }
