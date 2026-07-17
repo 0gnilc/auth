@@ -2,6 +2,19 @@ import type { RouteRecordRaw } from 'vue-router';
 
 import { $t } from '#/locales';
 
+const workspaceRedirectRoute: RouteRecordRaw = {
+  meta: {
+    authority: ['admin'],
+    hideInBreadcrumb: true,
+    hideInMenu: true,
+    hideInTab: true,
+    title: $t('page.dashboard.title'),
+  },
+  name: 'WorkspaceRedirect',
+  path: '/workspace',
+  redirect: '/dashboard',
+};
+
 const routes: RouteRecordRaw[] = [
   {
     component: () => import('#/views/dashboard/index.vue'),
@@ -15,18 +28,7 @@ const routes: RouteRecordRaw[] = [
     name: 'Dashboard',
     path: '/dashboard',
   },
-  {
-    meta: {
-      authority: ['admin'],
-      hideInBreadcrumb: true,
-      hideInMenu: true,
-      hideInTab: true,
-      title: $t('page.dashboard.title'),
-    },
-    name: 'WorkspaceRedirect',
-    path: '/workspace',
-    redirect: '/dashboard',
-  },
 ];
 
+export { workspaceRedirectRoute };
 export default routes;
