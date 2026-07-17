@@ -86,12 +86,12 @@ class MenuServiceImplTest {
         MenuBo root = menu(1L, 0L, MenuType.CATALOG, "Root", "/root", 1);
         List<Long> subtreeIds = List.of(1L, 2L, 3L);
         doReturn(root).when(menus).getById(1L);
-        when(menuDao.selectCompleteSubtreeIds(1L)).thenReturn(subtreeIds);
+        when(menuDao.getSubtreeIds(1L, true)).thenReturn(subtreeIds);
         doReturn(true).when(menus).removeByIds(subtreeIds);
 
         menus.removeMenu(1L);
 
-        verify(menuDao).selectCompleteSubtreeIds(1L);
+        verify(menuDao).getSubtreeIds(1L, true);
         verify(roleMenuService).removeByMenuIds(subtreeIds);
         verify(menus).removeByIds(subtreeIds);
     }

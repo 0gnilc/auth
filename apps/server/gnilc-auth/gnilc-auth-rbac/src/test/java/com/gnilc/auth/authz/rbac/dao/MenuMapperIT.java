@@ -22,7 +22,7 @@ class MenuMapperIT {
     private MenuDao menus;
 
     @Test
-    void subtreeQueryTraversesThroughLogicallyDeletedMenuNodes() {
+    void subtreeQueryIncludesLogicallyDeletedBranchesWhenRequested() {
         MenuBo root = menu("Root", "/root", 0L);
         menus.insert(root);
         MenuBo deletedBridge = menu("DeletedBridge", "/root/bridge", root.getId());
@@ -31,9 +31,23 @@ class MenuMapperIT {
         menus.insert(activeLeaf);
         menus.deleteById(deletedBridge.getId());
 
-        assertThat(menus.selectCompleteSubtreeIds(root.getId()))
+        assertThat(menus.getSubtreeIds(root.getId(), true))
                 .containsExactlyInAnyOrder(root.getId(), deletedBridge.getId(), activeLeaf.getId());
-        assertThat(menus.selectCompleteSubtreeIds(Long.MAX_VALUE)).isEmpty();
+        assertThat(menus.getSubtreeIds(Long.MAX_VALUE, true)).isEmpty();
+    }
+
+    @Test
+    void subtreeQueryExcludesLogicallyDeletedBranchesWhenNotRequested() {
+        MenuBo root = menu("Root", "/root", 0L);
+        menus.insert(root);
+        MenuBo deletedBridge = menu("DeletedBridge", "/root/bridge", root.getId());
+        menus.insert(deletedBridge);
+        MenuBo activeLeaf = menu("ActiveLeaf", "/root/bridge/leaf", deletedBridge.getId());
+        menus.insert(activeLeaf);
+        menus.deleteById(deletedBridge.getId());
+
+        assertThat(menus.getSubtreeIds(root.getId(), false))
+                .containsExactly(root.getId());
     }
 
     private MenuBo menu(String name, String path, Long pid) {

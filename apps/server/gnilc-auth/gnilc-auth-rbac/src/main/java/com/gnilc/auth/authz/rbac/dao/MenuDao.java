@@ -16,7 +16,9 @@ import java.util.List;
 public interface MenuDao extends BaseMapper<MenuBo> {
 
     /**
-     * 查询包含逻辑删除节点在内的完整菜单子树。
+     * 查询完整菜单子树。
+     *
+     * @param deleted 是否包含逻辑删除节点
      */
-    List<Long> selectCompleteSubtreeIds(@Param("rootId") Long rootId);
+    List<Long> getSubtreeIds(@Param("rootId") Long rootId, @Param("deleted") boolean deleted);
 }
