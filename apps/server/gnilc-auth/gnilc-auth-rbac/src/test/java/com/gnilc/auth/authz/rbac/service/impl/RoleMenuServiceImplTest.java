@@ -20,6 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -58,7 +59,7 @@ class RoleMenuServiceImplTest {
     void updateRoleMenuSavesTheValidatedAncestorClosure() {
         RoleMenuDto dto = assignment(7L, List.of(30L));
         when(roleMenusDao.selectList(any())).thenReturn(List.of());
-        when(menuService.getMenusWithAncestors(dto.getMenuIds()))
+        when(menuService.getMenusWithAncestors(Set.of(30L), true))
                 .thenReturn(List.of(menu(20L), menu(30L)));
         doReturn(true).when(roleMenus).saveBatch(anyCollection());
 
@@ -71,7 +72,7 @@ class RoleMenuServiceImplTest {
                 .containsExactlyInAnyOrder(20L, 30L);
         assertThat(saved.getValue()).extracting(RoleMenuBo::getRoleId)
                 .containsOnly(7L);
-        verify(menuService).getMenusWithAncestors(List.of(30L));
+        verify(menuService).getMenusWithAncestors(Set.of(30L), true);
         verify(roleMenusDao).selectList(any());
     }
 
@@ -79,7 +80,7 @@ class RoleMenuServiceImplTest {
     void updateRoleMenuDoesNotMutateBindingsWhenMenuValidationFails() {
         RoleMenuDto dto = assignment(7L, List.of(Long.MAX_VALUE));
         when(roleMenusDao.selectList(any())).thenReturn(List.of());
-        when(menuService.getMenusWithAncestors(dto.getMenuIds()))
+        when(menuService.getMenusWithAncestors(Set.of(Long.MAX_VALUE), true))
                 .thenThrow(new InvalidArgumentException("The selected menu is invalid."));
 
         assertThatThrownBy(() -> roleMenus.updateRoleMenu(dto))

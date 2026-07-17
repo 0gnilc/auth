@@ -7,6 +7,7 @@ import com.gnilc.auth.authz.rbac.entity.vo.MenuRouteVo;
 import com.gnilc.auth.authz.rbac.entity.vo.MenuVo;
 
 import java.util.List;
+import java.util.Set;
 
 public interface MenuService extends IService<MenuBo> {
 
@@ -25,9 +26,12 @@ public interface MenuService extends IService<MenuBo> {
     List<MenuBo> getMenus(List<Long> menuIds);
 
     /**
-     * 校验所选菜单，并返回包含全部祖先节点的菜单授权集合。
+     * 返回所选菜单及其全部有效祖先节点。
+     *
+     * @param menuIds  所选菜单 ID
+     * @param thorough 是否严格校验所选菜单及其层级关系
      */
-    List<MenuBo> getMenusWithAncestors(List<Long> menuIds);
+    List<MenuBo> getMenusWithAncestors(Set<Long> menuIds, boolean thorough);
 
     List<MenuRouteVo> getMenuRoutes(List<Long> menuIds);
 }

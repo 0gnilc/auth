@@ -14,6 +14,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -74,7 +75,7 @@ class MenuServiceImplTest {
         doReturn(List.of(menu(1L, 0L, MenuType.CATALOG, "Root", "/root", 1)))
                 .when(menus).list();
 
-        assertThatThrownBy(() -> menus.getMenusWithAncestors(List.of(Long.MAX_VALUE)))
+        assertThatThrownBy(() -> menus.getMenusWithAncestors(Set.of(Long.MAX_VALUE), true))
                 .isInstanceOf(InvalidArgumentException.class)
                 .hasMessage("A selected menu no longer exists. Refresh and try again.");
         verify(menus).list();

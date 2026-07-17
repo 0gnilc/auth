@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -70,7 +71,10 @@ public class RoleMenuServiceImpl extends ServiceImpl<RoleMenusDao, RoleMenuBo> i
                 .map(RoleMenuBo::getMenuId)
                 .collect(Collectors.toSet());
 
-        Set<Long> newSet = menuService.getMenusWithAncestors(menuIds).stream()
+        Set<Long> selectedMenuIds = CollectionUtils.isEmpty(menuIds)
+                ? Set.of()
+                : new HashSet<>(menuIds);
+        Set<Long> newSet = menuService.getMenusWithAncestors(selectedMenuIds, true).stream()
                 .map(MenuBo::getId)
                 .collect(Collectors.toSet());
 

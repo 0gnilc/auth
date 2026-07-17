@@ -124,76 +124,50 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
     }
 
     @Override
-    public List<MenuBo> getMenusWithAncestors(List<Long> menuIds) {
-        return collectReachableMenuHierarchy(menuIds, true);
-    }
-
-    /**
-     * 收集所选菜单及其到根节点的完整可达层级。
-     * <p>
-     * 处理过程如下：
-     * <ol>
-     *     <li>通过 {@link #list()} 读取全部有效菜单；
-     *     MyBatis-Plus 会自动排除逻辑删除菜单。</li>
-     *     <li>从每个所选菜单开始沿 {@code pid} 向上回溯，直到根节点。</li>
-     *     <li>使用当前路径的已访问 ID 检测父子循环。</li>
-     *     <li>只有能够完整到达根节点的路径才会加入结果，
-     *     多个路径共享的祖先只保留一次。</li>
-     *     <li>最终按菜单顺序排序，供角色授权保存或导航路由构建使用。</li>
-     * </ol>
-     * 角色授权修改使用严格模式，任何不存在、已删除、断裂或循环的层级都会使操作失败；
-     * 导航查询使用非严格模式，直接丢弃这些无效路径，避免把孤立节点提升为根节点。
-     *
-     * @param menuIds                所选菜单 ID
-     * @param failOnInvalidHierarchy 是否在菜单不存在、层级断裂或成环时抛出异常
-     * @return 所选菜单及其有效祖先组成的去重集合
-     */
-    private List<MenuBo> collectReachableMenuHierarchy(List<Long> menuIds,
-                                                       boolean failOnInvalidHierarchy) {
+    public List<MenuBo> getMenusWithAncestors(Set<Long> menuIds, boolean thorough) {
         if (CollectionUtils.isEmpty(menuIds)) {
             return List.of();
         }
+        // 逻辑删除的菜单不参与层级查找。
         Map<Long, MenuBo> menuMap = list().stream()
                 .collect(Collectors.toMap(MenuBo::getId, menu -> menu));
         Map<Long, MenuBo> result = new LinkedHashMap<>();
+
         for (Long menuId : menuIds) {
             MenuBo menu = menuMap.get(menuId);
-            if (menu == null) {
-                if (failOnInvalidHierarchy) {
-                    throw new InvalidArgumentException(
-                            "A selected menu no longer exists. Refresh and try again.");
-                }
-                continue;
-            }
             Set<Long> visited = new HashSet<>();
             List<MenuBo> hierarchy = new ArrayList<>();
-            boolean complete = false;
-            while (true) {
-                if (!visited.add(menu.getId())) {
-                    if (failOnInvalidHierarchy) {
-                        throw new InvalidArgumentException(
-                                "The selected menu hierarchy is invalid.");
-                    }
-                    break;
-                }
+
+            // 从所选菜单回溯到根节点，同时检测层级循环。
+            while (menu != null && visited.add(menu.getId())) {
                 hierarchy.add(menu);
                 if (Objects.equals(menu.getPid(), MenuConstant.ROOT_PARENT_ID)) {
-                    complete = true;
                     break;
                 }
                 menu = menuMap.get(menu.getPid());
-                if (menu == null) {
-                    if (failOnInvalidHierarchy) {
-                        throw new InvalidArgumentException(
-                                "The selected menu hierarchy is incomplete.");
-                    }
-                    break;
-                }
             }
-            if (complete) {
+
+            boolean reachesRoot = menu != null
+                    && Objects.equals(menu.getPid(), MenuConstant.ROOT_PARENT_ID);
+            if (reachesRoot) {
                 hierarchy.forEach(item -> result.putIfAbsent(item.getId(), item));
+                continue;
             }
+            if (!thorough) {
+                continue;
+            }
+            if (hierarchy.isEmpty()) {
+                throw new InvalidArgumentException(
+                        "A selected menu no longer exists. Refresh and try again.");
+            }
+            if (menu == null) {
+                throw new InvalidArgumentException(
+                        "The selected menu hierarchy is incomplete.");
+            }
+            throw new InvalidArgumentException(
+                    "The selected menu hierarchy is invalid.");
         }
+
         return result.values().stream()
                 .sorted(Comparator.comparingInt(menu -> Optional.ofNullable(menu.getOrder()).orElse(999)))
                 .toList();
@@ -201,7 +175,10 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
 
     @Override
     public List<MenuRouteVo> getMenuRoutes(List<Long> menuIds) {
-        List<MenuBo> menus = collectReachableMenuHierarchy(menuIds, false).stream()
+        Set<Long> selectedMenuIds = CollectionUtils.isEmpty(menuIds)
+                ? Set.of()
+                : new HashSet<>(menuIds);
+        List<MenuBo> menus = getMenusWithAncestors(selectedMenuIds, false).stream()
                 .filter(menu -> Boolean.TRUE.equals(menu.getStatus()))
                 .filter(menu -> menu.getType() != MenuType.BUTTON)
                 .toList();
