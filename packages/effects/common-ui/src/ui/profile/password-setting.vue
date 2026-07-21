@@ -30,6 +30,7 @@ const formActionStyle = getProfileFormActionStyle(formLabelWidth);
 const [Form, formApi] = useVbenForm(
   reactive({
     commonConfig: {
+      labelClass: 'justify-start',
       labelWidth: formLabelWidth,
       // 所有表单项
       componentProps: {
