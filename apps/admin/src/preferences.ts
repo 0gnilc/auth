@@ -31,4 +31,8 @@ export const overridesPreferences = defineOverridesPreferences({
   widget: {
     lockScreen: false,
   },
+  theme: {
+    radius: '0.25',
+    fontSize: 15,
+  },
 });
