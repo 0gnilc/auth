@@ -7,11 +7,7 @@ import { useRouter } from 'vue-router';
 import { AuthenticationLoginExpiredModal } from '@vben/common-ui';
 import { useWatermark } from '@vben/hooks';
 import { CircleHelp, SvgGithubIcon } from '@vben/icons';
-import {
-  BasicLayout,
-  Notification,
-  UserDropdown,
-} from '@vben/layouts';
+import { BasicLayout, Notification, UserDropdown } from '@vben/layouts';
 import { preferences, usePreferences } from '@vben/preferences';
 import { useAccessStore, useUserStore } from '@vben/stores';
 import { openWindow } from '@vben/utils';
