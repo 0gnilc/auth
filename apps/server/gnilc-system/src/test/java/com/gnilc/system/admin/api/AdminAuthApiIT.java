@@ -100,14 +100,21 @@ class AdminAuthApiIT extends AdminApiTestSupport {
                 .then()
                 .statusCode(200)
                 .body("code", equalTo(0))
-                .body("data.size()", equalTo(2))
+                .body("data.size()", equalTo(3))
                 .body("data[0].name", equalTo("Dashboard"))
                 .body("data[0].path", equalTo("/dashboard"))
                 .body("data[0].component", equalTo("/dashboard/index"))
-                .body("data[0].meta.title", equalTo("page.dashboard.title"))
-                .body("data[1].name", equalTo("Profile"))
-                .body("data[1].path", equalTo("/profile"))
-                .body("data[1].meta.hideInMenu", equalTo(true));
+                .body("data[0].meta.title", equalTo("menu.dashboard.title"))
+                .body("data[1].name", equalTo("System"))
+                .body("data[1].path", equalTo("/system"))
+                .body("data[1].children.size()", equalTo(1))
+                .body("data[1].children[0].name", equalTo("I18n"))
+                .body("data[1].children[0].path", equalTo("/system/i18n"))
+                .body("data[1].children[0].meta.title", equalTo("menu.i18n.title"))
+                .body("data[2].name", equalTo("Profile"))
+                .body("data[2].path", equalTo("/profile"))
+                .body("data[2].meta.title", equalTo("menu.profile.title"))
+                .body("data[2].meta.hideInMenu", equalTo(true));
     }
 
     @Test
@@ -210,7 +217,7 @@ class AdminAuthApiIT extends AdminApiTestSupport {
                 .then()
                 .statusCode(400)
                 .body("code", equalTo(10001))
-                .body("error", equalTo("The request body is malformed."));
+                .body("error", equalTo("请求体格式错误。"));
     }
 
     @Test

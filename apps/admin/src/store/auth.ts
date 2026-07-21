@@ -60,6 +60,9 @@ export const useAuthStore = defineStore('auth', () => {
         userStore.setUserInfo(userInfo);
         accessStore.setAccessCodes(accessCodes);
 
+        const { ensureDynamicMessages } = await import('#/locales/dynamic');
+        await ensureDynamicMessages();
+
         if (accessStore.loginExpired) {
           accessStore.setLoginExpired(false);
         } else {
@@ -95,8 +98,7 @@ export const useAuthStore = defineStore('auth', () => {
     } catch {
       // 不做任何处理
     }
-    resetAllStores();
-    accessStore.setLoginExpired(false);
+    await resetSessionState();
 
     // 回登录页带上当前路由地址
     await router.replace({
@@ -116,9 +118,15 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function resetSessionToLogin() {
+    await resetSessionState();
+    await router.replace(LOGIN_PATH);
+  }
+
+  async function resetSessionState() {
     resetAllStores();
     accessStore.setLoginExpired(false);
-    await router.replace(LOGIN_PATH);
+    const { clearDynamicMessages } = await import('#/locales/dynamic');
+    await clearDynamicMessages();
   }
 
   function $reset() {

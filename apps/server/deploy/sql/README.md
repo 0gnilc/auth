@@ -51,6 +51,10 @@
 
 三个权限脚本均依赖 `01_rbac.sql`。初始化记录的 `code` 和 `name` 为 `<HTTP method>:<path>`，`target_identifier` 为请求路径，`target_qualifier` 为 HTTP method。脚本按 `code` 判断是否已存在；`05_admin_permissions.sql` 会将上述 6 项当前用户权限规范化为非公开并幂等补齐 `admin` 角色绑定，其他既有权限记录保持原值。
 
+### `06_i18n.sql`
+
+创建 `sys_i18n` 动态国际化记录表，迁移默认菜单标题 key，初始化中英文菜单翻译、`System` / `I18n` 两级菜单、内置 `i18n-manager` 角色和 5 项国际化接口权限。bundle 权限绑定内置 `admin` 基线角色，查询与维护权限只绑定 `i18n-manager`，默认 `admin` 账号额外获得该角色。重复执行不会覆盖已存在的翻译值。
+
 ## 首次部署
 
 准备一个空的 MySQL 8 数据库，并按以下顺序执行：
@@ -66,6 +70,8 @@ mysql --host=<host> --user=<user> --password --database=<database> \
   < deploy/sql/04_rbac_permissions.sql
 mysql --host=<host> --user=<user> --password --database=<database> \
   < deploy/sql/05_admin_permissions.sql
+mysql --host=<host> --user=<user> --password --database=<database> \
+  < deploy/sql/06_i18n.sql
 ```
 
 执行前确认目标数据库：
@@ -94,6 +100,7 @@ SELECT id, code, built_in FROM az_role WHERE code = 'admin' AND del = 0;
 - `02_admin.sql` 不会覆盖已有管理员资料或密码，但会恢复默认记录的逻辑删除状态和默认管理员的启用状态；
 - `03_framework_permissions.sql` 和 `04_rbac_permissions.sql` 不会覆盖已有权限记录；
 - `05_admin_permissions.sql` 会规范化 6 项当前用户权限的公开状态并补齐有效 `admin` 角色绑定，其他已有权限字段保持不变；
+- `06_i18n.sql` 会恢复国际化内置角色、菜单和默认关系，但不会覆盖已有翻译值；
 - 脚本不会删除额外的业务数据；
 - 历史版本升级、字段变更和索引变更仍需专门的迁移脚本。
 
@@ -108,7 +115,7 @@ deploy/sql/<script>.sql -> sql/schema/<script>.sql
 当前测试加载方式如下：
 
 - `gnilc-auth-rbac` 的 `RbacSchemaIT` 验证 `01_rbac.sql`、`03_framework_permissions.sql` 和 `04_rbac_permissions.sql`，其他模块集成测试只加载 `01_rbac.sql`；
-- `gnilc-system` 的 `AdminSchemaIT` 验证 `02_admin.sql` 和 `05_admin_permissions.sql`，其他模块集成测试依次加载 `01_rbac.sql`、`02_admin.sql`；
+- `gnilc-system` 的 Schema 集成测试验证 `02_admin.sql`、`05_admin_permissions.sql` 和 `06_i18n.sql`，其他模块集成测试依次加载 `01_rbac.sql`、`02_admin.sql`；
 - `gnilc-system` 的 Admin API 测试恢复基线数据时会重新执行 `02_admin.sql` 和 `05_admin_permissions.sql`；
 - `gnilc-bootstrap` 只验证最终应用组合和启动，不再复制或执行部署 SQL。
 

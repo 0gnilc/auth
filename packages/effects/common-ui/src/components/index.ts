@@ -5,6 +5,7 @@ export * from './count-to';
 export * from './cropper';
 export * from './ellipsis-text';
 export * from './icon-picker';
+export * from './i18n-message-input';
 export * from './json-viewer';
 export * from './loading';
 export * from './page';

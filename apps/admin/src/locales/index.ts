@@ -8,6 +8,9 @@ import { ref } from 'vue';
 
 import {
   $t,
+  i18n,
+  loadCoreLocaleMessages,
+  loadLocaleMessages,
   setupI18n as coreSetup,
   loadLocalesMapFromDir,
 } from '@vben/locales';
@@ -17,9 +20,15 @@ import dayjs from 'dayjs';
 import enLocale from 'element-plus/es/locale/lang/en';
 import defaultLocale from 'element-plus/es/locale/lang/zh-cn';
 
+import { collectLeafKeys, mergeMessages } from './messages';
+
 const elementLocale = ref<Language>(defaultLocale);
+const DEFAULT_LOCALE: SupportedLanguagesType = 'zh-CN';
+const SUPPORTED_LOCALES: SupportedLanguagesType[] = ['zh-CN', 'en-US'];
 
 const modules = import.meta.glob('./langs/**/*.json');
+const dynamicMessages = ref<Record<string, Record<string, unknown>>>({});
+const staticKeys = new Set<string>();
 
 const localesMap = loadLocalesMapFromDir(
   /\.\/langs\/([^/]+)\/(.*)\.json$/,
@@ -31,11 +40,45 @@ const localesMap = loadLocalesMapFromDir(
  * @param lang
  */
 async function loadMessages(lang: SupportedLanguagesType) {
-  const [appLocaleMessages] = await Promise.all([
+  const [appLocaleMessages, coreLocaleMessages] = await Promise.all([
     localesMap[lang]?.(),
+    loadCoreLocaleMessages(lang),
     loadThirdPartyMessage(lang),
   ]);
-  return appLocaleMessages?.default;
+  const localMessages = appLocaleMessages?.default ?? {};
+  collectLeafKeys(coreLocaleMessages, '', staticKeys);
+  collectLeafKeys(localMessages, '', staticKeys);
+  return mergeMessages(
+    mergeMessages(dynamicMessages.value[lang] ?? {}, coreLocaleMessages),
+    localMessages,
+  );
+}
+
+async function ensureStaticKeys() {
+  await Promise.all(
+    SUPPORTED_LOCALES.map(async (locale) => {
+      const [appMessages, coreMessages] = await Promise.all([
+        localesMap[locale]?.(),
+        loadCoreLocaleMessages(locale),
+      ]);
+      collectLeafKeys(coreMessages, '', staticKeys);
+      collectLeafKeys(appMessages?.default ?? {}, '', staticKeys);
+    }),
+  );
+  return staticKeys;
+}
+
+async function applyDynamicMessages(
+  bundle: Record<string, Record<string, unknown>>,
+) {
+  dynamicMessages.value = bundle;
+  const activeLocale = i18n.global.locale.value as SupportedLanguagesType;
+  for (const locale of SUPPORTED_LOCALES) {
+    await loadLocaleMessages(locale);
+  }
+  if (SUPPORTED_LOCALES.includes(activeLocale)) {
+    await loadLocaleMessages(activeLocale);
+  }
 }
 
 /**
@@ -93,10 +136,19 @@ async function loadElementLocale(lang: SupportedLanguagesType) {
 async function setupI18n(app: App, options: LocaleSetupOptions = {}) {
   await coreSetup(app, {
     defaultLocale: preferences.app.locale,
-    loadMessages,
+    loadMessages: async (lang) =>
+      (await loadMessages(lang)) as Record<string, string>,
     missingWarn: !import.meta.env.PROD,
     ...options,
   });
+  i18n.global.fallbackLocale.value = DEFAULT_LOCALE;
 }
 
-export { $t, elementLocale, setupI18n };
+export {
+  $t,
+  applyDynamicMessages,
+  elementLocale,
+  ensureStaticKeys,
+  setupI18n,
+  SUPPORTED_LOCALES,
+};

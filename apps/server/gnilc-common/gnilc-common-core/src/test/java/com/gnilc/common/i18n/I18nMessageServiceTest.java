@@ -1,0 +1,63 @@
+package com.gnilc.common.i18n;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.context.support.StaticMessageSource;
+
+import java.util.Locale;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+class I18nMessageServiceTest {
+
+    private I18nMessageService messages;
+
+    @BeforeEach
+    void setUp() {
+        StaticMessageSource messageSource = new StaticMessageSource();
+        messageSource.addMessage("greeting", Locale.SIMPLIFIED_CHINESE, "你好，{0}");
+        messageSource.addMessage("greeting", Locale.US, "Hello, {0}");
+        messages = new I18nMessageService(messageSource, "zh-CN");
+    }
+
+    @AfterEach
+    void resetLocale() {
+        LocaleContextHolder.resetLocaleContext();
+    }
+
+    @Test
+    void resolvesCurrentAndExplicitSupportedLocalesWithArguments() {
+        LocaleContextHolder.setLocale(Locale.US);
+
+        assertThat(messages.get("greeting", "Alice")).isEqualTo("Hello, Alice");
+        assertThat(messages.get("greeting", Locale.SIMPLIFIED_CHINESE, "小明"))
+                .isEqualTo("你好，小明");
+    }
+
+    @Test
+    void fallsBackToConfiguredLocaleAndReturnsMissingCode() {
+        LocaleContextHolder.setLocale(Locale.FRANCE);
+
+        assertThat(messages.get("greeting", "Alice")).isEqualTo("你好，Alice");
+        assertThat(messages.get("missing.key")).isEqualTo("missing.key");
+        assertThat(messages.getOrDefault("missing.key", "Fallback"))
+                .isEqualTo("Fallback");
+    }
+
+    @Test
+    void fallsBackWhenARequestedLocaleIsOnlyAUnsupportedVariant() {
+        LocaleContextHolder.setLocale(Locale.forLanguageTag("en-US-POSIX"));
+
+        assertThat(messages.get("greeting", "Alice")).isEqualTo("你好，Alice");
+    }
+
+    @Test
+    void rejectsBlankMessageCode() {
+        assertThatThrownBy(() -> messages.get(" "))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Internationalization code must not be blank.");
+    }
+}

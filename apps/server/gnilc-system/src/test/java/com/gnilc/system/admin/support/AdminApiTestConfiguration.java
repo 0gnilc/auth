@@ -26,6 +26,8 @@ public class AdminApiTestConfiguration {
                     .execute(dataSource);
             new ResourceDatabasePopulator(new ClassPathResource("sql/schema/05_admin_permissions.sql"))
                     .execute(dataSource);
+            new ResourceDatabasePopulator(new ClassPathResource("sql/schema/06_i18n.sql"))
+                    .execute(dataSource);
             Long adminRoleId = jdbc.queryForObject(
                     "select id from az_role where code = 'admin' and del = 0", Long.class);
             jdbc.update("""

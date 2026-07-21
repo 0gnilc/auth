@@ -1,5 +1,6 @@
 import {
   i18n,
+  loadCoreLocaleMessages,
   loadLocaleMessages,
   loadLocalesMap,
   loadLocalesMapFromDir,
@@ -13,6 +14,7 @@ export {
   $t,
   $te,
   i18n,
+  loadCoreLocaleMessages,
   loadLocaleMessages,
   loadLocalesMap,
   loadLocalesMapFromDir,
