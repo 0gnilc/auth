@@ -3,6 +3,8 @@ import { computed } from 'vue';
 
 import { useAccessStore, useUserStore } from '@vben/stores';
 
+import { $t } from '#/locales';
+
 const accessStore = useAccessStore();
 const userStore = useUserStore();
 
@@ -34,26 +36,34 @@ const initials = computed(() => {
         <span v-else>{{ initials }}</span>
       </div>
       <div class="min-w-0">
-        <p class="mb-1 text-sm text-muted-foreground">当前管理员</p>
+        <p class="mb-1 text-sm text-muted-foreground">
+          {{ $t('page.dashboard.currentAdmin') }}
+        </p>
         <h1 class="break-words text-2xl font-semibold">
           {{ userInfo?.nickname || userInfo?.username }}
         </h1>
         <p class="mt-1 break-words text-sm text-muted-foreground">
-          {{ userInfo?.desc || '暂无个人简介' }}
+          {{ userInfo?.desc || $t('page.dashboard.emptyDescription') }}
         </p>
       </div>
     </header>
 
     <div class="grid gap-5 py-6 lg:grid-cols-2">
       <section class="rounded-md border border-border bg-card p-5">
-        <h2 class="text-base font-semibold">基本资料</h2>
+        <h2 class="text-base font-semibold">
+          {{ $t('page.dashboard.basicInfo') }}
+        </h2>
         <dl class="mt-4 grid gap-4 text-sm sm:grid-cols-2">
           <div class="min-w-0">
-            <dt class="text-muted-foreground">用户名</dt>
+            <dt class="text-muted-foreground">
+              {{ $t('page.dashboard.username') }}
+            </dt>
             <dd class="mt-1 break-all font-medium">{{ userInfo?.username }}</dd>
           </div>
           <div class="min-w-0">
-            <dt class="text-muted-foreground">默认首页</dt>
+            <dt class="text-muted-foreground">
+              {{ $t('page.dashboard.defaultHome') }}
+            </dt>
             <dd class="mt-1 break-all font-medium">
               {{ userInfo?.homePath || '/dashboard' }}
             </dd>
@@ -63,7 +73,9 @@ const initials = computed(() => {
 
       <section class="rounded-md border border-border bg-card p-5">
         <div class="flex items-center justify-between gap-3">
-          <h2 class="text-base font-semibold">角色码</h2>
+          <h2 class="text-base font-semibold">
+            {{ $t('page.dashboard.roleCodes') }}
+          </h2>
           <span class="text-sm text-muted-foreground">{{
             roleCodes.length
           }}</span>
@@ -77,13 +89,17 @@ const initials = computed(() => {
             {{ code }}
           </span>
         </div>
-        <p v-else class="mt-4 text-sm text-muted-foreground">暂无角色码</p>
+        <p v-else class="mt-4 text-sm text-muted-foreground">
+          {{ $t('page.dashboard.emptyRoleCodes') }}
+        </p>
       </section>
     </div>
 
     <section class="rounded-md border border-border bg-card p-5">
       <div class="flex items-center justify-between gap-3">
-        <h2 class="text-base font-semibold">按钮访问码</h2>
+        <h2 class="text-base font-semibold">
+          {{ $t('page.dashboard.accessCodes') }}
+        </h2>
         <span class="text-sm text-muted-foreground">{{
           accessCodes.length
         }}</span>
@@ -100,7 +116,9 @@ const initials = computed(() => {
           {{ code }}
         </code>
       </div>
-      <p v-else class="mt-4 text-sm text-muted-foreground">暂无按钮访问码</p>
+      <p v-else class="mt-4 text-sm text-muted-foreground">
+        {{ $t('page.dashboard.emptyAccessCodes') }}
+      </p>
     </section>
   </main>
 </template>

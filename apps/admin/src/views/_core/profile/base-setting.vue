@@ -9,8 +9,9 @@ import { ProfileBaseSetting } from '@vben/common-ui';
 
 import { ElMessage } from 'element-plus';
 
-import { getAdminUserInfo, updateProfile } from '#/api';
 import { z } from '#/adapter/form';
+import { getAdminUserInfo, updateProfile } from '#/api';
+import { $t } from '#/locales';
 import { useAuthStore } from '#/store';
 
 const profileBaseSettingRef = ref();
@@ -23,19 +24,22 @@ const formSchema = computed((): VbenFormSchema[] => {
       component: 'Input',
       componentProps: {
         maxlength: 255,
-        placeholder: '请输入昵称',
+        placeholder: $t('page.profile.form.nicknamePlaceholder'),
       },
-      label: '昵称',
-      rules: z.string().trim().min(1, { message: '请输入昵称' }),
+      label: $t('page.profile.form.nickname'),
+      rules: z
+        .string()
+        .trim()
+        .min(1, { message: $t('page.profile.form.nicknamePlaceholder') }),
     },
     {
       fieldName: 'avatar',
       component: 'Input',
       componentProps: {
         maxlength: 500,
-        placeholder: '请输入头像 URL，留空可清除',
+        placeholder: $t('page.profile.form.avatarPlaceholder'),
       },
-      label: '头像 URL',
+      label: $t('page.profile.form.avatarUrl'),
     },
     {
       fieldName: 'desc',
@@ -45,7 +49,7 @@ const formSchema = computed((): VbenFormSchema[] => {
         rows: 4,
         type: 'textarea',
       },
-      label: '个人简介',
+      label: $t('page.profile.form.description'),
     },
   ];
 });
@@ -58,7 +62,7 @@ async function handleSubmit(values: Recordable<any>) {
   });
   const userInfo = await authStore.getUserInfo();
   profileBaseSettingRef.value?.getFormApi().setValues(userInfo);
-  ElMessage.success('基本资料已更新');
+  ElMessage.success($t('page.profile.messages.basicUpdated'));
 }
 
 onMounted(async () => {
@@ -68,6 +72,7 @@ onMounted(async () => {
 </script>
 <template>
   <ProfileBaseSetting
+    class="w-full"
     ref="profileBaseSettingRef"
     :form-schema="formSchema"
     @submit="handleSubmit"

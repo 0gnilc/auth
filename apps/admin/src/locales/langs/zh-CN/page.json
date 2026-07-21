@@ -3,9 +3,48 @@
     "login": "登录",
     "forgetPassword": "忘记密码",
     "forgetPasswordContactAdmin": "忘记密码时，请联系系统管理员重置密码。",
-    "profile": "个人中心"
+    "profile": "个人中心",
+    "github": "Gnilc Auth GitHub",
+    "help": "问题与帮助"
+  },
+  "profile": {
+    "title": "个人中心",
+    "tabs": {
+      "basic": "基本设置",
+      "password": "修改密码"
+    },
+    "form": {
+      "nickname": "昵称",
+      "nicknamePlaceholder": "请输入昵称",
+      "avatarUrl": "头像 URL",
+      "avatarPlaceholder": "请输入头像 URL，留空可清除",
+      "description": "个人简介",
+      "oldPassword": "旧密码",
+      "oldPasswordPlaceholder": "请输入旧密码",
+      "newPassword": "新密码",
+      "newPasswordPlaceholder": "请输入新密码",
+      "confirmPassword": "确认密码",
+      "confirmPasswordPlaceholder": "请再次输入新密码",
+      "passwordMinLength": "密码至少 8 个字符",
+      "passwordMaxLength": "密码最多 32 个字符",
+      "passwordComplexity": "密码需包含大小写字母、数字和特殊字符，且不能含空白",
+      "passwordMismatch": "两次输入的密码不一致"
+    },
+    "messages": {
+      "basicUpdated": "基本资料已更新",
+      "passwordUpdated": "密码已修改，请重新登录"
+    }
   },
   "dashboard": {
-    "title": "首页"
+    "title": "首页",
+    "currentAdmin": "当前管理员",
+    "emptyDescription": "暂无个人简介",
+    "basicInfo": "基本资料",
+    "username": "用户名",
+    "defaultHome": "默认首页",
+    "roleCodes": "角色码",
+    "emptyRoleCodes": "暂无角色码",
+    "accessCodes": "按钮访问码",
+    "emptyAccessCodes": "暂无按钮访问码"
   }
 }

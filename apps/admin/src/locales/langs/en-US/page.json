@@ -3,9 +3,48 @@
     "login": "Login",
     "forgetPassword": "Forget Password",
     "forgetPasswordContactAdmin": "Contact your system administrator to reset a forgotten password.",
-    "profile": "Profile"
+    "profile": "Profile",
+    "github": "Gnilc Auth GitHub",
+    "help": "Help & Issues"
+  },
+  "profile": {
+    "title": "Profile",
+    "tabs": {
+      "basic": "Basic Settings",
+      "password": "Change Password"
+    },
+    "form": {
+      "nickname": "Nickname",
+      "nicknamePlaceholder": "Enter your nickname",
+      "avatarUrl": "Avatar URL",
+      "avatarPlaceholder": "Enter an avatar URL, or leave blank to clear it",
+      "description": "Bio",
+      "oldPassword": "Current Password",
+      "oldPasswordPlaceholder": "Enter your current password",
+      "newPassword": "New Password",
+      "newPasswordPlaceholder": "Enter a new password",
+      "confirmPassword": "Confirm Password",
+      "confirmPasswordPlaceholder": "Enter the new password again",
+      "passwordMinLength": "Password must be at least 8 characters",
+      "passwordMaxLength": "Password must be at most 32 characters",
+      "passwordComplexity": "Password must include uppercase and lowercase letters, a number, and a special character, and contain no whitespace",
+      "passwordMismatch": "The passwords do not match"
+    },
+    "messages": {
+      "basicUpdated": "Basic profile updated",
+      "passwordUpdated": "Password changed. Please sign in again"
+    }
   },
   "dashboard": {
-    "title": "Dashboard"
+    "title": "Dashboard",
+    "currentAdmin": "Current Administrator",
+    "emptyDescription": "No bio provided",
+    "basicInfo": "Basic Information",
+    "username": "Username",
+    "defaultHome": "Default Home",
+    "roleCodes": "Role Codes",
+    "emptyRoleCodes": "No role codes",
+    "accessCodes": "Button Access Codes",
+    "emptyAccessCodes": "No button access codes"
   }
 }

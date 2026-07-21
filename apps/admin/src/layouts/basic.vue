@@ -45,7 +45,7 @@ const menus = computed(() => [
       });
     },
     icon: SvgGithubIcon,
-    text: 'Gnilc Auth GitHub',
+    text: $t('page.auth.github'),
   },
   {
     handler: () => {
@@ -54,7 +54,7 @@ const menus = computed(() => [
       });
     },
     icon: CircleHelp,
-    text: '问题与帮助',
+    text: $t('page.auth.help'),
   },
 ]);
 
