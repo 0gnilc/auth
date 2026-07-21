@@ -128,7 +128,6 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
         if (CollectionUtils.isEmpty(menuIds)) {
             return List.of();
         }
-        // 逻辑删除的菜单不参与层级查找。
         Map<Long, MenuBo> menuMap = list().stream()
                 .collect(Collectors.toMap(MenuBo::getId, menu -> menu));
         Map<Long, MenuBo> result = new LinkedHashMap<>();
@@ -150,7 +149,7 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
             boolean reachesRoot = menu != null
                     && Objects.equals(menu.getPid(), MenuConstant.ROOT_PARENT_ID);
             if (reachesRoot) {
-                hierarchy.forEach(item -> result.putIfAbsent(item.getId(), item));
+                hierarchy.forEach(m -> result.putIfAbsent(m.getId(), m));
                 continue;
             }
             if (!thorough) {
@@ -246,12 +245,14 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
         Preconditions.checkArgument(StringUtils.isNotBlank(name), "Menu name is required.");
         Preconditions.checkArgument(StringUtils.isNotBlank(title), "Menu title is required.");
         switch (type) {
-            case CATALOG -> Preconditions.checkArgument(StringUtils.isNotBlank(path), "Route path is required.");
+            case CATALOG ->
+                    Preconditions.checkArgument(StringUtils.isNotBlank(path), "Route path is required.");
             case MENU -> {
                 Preconditions.checkArgument(StringUtils.isNotBlank(path), "Route path is required.");
                 Preconditions.checkArgument(StringUtils.isNotBlank(component), "Page component is required.");
             }
-            case BUTTON -> Preconditions.checkArgument(StringUtils.isNotBlank(accessCode), "Permission code is required.");
+            case BUTTON ->
+                    Preconditions.checkArgument(StringUtils.isNotBlank(accessCode), "Permission code is required.");
             case EMBEDDED -> {
                 Preconditions.checkArgument(StringUtils.isNotBlank(path), "Route path is required.");
                 Preconditions.checkArgument(StringUtils.isNotBlank(iframeSrc), "Embedded page URL is required.");
