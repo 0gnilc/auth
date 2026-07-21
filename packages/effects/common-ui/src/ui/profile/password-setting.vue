@@ -52,7 +52,7 @@ defineExpose({
 <template>
   <div>
     <Form />
-    <VbenButton type="submit" class="mt-4" @click="handleSubmit">
+    <VbenButton type="submit" class="mt-4 ml-[139px]" @click="handleSubmit">
       {{ $t('profile.updatePassword') }}
     </VbenButton>
   </div>

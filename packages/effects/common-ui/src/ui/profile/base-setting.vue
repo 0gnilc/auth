@@ -51,7 +51,7 @@ defineExpose({
 <template>
   <div @keydown.enter.prevent="handleSubmit">
     <Form />
-    <VbenButton type="submit" class="mt-4" @click="handleSubmit">
+    <VbenButton type="submit" class="mt-4 ml-[109px]" @click="handleSubmit">
       {{ $t('profile.updateBasicProfile') }}
     </VbenButton>
   </div>
