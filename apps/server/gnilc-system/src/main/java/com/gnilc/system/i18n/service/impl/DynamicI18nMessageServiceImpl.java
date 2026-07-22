@@ -1,6 +1,5 @@
 package com.gnilc.system.i18n.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.gnilc.common.base.Preconditions;
@@ -78,15 +77,15 @@ public class DynamicI18nMessageServiceImpl extends ServiceImpl<I18nMessageDao, I
             requireLocale(query.getLocale());
         }
 
-        QueryWrapper<I18nMessageBo> keyQuery = new QueryWrapper<>();
-        keyQuery.select("client", "i18n_key")
-                .eq("client", targetClient)
-                .like(StringUtils.isNotBlank(query.getKey()), "i18n_key", query.getKey())
-                .like(StringUtils.isNotBlank(query.getValue()), "i18n_value", query.getValue())
-                .eq(StringUtils.isNotBlank(query.getLocale()), "locale", query.getLocale())
-                .groupBy("client", "i18n_key")
-                .orderByAsc("i18n_key");
-        IPage<I18nMessageBo> keyPage = page(query.getPage(), keyQuery);
+        IPage<I18nMessageBo> keyPage = lambdaQuery()
+                .select(I18nMessageBo::getClient, I18nMessageBo::getI18nKey)
+                .eq(I18nMessageBo::getClient, targetClient)
+                .like(StringUtils.isNotBlank(query.getKey()), I18nMessageBo::getI18nKey, query.getKey())
+                .like(StringUtils.isNotBlank(query.getValue()), I18nMessageBo::getI18nValue, query.getValue())
+                .eq(StringUtils.isNotBlank(query.getLocale()), I18nMessageBo::getLocale, query.getLocale())
+                .groupBy(I18nMessageBo::getClient, I18nMessageBo::getI18nKey)
+                .orderByAsc(I18nMessageBo::getI18nKey)
+                .page(query.getPage());
         List<String> keys = keyPage.getRecords().stream().map(I18nMessageBo::getI18nKey).toList();
         if (keys.isEmpty()) {
             return PageResult.of(keyPage, List.of());

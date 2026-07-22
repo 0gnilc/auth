@@ -13,7 +13,7 @@ export namespace I18nMessageApi {
     values: MessageValue[];
   }
 
-  export interface PageItem extends Message {
+  export interface MessageItem extends Message {
     client: string;
   }
 
@@ -36,7 +36,7 @@ export async function getI18nMessagePage(
     value?: string;
   },
 ) {
-  return requestClient.post<PageResult<I18nMessageApi.PageItem>>(
+  return requestClient.post<PageResult<I18nMessageApi.MessageItem>>(
     '/sys/i18n-message/page',
     params,
   );

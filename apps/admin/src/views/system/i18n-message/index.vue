@@ -46,7 +46,7 @@ const removingKey = ref('');
 const editor = ref<I18nMessageInputExpose>();
 const editorKey = ref('');
 const editorValue = ref('');
-const rows = ref<I18nMessageApi.PageItem[]>([]);
+const rows = ref<I18nMessageApi.MessageItem[]>([]);
 const total = ref(0);
 
 const query = reactive({
@@ -78,12 +78,12 @@ const editorTexts = computed<I18nMessageInputTexts>(() => ({
   valueTooLong: $t('page.i18nMessage.editor.valueTooLong'),
 }));
 
-function valueFor(row: I18nMessageApi.PageItem, locale: string) {
+function valueFor(row: I18nMessageApi.MessageItem, locale: string) {
   return row.values.find((item) => item.locale === locale)?.value ?? '';
 }
 
-function toPageItem(row: unknown) {
-  return row as I18nMessageApi.PageItem;
+function toMessageItem(row: unknown) {
+  return row as I18nMessageApi.MessageItem;
 }
 
 async function loadPage() {
@@ -163,7 +163,7 @@ const confirmMessage: I18nMessageConfirm = async (input) => {
   return saved;
 };
 
-async function handleRemove(row: I18nMessageApi.PageItem) {
+async function handleRemove(row: I18nMessageApi.MessageItem) {
   try {
     await ElMessageBox.confirm(
       $t('page.i18nMessage.messages.removeConfirm', { key: row.i18nKey }),
@@ -314,7 +314,7 @@ onMounted(loadPage);
           >
             <template #default="{ row }">
               <span class="line-clamp-2 break-words">{{
-                valueFor(toPageItem(row), locale)
+                valueFor(toMessageItem(row), locale)
               }}</span>
             </template>
           </ElTableColumn>
@@ -330,7 +330,10 @@ onMounted(loadPage);
                   :tooltip="$t('page.i18nMessage.actions.edit')"
                   class="size-8 rounded-md"
                   @click="
-                    openEditor(row.i18nKey, valueFor(toPageItem(row), 'zh-CN'))
+                    openEditor(
+                      row.i18nKey,
+                      valueFor(toMessageItem(row), 'zh-CN'),
+                    )
                   "
                 >
                   <MessageSquareCode class="size-4" />
@@ -339,7 +342,7 @@ onMounted(loadPage);
                   :tooltip="$t('page.i18nMessage.actions.remove')"
                   class="size-8 rounded-md text-destructive"
                   :disabled="removingKey === row.i18nKey"
-                  @click="handleRemove(toPageItem(row))"
+                  @click="handleRemove(toMessageItem(row))"
                 >
                   <Eraser class="size-4" />
                 </VbenIconButton>
