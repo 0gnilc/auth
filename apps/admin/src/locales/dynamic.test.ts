@@ -36,25 +36,25 @@ describe('dynamic internationalization messages', () => {
     api.getI18nMessageBundle
       .mockRejectedValueOnce(new Error('network'))
       .mockResolvedValueOnce(bundle);
-    const { ensureDynamicMessages } = await import('./dynamic');
+    const { loadDynamicMessages } = await import('./dynamic');
 
-    await expect(ensureDynamicMessages()).resolves.toBe(false);
-    await expect(ensureDynamicMessages()).resolves.toBe(true);
-    await expect(ensureDynamicMessages()).resolves.toBe(true);
+    await expect(loadDynamicMessages()).resolves.toBe(false);
+    await expect(loadDynamicMessages()).resolves.toBe(true);
+    await expect(loadDynamicMessages()).resolves.toBe(true);
 
     expect(api.getI18nMessageBundle).toHaveBeenCalledTimes(2);
     expect(locales.applyDynamicMessages).toHaveBeenCalledWith(bundle);
   });
 
-  it('clears runtime messages and makes the next ensure load again', async () => {
+  it('clears runtime messages and makes the next load request again', async () => {
     const bundle = { 'zh-CN': { menu: { title: 'Dashboard' } } };
     api.getI18nMessageBundle.mockResolvedValue(bundle);
-    const { clearDynamicMessages, ensureDynamicMessages } =
+    const { clearDynamicMessages, loadDynamicMessages } =
       await import('./dynamic');
 
-    await ensureDynamicMessages();
+    await loadDynamicMessages();
     await clearDynamicMessages();
-    await ensureDynamicMessages();
+    await loadDynamicMessages();
 
     expect(locales.applyDynamicMessages).toHaveBeenCalledWith({});
     expect(api.getI18nMessageBundle).toHaveBeenCalledTimes(2);

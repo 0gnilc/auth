@@ -49,9 +49,10 @@
   },
   "i18nMessage": {
     "title": "I18n Messages",
+    "newMessagePlaceholder": "Create an internationalization message",
     "filters": {
-      "key": "Internationalization key",
-      "keyPlaceholder": "Search by key",
+      "key": "Message Key",
+      "keyPlaceholder": "Search by Message Key",
       "value": "Translation",
       "valuePlaceholder": "Search by translation",
       "client": "Client",
@@ -62,42 +63,21 @@
       "search": "Search",
       "reset": "Reset",
       "create": "Create",
-      "edit": "Edit",
       "remove": "Delete",
       "reload": "Reload"
     },
     "table": {
       "client": "Client",
-      "key": "Internationalization key",
+      "key": "Message Key",
       "operations": "Actions",
       "empty": "No internationalization messages"
-    },
-    "editor": {
-      "placeholder": "Default locale value",
-      "cancel": "Cancel",
-      "confirm": "Confirm",
-      "key": "Internationalization key",
-      "keyPlaceholder": "Enter a dot-separated key",
-      "keyRequired": "Enter an internationalization key",
-      "keyTooLong": "Key must not exceed 191 characters",
-      "keyInvalid": "Key must be a valid dot-separated path",
-      "keyReserved": "Key contains a reserved path segment",
-      "loading": "Loading",
-      "loadError": "Failed to load translations",
-      "retry": "Retry",
-      "discard": "Discard",
-      "discardDescription": "Your unsaved changes will be lost.",
-      "discardTitle": "Discard unsaved changes?",
-      "keepEditing": "Keep editing",
-      "valuePlaceholder": "Enter the translation",
-      "valueTooLong": "A translation must not exceed 4000 characters"
     },
     "messages": {
       "saveSuccess": "Internationalization message saved",
       "removeSuccess": "Internationalization message deleted",
-      "removeConfirm": "Delete every locale value for key “{key}”?",
+      "removeConfirm": "Delete every locale value for Message Key “{key}”?",
       "removeTitle": "Delete internationalization message",
-      "staticKey": "This key is owned by the frontend static language pack and cannot be saved dynamically",
+      "staticKey": "This Message Key is owned by the frontend static language pack and cannot be saved dynamically",
       "runtimeReloadFailed": "Data was saved, but the current page language pack could not be refreshed",
       "listReloadFailed": "Data changed, but the list could not be refreshed"
     }

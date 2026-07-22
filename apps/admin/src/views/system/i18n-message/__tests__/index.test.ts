@@ -1,4 +1,4 @@
-import type { I18nMessageConfirm } from '@vben/common-ui';
+import type { I18nMessageSaver } from '@vben/common-ui';
 
 import { flushPromises, mount } from '@vue/test-utils';
 
@@ -24,10 +24,6 @@ const messages = vi.hoisted(() => ({
   success: vi.fn(),
   warning: vi.fn(),
 }));
-const editorState = vi.hoisted(() => ({
-  openedKeys: [] as string[],
-}));
-
 vi.mock('#/api', () => api);
 vi.mock('#/locales', () => ({
   $t: (key: string) => key,
@@ -58,18 +54,16 @@ vi.mock('@vben/common-ui', async () => {
   const I18nMessageInput = defineComponent({
     name: 'I18nMessageInput',
     props: {
-      confirm: Function,
-      i18nKey: { default: '', type: String },
       load: Function,
+      modelValue: { default: '', type: String },
+      save: Function,
     },
-    setup(props, { expose }) {
-      expose({
-        close: vi.fn(),
-        open: vi.fn(() => {
-          editorState.openedKeys.push(props.i18nKey);
-        }),
-      });
-      return () => h('div', { 'data-test': 'i18n-message-input' });
+    setup(props) {
+      return () =>
+        h('div', {
+          'data-message-key': props.modelValue,
+          'data-test': 'i18n-message-input',
+        });
     },
   });
   return {
@@ -85,7 +79,6 @@ vi.mock('@vben/icons', async () => {
   const Icon = defineComponent({ setup: () => () => h('span') });
   return {
     Eraser: Icon,
-    MessageSquareCode: Icon,
     Plus: Icon,
     RotateCw: Icon,
     Search: Icon,
@@ -139,7 +132,7 @@ vi.mock('element-plus', async () => {
 });
 
 const input = {
-  i18nKey: 'menu.example.title',
+  messageKey: 'menu.example.title',
   values: [
     { locale: 'zh-CN', value: '示例' },
     { locale: 'en-US', value: 'Example' },
@@ -154,16 +147,15 @@ function mountPage() {
   });
 }
 
-function getConfirm(wrapper: ReturnType<typeof mountPage>) {
+function getSave(wrapper: ReturnType<typeof mountPage>) {
   return wrapper
     .getComponent({ name: 'I18nMessageInput' })
-    .props('confirm') as I18nMessageConfirm;
+    .props('save') as I18nMessageSaver;
 }
 
 describe('internationalization message management page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    editorState.openedKeys.length = 0;
     api.getI18nMessagePage.mockResolvedValue({ list: [], totalCount: 0 });
     api.removeI18nMessage.mockResolvedValue(undefined);
     api.saveI18nMessage.mockImplementation(async (value) => value);
@@ -179,7 +171,7 @@ describe('internationalization message management page', () => {
     const wrapper = mountPage();
     await flushPromises();
 
-    await expect(getConfirm(wrapper)(input)).resolves.toEqual(input);
+    await expect(getSave(wrapper)(input)).resolves.toEqual(input);
 
     expect(api.saveI18nMessage).toHaveBeenCalledWith(input);
     expect(api.getI18nMessagePage).toHaveBeenCalledTimes(2);
@@ -196,7 +188,7 @@ describe('internationalization message management page', () => {
     const wrapper = mountPage();
     await flushPromises();
 
-    await expect(getConfirm(wrapper)(input)).resolves.toEqual(input);
+    await expect(getSave(wrapper)(input)).resolves.toEqual(input);
 
     expect(api.saveI18nMessage).toHaveBeenCalledTimes(1);
     expect(messages.warning).toHaveBeenCalledWith(
@@ -212,8 +204,8 @@ describe('internationalization message management page', () => {
     const wrapper = mountPage();
     await flushPromises();
 
-    await expect(getConfirm(wrapper)(input)).rejects.toThrow(
-      'Static internationalization keys cannot be saved dynamically.',
+    await expect(getSave(wrapper)(input)).rejects.toThrow(
+      'Static Message Keys cannot be saved dynamically.',
     );
 
     expect(api.saveI18nMessage).not.toHaveBeenCalled();
@@ -222,12 +214,12 @@ describe('internationalization message management page', () => {
     );
   });
 
-  it('opens row editing only after the selected key reaches the shared editor', async () => {
+  it('renders each row as an independently bound message input', async () => {
     api.getI18nMessagePage.mockResolvedValue({
       list: [
         {
           client: 'admin',
-          i18nKey: 'menu.row.title',
+          messageKey: 'menu.row.title',
           values: input.values,
         },
       ],
@@ -236,12 +228,9 @@ describe('internationalization message management page', () => {
     const wrapper = mountPage();
     await flushPromises();
 
-    await wrapper
-      .get('[data-tooltip="page.i18nMessage.actions.edit"]')
-      .trigger('click');
-    await flushPromises();
-
-    expect(editorState.openedKeys).toEqual(['menu.row.title']);
+    const inputs = wrapper.findAll('[data-test="i18n-message-input"]');
+    expect(inputs).toHaveLength(2);
+    expect(inputs[1]?.attributes('data-message-key')).toBe('menu.row.title');
   });
 
   it('keeps removal successful when the list reload fails', async () => {
@@ -250,7 +239,7 @@ describe('internationalization message management page', () => {
         list: [
           {
             client: 'admin',
-            i18nKey: 'menu.row.title',
+            messageKey: 'menu.row.title',
             values: input.values,
           },
         ],
@@ -280,7 +269,7 @@ describe('internationalization message management page', () => {
       list: [
         {
           client: 'admin',
-          i18nKey: 'menu.row.title',
+          messageKey: 'menu.row.title',
           values: input.values,
         },
       ],

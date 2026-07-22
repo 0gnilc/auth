@@ -49,55 +49,35 @@
   },
   "i18nMessage": {
     "title": "国际化消息管理",
+    "newMessagePlaceholder": "新增国际化消息",
     "filters": {
-      "key": "国际化 key",
-      "keyPlaceholder": "按 key 模糊查询",
+      "key": "Message Key",
+      "keyPlaceholder": "按Message Key模糊查询",
       "value": "翻译值",
       "valuePlaceholder": "按翻译值模糊查询",
       "client": "客户端",
-      "locale": "语种",
-      "allLocales": "全部语种"
+      "locale": "语言",
+      "allLocales": "全部语言"
     },
     "actions": {
       "search": "查询",
       "reset": "重置",
       "create": "新增",
-      "edit": "编辑",
       "remove": "删除",
       "reload": "刷新"
     },
     "table": {
       "client": "客户端",
-      "key": "国际化 key",
+      "key": "Message Key",
       "operations": "操作",
       "empty": "暂无国际化配置"
-    },
-    "editor": {
-      "placeholder": "默认语种内容",
-      "cancel": "取消",
-      "confirm": "确认",
-      "key": "国际化 key",
-      "keyPlaceholder": "请输入点分隔的 key",
-      "keyRequired": "请输入国际化 key",
-      "keyTooLong": "key 不能超过 191 个字符",
-      "keyInvalid": "key 必须是合法的点分隔路径",
-      "keyReserved": "key 包含保留路径段",
-      "loading": "正在加载",
-      "loadError": "加载翻译失败",
-      "retry": "重试",
-      "discard": "放弃修改",
-      "discardDescription": "尚未保存的修改将会丢失。",
-      "discardTitle": "放弃未保存的修改？",
-      "keepEditing": "继续编辑",
-      "valuePlaceholder": "请输入翻译内容",
-      "valueTooLong": "单条翻译不能超过 4000 个字符"
     },
     "messages": {
       "saveSuccess": "国际化配置已保存",
       "removeSuccess": "国际化配置已删除",
-      "removeConfirm": "确定删除 key“{key}”的全部语种配置吗？",
+      "removeConfirm": "确定删除“{key}”的全部语言配置吗？",
       "removeTitle": "删除国际化配置",
-      "staticKey": "该 key 由前端静态语言包管理，不能保存到动态配置",
+      "staticKey": "该Message Key由前端静态语言包管理，不能保存到动态配置",
       "runtimeReloadFailed": "数据已保存，但当前页面语言包刷新失败",
       "listReloadFailed": "数据已变更，但列表刷新失败"
     }

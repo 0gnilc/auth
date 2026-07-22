@@ -47,7 +47,7 @@ class I18nMessageMapperIT {
     private I18nMessageBo message(String key, String locale, String value) {
         I18nMessageBo row = new I18nMessageBo();
         row.setClient("admin");
-        row.setI18nKey(key);
+        row.setMessageKey(key);
         row.setLocale(locale);
         row.setI18nValue(value);
         return row;

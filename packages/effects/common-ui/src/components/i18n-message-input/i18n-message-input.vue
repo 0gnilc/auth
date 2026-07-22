@@ -1,16 +1,13 @@
 <script setup lang="ts">
 import type {
   I18nMessage,
-  I18nMessageChange,
-  I18nMessageChangeHandler,
-  I18nMessageConfirm,
-  I18nMessageInputPosition,
-  I18nMessageInputTexts,
-  I18nMessageLoader,
-  I18nMessageSource,
+  I18nMessageInputProps,
+  I18nMessageValue,
 } from './types';
 
-import { computed, ref, toValue, watch } from 'vue';
+import { computed, ref, useId, watch } from 'vue';
+
+import { $t } from '@vben/locales';
 
 import { confirm as confirmDialog } from '@vben-core/popup-ui';
 import {
@@ -19,116 +16,73 @@ import {
   Label,
   Textarea,
   VbenIcon,
-  VbenIconButton,
   VbenPopover,
   VbenSpinner,
 } from '@vben-core/shadcn-ui';
 
-interface Props {
-  confirm?: I18nMessageConfirm;
-  data?: I18nMessageSource;
-  defaultLocale?: string;
-  disabled?: boolean;
-  height?: number | string;
-  load?: I18nMessageLoader;
-  locales?: string[];
-  onChange?: I18nMessageChangeHandler;
-  placeholder?: string;
-  position?: I18nMessageInputPosition;
-  presetKey?: string;
-  texts?: Partial<I18nMessageInputTexts>;
-  width?: number | string;
-}
+// 未声明属性由组件手动透传给外部展示输入框。
+defineOptions({ inheritAttrs: false });
 
-interface Snapshot {
-  i18nKey: string;
-  modelValue: string;
-  values: I18nMessage['values'];
-}
-
-const props = withDefaults(defineProps<Props>(), {
-  confirm: undefined,
-  data: undefined,
+// 合并组件属性与默认配置。
+const props = withDefaults(defineProps<I18nMessageInputProps>(), {
   defaultLocale: 'zh-CN',
   disabled: false,
-  height: 360,
-  load: undefined,
   locales: () => ['zh-CN', 'en-US'],
-  onChange: undefined,
   placeholder: '',
-  position: 'right',
-  presetKey: '',
-  texts: () => ({}),
-  width: 420,
+  rows: 2,
 });
 
-const emit = defineEmits<{
-  change: [I18nMessageChange];
-}>();
-
+// 业务表单双向绑定的 Message Key。
 const modelValue = defineModel<string>({ default: '' });
-const i18nKey = defineModel<string>('i18nKey', { default: '' });
+// 关联 Label 与输入控件的组件实例唯一 ID。
+const fieldId = useId();
+// 浮层是否已打开。
+const visible = ref(false);
+// 是否正在加载 Message 数据。
+const loading = ref(false);
+// 是否正在保存当前草稿。
+const saving = ref(false);
+// 最近一次加载是否失败。
+const loadError = ref(false);
+// 当前 Message Key 是否来自已有数据。
+const existingKey = ref(false);
+// 浮层内正在编辑的独立草稿。
+const draft = ref<I18nMessage>(createMessage());
+// 本次打开或加载完成时的初始快照。
+const initial = ref<I18nMessage>(createMessage());
+// 最近一次加载或保存成功的数据，用于外部输入框显示。
+const committed = ref<I18nMessage>();
+// 加载序号，用于忽略关闭浮层后返回的过期请求。
+let loadSequence = 0;
 
-const defaultTexts: I18nMessageInputTexts = {
-  cancel: 'Cancel',
-  confirm: 'Confirm',
-  discard: 'Discard',
-  discardDescription: 'Your unsaved changes will be lost.',
-  discardTitle: 'Discard unsaved changes?',
-  i18nKey: 'Internationalization key',
-  keyInvalid: 'Key must be a valid dot-separated path',
-  keyPlaceholder: 'Enter a dot-separated key',
-  keyRequired: 'Internationalization key is required',
-  keyReserved: 'Key contains a reserved path segment',
-  keyTooLong: 'Key must not exceed 191 characters',
-  loadError: 'Failed to load translations',
-  loading: 'Loading',
-  keepEditing: 'Keep editing',
-  retry: 'Retry',
-  valueTooLong: 'A translation must not exceed 4000 characters',
-  valuePlaceholder: 'Enter the translation',
+// 浮层固定显示在外部输入框下方并左对齐。
+const contentProps = {
+  // 浮层与输入框左边缘对齐。
+  align: 'start' as const,
+  // 浮层固定展示在输入框下方。
+  side: 'bottom' as const,
+  // 浮层与输入框保留 6px 间距。
+  sideOffset: 6,
 };
 
-const text = computed(() => ({ ...defaultTexts, ...props.texts }));
-const visible = ref(false);
-const loading = ref(false);
-const saving = ref(false);
-const loadError = ref<null | unknown>(null);
-const dirty = ref(false);
-const draftKey = ref('');
-const draftValues = ref<I18nMessage['values']>([]);
-const previousKey = ref('');
-const snapshot = ref<Snapshot>();
-let loadSequence = 0;
-let activeOpen: null | Promise<void> = null;
-let activeClose: null | Promise<void> = null;
+// 外部输入框显示默认语言文本，未加载时回退到前端语言包。
+const displayValue = computed(() => {
+  if (committed.value?.messageKey === modelValue.value) {
+    return getMessageValue(committed.value.values, props.defaultLocale);
+  }
+  return modelValue.value
+    ? $t(modelValue.value, {}, { locale: props.defaultLocale })
+    : '';
+});
 
-const panelStyle = computed(() => ({
-  height: toCssSize(props.height),
-  maxHeight: 'calc(100vh - 32px)',
-  maxWidth: 'calc(100vw - 32px)',
-  width: toCssSize(props.width),
-}));
-
-const contentClass = computed(() =>
-  props.position === 'center'
-    ? '!fixed !left-1/2 !top-1/2 !-translate-x-1/2 !-translate-y-1/2'
-    : '',
-);
-
-const contentProps = computed(() => ({
-  align: 'center' as const,
-  side: props.position === 'center' ? ('bottom' as const) : props.position,
-  sideOffset: 8,
-  style: panelStyle.value,
-}));
-
+// 校验非空 Message Key 的长度、格式和保留路径段。
 const keyError = computed(() => {
-  const key = draftKey.value.trim();
-  if (!key) return text.value.keyRequired;
-  if (key.length > 191) return text.value.keyTooLong;
+  // 去除首尾空格后的待校验 Message Key。
+  const key = draft.value.messageKey.trim();
+  if (!key) return '';
+  if (key.length > 191) return $t('ui.i18nMessageInput.keyTooLong');
   if (!/^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)*$/.test(key)) {
-    return text.value.keyInvalid;
+    return $t('ui.i18nMessageInput.keyInvalid');
   }
   if (
     key
@@ -137,138 +91,126 @@ const keyError = computed(() => {
         ['__proto__', 'constructor', 'prototype'].includes(segment),
       )
   ) {
-    return text.value.keyReserved;
+    return $t('ui.i18nMessageInput.keyReserved');
   }
   return '';
 });
 
+// 校验各语言文本的最大长度。
 const valueError = computed(() =>
-  draftValues.value.some(({ value }) => value.length > 4000)
-    ? text.value.valueTooLong
+  draft.value.values.some(({ value }) => value.length > 4000)
+    ? $t('ui.i18nMessageInput.valueTooLong')
     : '',
 );
 
-const cannotConfirm = computed(
+// 草稿是否相对初始快照发生变化。
+const dirty = computed(() => !messagesEqual(draft.value, initial.value));
+
+// 加载、保存或校验未通过时禁止保存。
+const cannotSave = computed(
   () =>
     loading.value ||
     saving.value ||
-    !!loadError.value ||
+    loadError.value ||
+    !draft.value.messageKey.trim() ||
     !!keyError.value ||
     !!valueError.value,
 );
 
-watch(
-  () => modelValue.value,
-  (value) => {
-    if (!visible.value) {
-      setDraftValue(props.defaultLocale, value ?? '', false);
-    }
-  },
-  { immediate: true },
-);
+// 外部 Message Key 变化后清除不再匹配的已提交数据。
+watch(modelValue, (value) => {
+  if (committed.value?.messageKey !== value) {
+    committed.value = undefined;
+  }
+});
 
-watch(
-  () => i18nKey.value,
-  (value) => {
-    if (!visible.value) {
-      draftKey.value = value ?? '';
-    }
-  },
-  { immediate: true },
-);
-
-function toCssSize(value: number | string) {
-  return typeof value === 'number' ? `${value}px` : value;
+/** 创建一份不会复用 values 引用的 Message 数据。 */
+function createMessage(messageKey = '', values: I18nMessageValue[] = []) {
+  return { messageKey, values: copyValues(values) };
 }
 
-function copyValues(values: I18nMessage['values']) {
+/** 深拷贝一层 Message 及其语言文本。 */
+function copyMessage(message: I18nMessage) {
+  return createMessage(message.messageKey, message.values);
+}
+
+/** 复制语言文本列表，避免直接修改调用方数据。 */
+function copyValues(values: I18nMessageValue[]) {
   return values.map((item) => ({ ...item }));
 }
 
-function getDraftMessage(): I18nMessage {
-  return {
-    i18nKey: draftKey.value,
-    values: copyValues(draftValues.value),
-  };
+/** 获取指定语言的文本，不存在时返回空字符串。 */
+function getMessageValue(values: I18nMessageValue[], locale: string) {
+  return values.find((item) => item.locale === locale)?.value ?? '';
 }
 
-function getValue(locale: string) {
-  return draftValues.value.find((item) => item.locale === locale)?.value ?? '';
+/** 更新草稿中的 Message Key。 */
+function setDraftKey(value: string) {
+  draft.value = { ...draft.value, messageKey: value };
 }
 
-function setDraftValue(locale: string, value: string, notify = true) {
-  const values = copyValues(draftValues.value);
-  const existing = values.find((item) => item.locale === locale);
-  if (existing) {
-    existing.value = value;
+/** 更新或补充草稿中指定语言的文本。 */
+function setDraftValue(locale: string, value: string) {
+  // 基于副本更新语言文本，保持草稿更新可追踪。
+  const values = copyValues(draft.value.values);
+  // 草稿中当前语言已有的文本项。
+  const current = values.find((item) => item.locale === locale);
+  if (current) {
+    current.value = value;
   } else {
     values.push({ locale, value });
   }
-  draftValues.value = values;
-  if (locale === props.defaultLocale && modelValue.value !== value) {
-    modelValue.value = value;
-  }
-  if (notify) {
-    if (visible.value) dirty.value = true;
-    notifyChange({
-      i18nKey: draftKey.value,
-      locale,
-      message: getDraftMessage(),
-      type: 'value',
-      value,
-    });
-  }
+  draft.value = { ...draft.value, values };
 }
 
-function setDraftKey(value: string, notify = true) {
-  draftKey.value = value;
-  if (i18nKey.value !== value) {
-    i18nKey.value = value;
-  }
-  if (notify) {
-    if (visible.value) dirty.value = true;
-    notifyChange({
-      i18nKey: value,
-      message: getDraftMessage(),
-      type: 'key',
-    });
-  }
+/** 按 Message Key 和各语言文本判断两份数据是否一致。 */
+function messagesEqual(left: I18nMessage, right: I18nMessage) {
+  if (left.messageKey !== right.messageKey) return false;
+  // 两份数据中出现过的全部语言集合。
+  const locales = new Set([
+    ...left.values.map(({ locale }) => locale),
+    ...right.values.map(({ locale }) => locale),
+  ]);
+  return [...locales].every(
+    (locale) =>
+      getMessageValue(left.values, locale) ===
+      getMessageValue(right.values, locale),
+  );
 }
 
-function notifyChange(change: I18nMessageChange) {
-  props.onChange?.(change);
-  emit('change', change);
-}
-
-function initializeDraft() {
-  const source = props.load ? undefined : toValue(props.data);
-  const sourceValues = source?.values ?? [];
-  draftValues.value = copyValues(sourceValues);
-  if (!draftValues.value.some((item) => item.locale === props.defaultLocale)) {
-    setDraftValue(props.defaultLocale, modelValue.value ?? '', false);
-  }
-  draftKey.value =
-    i18nKey.value || source?.i18nKey || (source ? '' : props.presetKey) || '';
-}
-
-async function performLoad() {
-  if (!props.load || !previousKey.value) return;
+/** 使用当前 v-model 加载本次打开所需的独立草稿。 */
+async function loadDraft() {
+  // 本次加载的序号，用于识别异步返回值是否已经过期。
   const sequence = ++loadSequence;
+  // 当前表单绑定并去除首尾空格后的 Message Key。
+  const messageKey = modelValue.value.trim();
+  // 优先使用最近已提交的数据初始化草稿。
+  const currentMessage =
+    committed.value?.messageKey === messageKey
+      ? copyMessage(committed.value)
+      : createMessage(messageKey);
+  existingKey.value = !!messageKey;
+  draft.value = currentMessage;
+  initial.value = copyMessage(currentMessage);
+  loadError.value = false;
+
+  if (!messageKey) return;
+
   loading.value = true;
-  loadError.value = null;
   try {
-    const result = await props.load(previousKey.value);
+    // 使用方返回的当前 Message 数据或不存在标记。
+    const result = await props.load(messageKey);
     if (sequence !== loadSequence || !visible.value) return;
-    if (result) {
-      draftKey.value = result.i18nKey;
-      draftValues.value = copyValues(result.values);
-      modelValue.value = getValue(props.defaultLocale);
-    }
-  } catch (error) {
+    if (result === null) return;
+    // 只接受当前请求 Key，避免加载函数返回错误的 Message Key。
+    const message = createMessage(messageKey, result.values);
+    draft.value = message;
+    initial.value = copyMessage(message);
+    committed.value = copyMessage(message);
+  } catch {
     if (sequence === loadSequence && visible.value) {
-      loadError.value = error;
+      loadError.value = true;
     }
-    throw error;
   } finally {
     if (sequence === loadSequence) {
       loading.value = false;
@@ -276,155 +218,131 @@ async function performLoad() {
   }
 }
 
+/** 打开浮层并触发本次数据加载。 */
 function open() {
-  if (activeOpen) return activeOpen;
-  if (visible.value) return Promise.resolve();
-  previousKey.value = i18nKey.value ?? '';
-  dirty.value = false;
-  snapshot.value = {
-    i18nKey: i18nKey.value ?? '',
-    modelValue: modelValue.value ?? '',
-    values: copyValues(draftValues.value),
-  };
-  initializeDraft();
+  if (visible.value || props.disabled) return;
   visible.value = true;
-  activeOpen = performLoad().finally(() => {
-    activeOpen = null;
-  });
-  return activeOpen;
+  void loadDraft();
 }
 
-function restoreSnapshot() {
-  const original = snapshot.value;
-  if (!original) return;
-  draftKey.value = original.i18nKey;
-  draftValues.value = copyValues(original.values);
-  i18nKey.value = original.i18nKey;
-  modelValue.value = original.modelValue;
-}
-
-function discardAndClose() {
-  ++loadSequence;
-  restoreSnapshot();
-  visible.value = false;
-  dirty.value = false;
-  loading.value = false;
-  loadError.value = null;
-  activeOpen = null;
-  activeClose = null;
-}
-
+/** 关闭浮层并使尚未完成的加载结果失效。 */
 function close() {
-  if (!visible.value || saving.value || activeClose) return;
+  ++loadSequence;
+  visible.value = false;
+  loading.value = false;
+  saving.value = false;
+  loadError.value = false;
+}
+
+/** 取消编辑；草稿变化时先请求用户确认。 */
+async function cancel() {
   if (!dirty.value) {
-    discardAndClose();
+    close();
     return;
   }
-  activeClose = confirmDialog({
-    cancelText: text.value.keepEditing,
-    confirmText: text.value.discard,
-    content: text.value.discardDescription,
-    icon: 'warning',
-    showCancel: true,
-    title: text.value.discardTitle,
-  })
-    .then(discardAndClose)
-    .catch(() => {})
-    .finally(() => {
-      activeClose = null;
-    });
-}
-
-async function retryLoad() {
   try {
-    await performLoad();
+    await confirmDialog({
+      cancelText: $t('ui.i18nMessageInput.keepEditing'),
+      confirmText: $t('ui.i18nMessageInput.confirmCancel'),
+      content: $t('ui.i18nMessageInput.unsavedDescription'),
+      icon: 'warning',
+      showCancel: true,
+      title: $t('ui.i18nMessageInput.unsavedTitle'),
+    });
+    close();
   } catch {
-    // The visible failure state owns the error presentation.
+    // 用户拒绝确认时继续保留当前草稿。
   }
 }
 
-async function handleConfirm() {
-  if (cannotConfirm.value) return;
+/** 在加载失败状态下重新加载当前 Message。 */
+async function retryLoad() {
+  await loadDraft();
+}
+
+/** 保存草稿，成功后同步 v-model 并关闭浮层。 */
+async function save() {
+  if (cannotSave.value) return;
   saving.value = true;
   try {
-    const input = {
-      i18nKey: draftKey.value.trim(),
-      previousKey: previousKey.value || undefined,
+    // 后端保存并确认后的完整 Message 数据。
+    const result = await props.save({
+      messageKey: draft.value.messageKey.trim(),
       values: props.locales.map((locale) => ({
         locale,
-        value: getValue(locale),
+        value: getMessageValue(draft.value.values, locale),
       })),
-    };
-    const result = props.confirm
-      ? await props.confirm(input)
-      : { i18nKey: input.i18nKey, values: input.values };
-    draftKey.value = result.i18nKey;
-    draftValues.value = copyValues(result.values);
-    i18nKey.value = result.i18nKey;
-    modelValue.value = getValue(props.defaultLocale);
-    previousKey.value = result.i18nKey;
-    snapshot.value = {
-      i18nKey: result.i18nKey,
-      modelValue: modelValue.value,
-      values: copyValues(result.values),
-    };
-    dirty.value = false;
-    visible.value = false;
+    });
+    // 保存结果副本，避免组件状态与调用方对象共享引用。
+    const message = copyMessage(result);
+    committed.value = message;
+    draft.value = copyMessage(message);
+    initial.value = copyMessage(message);
+    modelValue.value = message.messageKey;
+    close();
   } catch {
-    // The injected confirm boundary owns error presentation.
+    // 保存函数负责展示错误，组件保留当前草稿供用户重试。
   } finally {
     saving.value = false;
   }
 }
 
+/** 响应 Popover 的打开和外部关闭请求。 */
 function handleVisibilityChange(opened: boolean) {
   if (opened) {
-    void open().catch(() => {});
+    open();
   } else if (visible.value && !saving.value) {
-    close();
+    void cancel();
   }
 }
-
-defineExpose({ close, open });
 </script>
 
 <template>
   <VbenPopover
     :open="visible"
-    :content-class="contentClass"
     :content-props="contentProps"
+    content-class="w-[420px] max-w-[calc(100vw-32px)] p-0"
     trigger-class="w-full"
     @update:open="handleVisibilityChange"
   >
     <template #trigger>
       <div class="relative w-full">
         <Input
-          :model-value="modelValue"
+          v-bind="$attrs"
+          :model-value="displayValue"
           :disabled="disabled"
-          :placeholder="placeholder"
-          class="w-full pr-10"
-          @update:model-value="setDraftValue(defaultLocale, String($event))"
+          :placeholder="placeholder || $t('ui.i18nMessageInput.placeholder')"
+          :aria-expanded="visible"
+          class="w-full cursor-pointer pr-10"
+          readonly
+          role="combobox"
         />
-        <VbenIconButton
-          :disabled="disabled"
-          :tooltip="text.i18nKey"
-          class="absolute top-1/2 right-1 size-8 -translate-y-1/2 rounded-md"
-          type="button"
-          @click.stop="handleVisibilityChange(true)"
-        >
-          <VbenIcon icon="lucide:languages" class="size-4" />
-        </VbenIconButton>
+        <VbenIcon
+          icon="lucide:languages"
+          class="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2"
+        />
       </div>
     </template>
 
-    <div class="flex h-full min-h-0 flex-col gap-4 overflow-hidden p-4">
+    <div class="flex max-h-[min(520px,calc(100vh-32px))] flex-col gap-4 p-4">
       <div class="space-y-2">
-        <Label for="i18n-message-key">{{ text.i18nKey }}</Label>
+        <Label :for="`${fieldId}-key`" class="inline-flex items-center gap-0.5">
+          {{ $t('ui.i18nMessageInput.key') }}
+          <span
+            aria-hidden="true"
+            class="text-destructive -translate-y-px text-xs leading-none"
+            data-test="i18n-message-key-required"
+          >
+            *
+          </span>
+        </Label>
         <Input
-          id="i18n-message-key"
-          :model-value="draftKey"
-          :placeholder="text.keyPlaceholder"
-          :disabled="loading || saving"
+          :id="`${fieldId}-key`"
+          aria-required="true"
+          data-test="i18n-message-key"
+          :model-value="draft.messageKey"
+          :placeholder="$t('ui.i18nMessageInput.keyPlaceholder')"
+          :disabled="loading || saving || existingKey"
           @update:model-value="setDraftKey(String($event))"
         />
         <p v-if="keyError" class="text-destructive text-xs">{{ keyError }}</p>
@@ -432,36 +350,46 @@ defineExpose({ close, open });
 
       <div
         v-if="loading"
-        class="text-muted-foreground flex min-h-0 flex-1 items-center justify-center gap-2 text-sm"
+        class="text-muted-foreground flex min-h-40 items-center justify-center gap-2 text-sm"
       >
         <VbenSpinner class="size-4" />
-        <span>{{ text.loading }}</span>
+        <span>{{ $t('ui.i18nMessageInput.loading') }}</span>
       </div>
 
       <div
         v-else-if="loadError"
-        class="flex min-h-0 flex-1 flex-col items-center justify-center gap-3"
+        class="flex min-h-40 flex-col items-center justify-center gap-3"
       >
-        <p class="text-destructive text-sm">{{ text.loadError }}</p>
+        <p class="text-destructive text-sm">
+          {{ $t('ui.i18nMessageInput.loadError') }}
+        </p>
         <Button variant="outline" size="sm" type="button" @click="retryLoad">
           <VbenIcon icon="lucide:refresh-cw" class="mr-2 size-4" />
-          {{ text.retry }}
+          {{ $t('ui.i18nMessageInput.retry') }}
         </Button>
       </div>
 
-      <div v-else class="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
-        <div v-for="locale in locales" :key="locale" class="space-y-1.5">
-          <Label :for="`i18n-message-${locale}`">{{ locale }}</Label>
-          <Textarea
-            :id="`i18n-message-${locale}`"
-            :model-value="getValue(locale)"
-            :placeholder="text.valuePlaceholder"
-            :disabled="saving"
-            class="min-h-20 resize-y"
-            @update:model-value="setDraftValue(locale, String($event))"
-          />
+      <div v-else class="min-h-0 overflow-y-auto pr-1">
+        <div class="space-y-3">
+          <div v-for="locale in locales" :key="locale" class="space-y-1.5">
+            <Label :for="`${fieldId}-${locale}`">{{ locale }}</Label>
+            <Textarea
+              :id="`${fieldId}-${locale}`"
+              :data-locale="locale"
+              :model-value="getMessageValue(draft.values, locale)"
+              :placeholder="$t('ui.i18nMessageInput.valuePlaceholder')"
+              :disabled="saving"
+              :rows="rows"
+              class="i18n-message-textarea resize-y bg-background shadow-none transition-none placeholder:text-muted-foreground/50 focus-visible:border-input focus-visible:ring-0 dark:bg-background"
+              @update:model-value="setDraftValue(locale, String($event))"
+            />
+          </div>
         </div>
-        <p v-if="valueError" class="text-destructive text-xs">
+        <p
+          v-if="valueError"
+          class="text-destructive mt-1 text-xs"
+          data-test="i18n-message-value-error"
+        >
           {{ valueError }}
         </p>
       </div>
@@ -471,15 +399,28 @@ defineExpose({ close, open });
           variant="outline"
           type="button"
           :disabled="saving"
-          @click="close"
+          @click="cancel"
         >
-          {{ text.cancel }}
+          {{ $t('ui.i18nMessageInput.cancel') }}
         </Button>
-        <Button type="button" :disabled="cannotConfirm" @click="handleConfirm">
+        <Button type="button" :disabled="cannotSave" @click="save">
           <VbenIcon icon="lucide:check" class="mr-2 size-4" />
-          {{ text.confirm }}
+          {{ $t('ui.i18nMessageInput.save') }}
         </Button>
       </div>
     </div>
   </VbenPopover>
 </template>
+
+<style scoped lang="scss">
+.i18n-message-textarea {
+  --ring: var(--primary);
+
+  field-sizing: fixed;
+  min-height: 0;
+
+  &:focus-visible {
+    box-shadow: inset 0 0 0 1px hsl(var(--ring));
+  }
+}
+</style>

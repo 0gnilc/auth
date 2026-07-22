@@ -11,6 +11,6 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 public class I18nMessageVo {
-    private String i18nKey;
+    private String messageKey;
     private List<I18nMessageValueVo> values;
 }

@@ -61,7 +61,7 @@ class DynamicI18nMessageServiceImplTest {
 
         var message = service.getMessageValues("admin", "menu.home.title");
 
-        assertThat(message.getI18nKey()).isEqualTo("menu.home.title");
+        assertThat(message.getMessageKey()).isEqualTo("menu.home.title");
         assertThat(message.getValues())
                 .extracting(value -> value.getLocale() + ":" + value.getValue())
                 .containsExactly("zh-CN:首页", "en-US:Home");
@@ -85,7 +85,7 @@ class DynamicI18nMessageServiceImplTest {
     private I18nMessageBo row(String locale, String value) {
         I18nMessageBo row = new I18nMessageBo();
         row.setClient("admin");
-        row.setI18nKey("menu.home.title");
+        row.setMessageKey("menu.home.title");
         row.setLocale(locale);
         row.setI18nValue(value);
         return row;
@@ -93,7 +93,7 @@ class DynamicI18nMessageServiceImplTest {
 
     private I18nMessageDto save(String key, I18nMessageValueDto... values) {
         I18nMessageDto dto = new I18nMessageDto();
-        dto.setI18nKey(key);
+        dto.setMessageKey(key);
         dto.setValues(List.of(values));
         return dto;
     }

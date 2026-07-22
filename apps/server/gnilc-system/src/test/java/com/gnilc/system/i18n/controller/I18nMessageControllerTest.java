@@ -66,11 +66,11 @@ class I18nMessageControllerTest {
                 .thenReturn(Map.of("zh-CN", Map.of("menu", Map.of("title", "首页"))));
         when(service.getMessagePage(eq("admin"), any(I18nMessagePageDto.class)))
                 .thenReturn(new PageResult<>(
-                        List.of(new I18nMessageItemVo("admin", message.getI18nKey(), message.getValues())),
+                        List.of(new I18nMessageItemVo("admin", message.getMessageKey(), message.getValues())),
                         1,
                         10,
                         1));
-        when(service.getMessageValues("admin", message.getI18nKey())).thenReturn(message);
+        when(service.getMessageValues("admin", message.getMessageKey())).thenReturn(message);
 
         mvc.perform(post("/sys/i18n-message/bundle").header("X-Client", "admin"))
                 .andExpect(status().isOk())
@@ -85,7 +85,7 @@ class I18nMessageControllerTest {
         mvc.perform(post("/sys/i18n-message/values/menu.dashboard.title")
                         .header("X-Client", "admin"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.i18nKey").value("menu.dashboard.title"));
+                .andExpect(jsonPath("$.data.messageKey").value("menu.dashboard.title"));
 
         verify(service).getMessageBundle("admin");
         verify(service).getMessageValues("admin", "menu.dashboard.title");
@@ -102,12 +102,12 @@ class I18nMessageControllerTest {
                         .content("""
                                 {
                                   "previousKey": "menu.old.title",
-                                  "i18nKey": "menu.home.title",
+                                  "messageKey": "menu.home.title",
                                   "values": [{"locale":"zh-CN","value":"首页"}]
                                 }
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.i18nKey").value("menu.home.title"));
+                .andExpect(jsonPath("$.data.messageKey").value("menu.home.title"));
         mvc.perform(post("/sys/i18n-message/remove/menu.home.title")
                         .header("X-Client", "admin"))
                 .andExpect(status().isOk())
@@ -125,16 +125,16 @@ class I18nMessageControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "i18nKey": "",
+                                  "messageKey": "",
                                   "values": [{"locale":"","value":"title"}]
                                 }
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(10001))
-                .andExpect(jsonPath("$.data[*].field", hasItems("i18nKey", "values[0].locale")))
+                .andExpect(jsonPath("$.data[*].field", hasItems("messageKey", "values[0].locale")))
                 .andExpect(jsonPath("$.data[*].code", hasItems("NotBlank", "NotBlank")))
                 .andExpect(jsonPath("$.data[*].message", hasItems(
-                        "国际化 key 不能为空。", "语种不能为空。")));
+                        "国际化 key 不能为空。", "语言不能为空。")));
 
         verifyNoInteractions(service);
     }
@@ -154,7 +154,7 @@ class I18nMessageControllerTest {
         mvc.perform(post("/sys/i18n-message/save")
                         .header("X-Client", "admin")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"i18nKey\":\"menu.title\",\"values\":[]}"))
+                        .content("{\"messageKey\":\"menu.title\",\"values\":[]}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(10001))
                 .andExpect(jsonPath("$.error").value("invalid key"));

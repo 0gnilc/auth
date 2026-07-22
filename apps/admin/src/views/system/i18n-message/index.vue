@@ -1,13 +1,9 @@
 <script setup lang="ts">
-import type {
-  I18nMessageConfirm,
-  I18nMessageInputExpose,
-  I18nMessageInputTexts,
-} from '@vben/common-ui';
+import type { I18nMessageSaver } from '@vben/common-ui';
 
 import type { I18nMessageApi } from '#/api';
 
-import { computed, nextTick, onMounted, reactive, ref } from 'vue';
+import { onMounted, reactive, ref } from 'vue';
 
 import {
   I18nMessageInput,
@@ -15,7 +11,7 @@ import {
   VbenButton,
   VbenIconButton,
 } from '@vben/common-ui';
-import { Eraser, MessageSquareCode, Plus, RotateCw, Search } from '@vben/icons';
+import { Eraser, Plus, RotateCw, Search } from '@vben/icons';
 
 import {
   ElInput,
@@ -43,9 +39,7 @@ const DEFAULT_PAGE_SIZE = 10;
 
 const loading = ref(false);
 const removingKey = ref('');
-const editor = ref<I18nMessageInputExpose>();
-const editorKey = ref('');
-const editorValue = ref('');
+const newMessageKey = ref('');
 const rows = ref<I18nMessageApi.MessageItem[]>([]);
 const total = ref(0);
 
@@ -57,26 +51,6 @@ const query = reactive({
   pageSize: DEFAULT_PAGE_SIZE,
   value: '',
 });
-
-const editorTexts = computed<I18nMessageInputTexts>(() => ({
-  cancel: $t('page.i18nMessage.editor.cancel'),
-  confirm: $t('page.i18nMessage.editor.confirm'),
-  discard: $t('page.i18nMessage.editor.discard'),
-  discardDescription: $t('page.i18nMessage.editor.discardDescription'),
-  discardTitle: $t('page.i18nMessage.editor.discardTitle'),
-  i18nKey: $t('page.i18nMessage.editor.key'),
-  keyInvalid: $t('page.i18nMessage.editor.keyInvalid'),
-  keyPlaceholder: $t('page.i18nMessage.editor.keyPlaceholder'),
-  keyRequired: $t('page.i18nMessage.editor.keyRequired'),
-  keyReserved: $t('page.i18nMessage.editor.keyReserved'),
-  keyTooLong: $t('page.i18nMessage.editor.keyTooLong'),
-  loadError: $t('page.i18nMessage.editor.loadError'),
-  loading: $t('page.i18nMessage.editor.loading'),
-  keepEditing: $t('page.i18nMessage.editor.keepEditing'),
-  retry: $t('page.i18nMessage.editor.retry'),
-  valuePlaceholder: $t('page.i18nMessage.editor.valuePlaceholder'),
-  valueTooLong: $t('page.i18nMessage.editor.valueTooLong'),
-}));
 
 function valueFor(row: I18nMessageApi.MessageItem, locale: string) {
   return row.values.find((item) => item.locale === locale)?.value ?? '';
@@ -114,17 +88,6 @@ async function handleReset() {
   await loadPage();
 }
 
-async function openEditor(i18nKey = '', value = '') {
-  editorKey.value = i18nKey;
-  editorValue.value = value;
-  await nextTick();
-  try {
-    await editor.value?.open();
-  } catch {
-    // I18nMessageInput renders the recoverable load failure state.
-  }
-}
-
 async function refreshAfterMutation(successMessage: string) {
   let runtimeReloadFailed = false;
   let listReloadFailed = false;
@@ -149,13 +112,11 @@ async function refreshAfterMutation(successMessage: string) {
   }
 }
 
-const confirmMessage: I18nMessageConfirm = async (input) => {
+const saveMessage: I18nMessageSaver = async (input) => {
   const staticKeys = await ensureStaticKeys();
-  if (staticKeys.has(input.i18nKey)) {
+  if (staticKeys.has(input.messageKey)) {
     ElMessage.error($t('page.i18nMessage.messages.staticKey'));
-    throw new Error(
-      'Static internationalization keys cannot be saved dynamically.',
-    );
+    throw new Error('Static Message Keys cannot be saved dynamically.');
   }
 
   const saved = await saveI18nMessage(input);
@@ -166,7 +127,7 @@ const confirmMessage: I18nMessageConfirm = async (input) => {
 async function handleRemove(row: I18nMessageApi.MessageItem) {
   try {
     await ElMessageBox.confirm(
-      $t('page.i18nMessage.messages.removeConfirm', { key: row.i18nKey }),
+      $t('page.i18nMessage.messages.removeConfirm', { key: row.messageKey }),
       $t('page.i18nMessage.messages.removeTitle'),
       {
         confirmButtonText: $t('page.i18nMessage.actions.remove'),
@@ -177,9 +138,9 @@ async function handleRemove(row: I18nMessageApi.MessageItem) {
     return;
   }
 
-  removingKey.value = row.i18nKey;
+  removingKey.value = row.messageKey;
   try {
-    await removeI18nMessage(row.i18nKey);
+    await removeI18nMessage(row.messageKey);
     await refreshAfterMutation($t('page.i18nMessage.messages.removeSuccess'));
   } finally {
     removingKey.value = '';
@@ -255,19 +216,20 @@ onMounted(loadPage);
       >
         <div class="w-full min-w-0 lg:max-w-md">
           <I18nMessageInput
-            ref="editor"
-            v-model="editorValue"
-            v-model:i18n-key="editorKey"
-            :confirm="confirmMessage"
+            v-model="newMessageKey"
             :load="getI18nMessageValues"
             :locales="SUPPORTED_LOCALES"
-            :texts="editorTexts"
-            position="center"
-            :placeholder="$t('page.i18nMessage.editor.placeholder')"
+            :save="saveMessage"
+            :placeholder="$t('page.i18nMessage.newMessagePlaceholder')"
           />
         </div>
         <div class="flex shrink-0 items-center justify-end gap-2">
-          <VbenButton type="button" size="sm" @click="openEditor()">
+          <VbenButton
+            v-if="newMessageKey"
+            type="button"
+            size="sm"
+            @click="newMessageKey = ''"
+          >
             <Plus class="mr-2 size-4" />
             {{ $t('page.i18nMessage.actions.create') }}
           </VbenButton>
@@ -298,12 +260,12 @@ onMounted(loadPage);
             </template>
           </ElTableColumn>
           <ElTableColumn
-            prop="i18nKey"
+            prop="messageKey"
             :label="$t('page.i18nMessage.table.key')"
             min-width="260"
           >
             <template #default="{ row }">
-              <code class="break-all text-xs">{{ row.i18nKey }}</code>
+              <code class="break-all text-xs">{{ row.messageKey }}</code>
             </template>
           </ElTableColumn>
           <ElTableColumn
@@ -313,35 +275,31 @@ onMounted(loadPage);
             min-width="220"
           >
             <template #default="{ row }">
-              <span class="line-clamp-2 break-words">{{
-                valueFor(toMessageItem(row), locale)
-              }}</span>
+              <I18nMessageInput
+                v-if="locale === SUPPORTED_LOCALES[0]"
+                :model-value="toMessageItem(row).messageKey"
+                :default-locale="locale"
+                :load="getI18nMessageValues"
+                :locales="SUPPORTED_LOCALES"
+                :save="saveMessage"
+              />
+              <span v-else class="line-clamp-2 break-words">
+                {{ valueFor(toMessageItem(row), locale) }}
+              </span>
             </template>
           </ElTableColumn>
           <ElTableColumn
             fixed="right"
             :label="$t('page.i18nMessage.table.operations')"
-            width="112"
+            width="72"
             align="center"
           >
             <template #default="{ row }">
-              <div class="flex justify-center gap-1">
-                <VbenIconButton
-                  :tooltip="$t('page.i18nMessage.actions.edit')"
-                  class="size-8 rounded-md"
-                  @click="
-                    openEditor(
-                      row.i18nKey,
-                      valueFor(toMessageItem(row), 'zh-CN'),
-                    )
-                  "
-                >
-                  <MessageSquareCode class="size-4" />
-                </VbenIconButton>
+              <div class="flex justify-center">
                 <VbenIconButton
                   :tooltip="$t('page.i18nMessage.actions.remove')"
                   class="size-8 rounded-md text-destructive"
-                  :disabled="removingKey === row.i18nKey"
+                  :disabled="removingKey === row.messageKey"
                   @click="handleRemove(toMessageItem(row))"
                 >
                   <Eraser class="size-4" />

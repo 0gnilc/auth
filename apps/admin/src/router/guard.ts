@@ -5,8 +5,8 @@ import { preferences } from '@vben/preferences';
 import { useAccessStore, useUserStore } from '@vben/stores';
 import { startProgress, stopProgress } from '@vben/utils';
 
+import { loadDynamicMessages } from '#/locales/dynamic';
 import { accessRoutes, coreRouteNames } from '#/router/routes';
-import { ensureDynamicMessages } from '#/locales/dynamic';
 import { useAuthStore } from '#/store';
 
 import { generateAccess } from './access';
@@ -96,7 +96,7 @@ function setupAccessGuard(router: Router) {
     const userInfo = userStore.userInfo || (await authStore.getUserInfo());
     const userRoles = userInfo.roleCodes ?? [];
 
-    await ensureDynamicMessages();
+    await loadDynamicMessages();
 
     // 生成菜单和路由
     const { accessibleMenus, accessibleRoutes } = await generateAccess({

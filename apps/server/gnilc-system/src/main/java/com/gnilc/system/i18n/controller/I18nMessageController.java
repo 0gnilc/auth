@@ -41,11 +41,11 @@ public class I18nMessageController {
         return R.success(i18nMessageService.getMessagePage(client, dto));
     }
 
-    @PostMapping("/values/{i18nKey}")
+    @PostMapping("/values/{messageKey}")
     public R<I18nMessageVo> getMessageValues(
             @RequestHeader(value = I18nMessageConstants.CLIENT_HEADER, required = false) String client,
-            @PathVariable("i18nKey") String i18nKey) {
-        return R.success(i18nMessageService.getMessageValues(client, i18nKey));
+            @PathVariable("messageKey") String messageKey) {
+        return R.success(i18nMessageService.getMessageValues(client, messageKey));
     }
 
     @PostMapping("/save")
@@ -55,11 +55,11 @@ public class I18nMessageController {
         return R.success(i18nMessageService.saveMessage(client, dto));
     }
 
-    @PostMapping("/remove/{i18nKey}")
+    @PostMapping("/remove/{messageKey}")
     public R<?> removeMessage(
             @RequestHeader(value = I18nMessageConstants.CLIENT_HEADER, required = false) String client,
-            @PathVariable("i18nKey") String i18nKey) {
-        i18nMessageService.removeMessage(client, i18nKey);
+            @PathVariable("messageKey") String messageKey) {
+        i18nMessageService.removeMessage(client, messageKey);
         return R.success();
     }
 }

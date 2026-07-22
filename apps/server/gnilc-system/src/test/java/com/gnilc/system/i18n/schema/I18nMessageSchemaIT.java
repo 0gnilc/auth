@@ -63,16 +63,16 @@ class I18nMessageSchemaIT {
                    AND table_name = 'sys_i18n'
                  ORDER BY ordinal_position
                 """, String.class)).containsExactly(
-                        "id", "client", "i18n_key", "locale", "i18n_value",
+                        "id", "client", "message_key", "locale", "i18n_value",
                         "create_time", "update_time");
         assertThat(jdbc.queryForList("""
                 SELECT column_name
                   FROM information_schema.statistics
                  WHERE table_schema = database()
                    AND table_name = 'sys_i18n'
-                   AND index_name = 'uk_i18n_key_locale_client'
+                   AND index_name = 'uk_message_key_locale_client'
                  ORDER BY seq_in_index
-                """, String.class)).containsExactly("i18n_key", "locale", "client");
+                """, String.class)).containsExactly("message_key", "locale", "client");
         assertThat(jdbc.queryForObject(
                 "SELECT COUNT(*) FROM sys_i18n WHERE client = 'admin'", Integer.class))
                 .isEqualTo(8);
@@ -123,9 +123,9 @@ class I18nMessageSchemaIT {
                  WHERE r.code = 'i18n-manager'
                    AND p.code IN (
                        'POST:/sys/i18n-message/page',
-                       'POST:/sys/i18n-message/values/{i18nKey}',
+                       'POST:/sys/i18n-message/values/{messageKey}',
                        'POST:/sys/i18n-message/save',
-                       'POST:/sys/i18n-message/remove/{i18nKey}')
+                       'POST:/sys/i18n-message/remove/{messageKey}')
                    AND rp.del = 0
                 """, Integer.class)).isEqualTo(4);
     }

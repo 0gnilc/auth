@@ -30,6 +30,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 public class DynamicI18nMessageServiceImpl extends ServiceImpl<I18nMessageDao, I18nMessageBo> implements DynamicI18nMessageService {
@@ -52,14 +53,14 @@ public class DynamicI18nMessageServiceImpl extends ServiceImpl<I18nMessageDao, I
         String targetClient = requireClient(client);
         List<I18nMessageBo> rows = lambdaQuery()
                 .eq(I18nMessageBo::getClient, targetClient)
-                .orderByAsc(I18nMessageBo::getI18nKey)
+                .orderByAsc(I18nMessageBo::getMessageKey)
                 .list();
         Map<String, Object> bundle = new LinkedHashMap<>();
         for (String locale : SupportedLocale.codes()) {
             Map<String, Object> localeMessages = new LinkedHashMap<>();
             rows.stream()
                     .filter(row -> locale.equals(row.getLocale()))
-                    .forEach(row -> putPath(localeMessages, row.getI18nKey(), row.getI18nValue()));
+                    .forEach(row -> putPath(localeMessages, row.getMessageKey(), row.getI18nValue()));
             bundle.put(locale, localeMessages);
         }
         return bundle;
@@ -78,25 +79,25 @@ public class DynamicI18nMessageServiceImpl extends ServiceImpl<I18nMessageDao, I
         }
 
         IPage<I18nMessageBo> keyPage = lambdaQuery()
-                .select(I18nMessageBo::getClient, I18nMessageBo::getI18nKey)
+                .select(I18nMessageBo::getClient, I18nMessageBo::getMessageKey)
                 .eq(I18nMessageBo::getClient, targetClient)
-                .like(StringUtils.isNotBlank(query.getKey()), I18nMessageBo::getI18nKey, query.getKey())
+                .like(StringUtils.isNotBlank(query.getKey()), I18nMessageBo::getMessageKey, query.getKey())
                 .like(StringUtils.isNotBlank(query.getValue()), I18nMessageBo::getI18nValue, query.getValue())
                 .eq(StringUtils.isNotBlank(query.getLocale()), I18nMessageBo::getLocale, query.getLocale())
-                .groupBy(I18nMessageBo::getClient, I18nMessageBo::getI18nKey)
-                .orderByAsc(I18nMessageBo::getI18nKey)
+                .groupBy(I18nMessageBo::getClient, I18nMessageBo::getMessageKey)
+                .orderByAsc(I18nMessageBo::getMessageKey)
                 .page(query.getPage());
-        List<String> keys = keyPage.getRecords().stream().map(I18nMessageBo::getI18nKey).toList();
+        List<String> keys = keyPage.getRecords().stream().map(I18nMessageBo::getMessageKey).toList();
         if (keys.isEmpty()) {
             return PageResult.of(keyPage, List.of());
         }
 
         Map<String, List<I18nMessageBo>> rowsByKey = lambdaQuery()
                 .eq(I18nMessageBo::getClient, targetClient)
-                .in(I18nMessageBo::getI18nKey, keys)
+                .in(I18nMessageBo::getMessageKey, keys)
                 .list()
                 .stream()
-                .collect(Collectors.groupingBy(I18nMessageBo::getI18nKey));
+                .collect(Collectors.groupingBy(I18nMessageBo::getMessageKey));
         List<I18nMessageItemVo> items = keys.stream()
                 .map(key -> new I18nMessageItemVo(
                         targetClient,
@@ -107,9 +108,9 @@ public class DynamicI18nMessageServiceImpl extends ServiceImpl<I18nMessageDao, I
     }
 
     @Override
-    public I18nMessageVo getMessageValues(String client, String i18nKey) {
+    public I18nMessageVo getMessageValues(String client, String messageKey) {
         String targetClient = requireClient(client);
-        String targetKey = requireKey(i18nKey);
+        String targetKey = requireKey(messageKey);
         List<I18nMessageBo> rows = findRows(targetClient, targetKey);
         return rows.isEmpty() ? null : new I18nMessageVo(targetKey, toValues(rows));
     }
@@ -119,7 +120,7 @@ public class DynamicI18nMessageServiceImpl extends ServiceImpl<I18nMessageDao, I
     public I18nMessageVo saveMessage(String client, I18nMessageDto dto) {
         String targetClient = requireClient(client);
         Preconditions.checkArgument(dto != null, messages.get("system.i18n.message.required"));
-        String targetKey = requireKey(dto.getI18nKey());
+        String targetKey = requireKey(dto.getMessageKey());
         String previousKey = StringUtils.trimToNull(dto.getPreviousKey());
         if (previousKey != null) {
             previousKey = requireKey(previousKey);
@@ -150,7 +151,7 @@ public class DynamicI18nMessageServiceImpl extends ServiceImpl<I18nMessageDao, I
         if (migrating) {
             lambdaUpdate()
                     .eq(I18nMessageBo::getClient, targetClient)
-                    .eq(I18nMessageBo::getI18nKey, previousKey)
+                    .eq(I18nMessageBo::getMessageKey, previousKey)
                     .remove();
             saveNewRows(targetClient, targetKey, mergedValues);
         } else {
@@ -161,12 +162,12 @@ public class DynamicI18nMessageServiceImpl extends ServiceImpl<I18nMessageDao, I
 
     @Transactional
     @Override
-    public void removeMessage(String client, String i18nKey) {
+    public void removeMessage(String client, String messageKey) {
         String targetClient = requireClient(client);
-        String targetKey = requireKey(i18nKey);
+        String targetKey = requireKey(messageKey);
         lambdaUpdate()
                 .eq(I18nMessageBo::getClient, targetClient)
-                .eq(I18nMessageBo::getI18nKey, targetKey)
+                .eq(I18nMessageBo::getMessageKey, targetKey)
                 .remove();
     }
 
@@ -178,14 +179,14 @@ public class DynamicI18nMessageServiceImpl extends ServiceImpl<I18nMessageDao, I
         return targetClient;
     }
 
-    private String requireKey(String i18nKey) {
-        String targetKey = StringUtils.trimToNull(i18nKey);
+    private String requireKey(String messageKey) {
+        String targetKey = StringUtils.trimToNull(messageKey);
         Preconditions.checkArgument(targetKey != null, messages.get("system.i18n.key.required"));
         Preconditions.checkArgument(targetKey.length() <= MAX_KEY_LENGTH,
                 messages.get("system.i18n.key.tooLong", MAX_KEY_LENGTH));
         Preconditions.checkArgument(KEY_PATTERN.matcher(targetKey).matches(),
                 messages.get("system.i18n.key.invalid"));
-        Preconditions.checkArgument(List.of(targetKey.split("\\.")).stream()
+        Preconditions.checkArgument(Stream.of(targetKey.split("\\."))
                         .noneMatch(FORBIDDEN_SEGMENTS::contains),
                 messages.get("system.i18n.key.invalid"));
         return targetKey;
@@ -216,11 +217,11 @@ public class DynamicI18nMessageServiceImpl extends ServiceImpl<I18nMessageDao, I
 
     private void validatePathConflict(String client, String targetKey, String ignoredKey) {
         List<String> existingKeys = lambdaQuery()
-                .select(I18nMessageBo::getI18nKey)
+                .select(I18nMessageBo::getMessageKey)
                 .eq(I18nMessageBo::getClient, client)
                 .list()
                 .stream()
-                .map(I18nMessageBo::getI18nKey)
+                .map(I18nMessageBo::getMessageKey)
                 .distinct()
                 .toList();
         String conflict = existingKeys.stream()
@@ -233,10 +234,10 @@ public class DynamicI18nMessageServiceImpl extends ServiceImpl<I18nMessageDao, I
                 messages.get("system.i18n.key.pathConflict", targetKey, conflict));
     }
 
-    private List<I18nMessageBo> findRows(String client, String i18nKey) {
+    private List<I18nMessageBo> findRows(String client, String messageKey) {
         return lambdaQuery()
                 .eq(I18nMessageBo::getClient, client)
-                .eq(I18nMessageBo::getI18nKey, i18nKey)
+                .eq(I18nMessageBo::getMessageKey, messageKey)
                 .list();
     }
 
@@ -252,7 +253,7 @@ public class DynamicI18nMessageServiceImpl extends ServiceImpl<I18nMessageDao, I
 
     private void persistRows(
             String client,
-            String i18nKey,
+            String messageKey,
             List<I18nMessageBo> existingRows,
             Map<String, String> values) {
         Map<String, I18nMessageBo> existingByLocale = existingRows.stream().collect(Collectors.toMap(
@@ -269,23 +270,23 @@ public class DynamicI18nMessageServiceImpl extends ServiceImpl<I18nMessageDao, I
         }
         values.entrySet().stream()
                 .filter(entry -> !existingByLocale.containsKey(entry.getKey()))
-                .map(entry -> newRow(client, i18nKey, entry.getKey(), entry.getValue()))
+                .map(entry -> newRow(client, messageKey, entry.getKey(), entry.getValue()))
                 .forEach(this::save);
     }
 
-    private void saveNewRows(String client, String i18nKey, Map<String, String> values) {
+    private void saveNewRows(String client, String messageKey, Map<String, String> values) {
         List<I18nMessageBo> rows = values.entrySet().stream()
-                .map(entry -> newRow(client, i18nKey, entry.getKey(), entry.getValue()))
+                .map(entry -> newRow(client, messageKey, entry.getKey(), entry.getValue()))
                 .toList();
         if (!rows.isEmpty()) {
             saveBatch(rows);
         }
     }
 
-    private I18nMessageBo newRow(String client, String i18nKey, String locale, String value) {
+    private I18nMessageBo newRow(String client, String messageKey, String locale, String value) {
         I18nMessageBo row = new I18nMessageBo();
         row.setClient(client);
-        row.setI18nKey(i18nKey);
+        row.setMessageKey(messageKey);
         row.setLocale(locale);
         row.setI18nValue(value);
         return row;
@@ -307,8 +308,8 @@ public class DynamicI18nMessageServiceImpl extends ServiceImpl<I18nMessageDao, I
     }
 
     @SuppressWarnings("unchecked")
-    private void putPath(Map<String, Object> root, String i18nKey, String value) {
-        String[] segments = i18nKey.split("\\.");
+    private void putPath(Map<String, Object> root, String messageKey, String value) {
+        String[] segments = messageKey.split("\\.");
         Map<String, Object> cursor = root;
         for (int index = 0; index < segments.length - 1; index++) {
             cursor = (Map<String, Object>) cursor.computeIfAbsent(

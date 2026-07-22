@@ -24,13 +24,19 @@ import type { Component } from 'vue';
 import type {
   ApiComponentSharedProps,
   BaseFormComponentType,
+  I18nMessageInputProps,
   IconPickerProps,
 } from '@vben/common-ui';
 import type { Recordable } from '@vben/types';
 
 import { defineAsyncComponent, defineComponent, h, ref } from 'vue';
 
-import { ApiComponent, globalShareState, IconPicker } from '@vben/common-ui';
+import {
+  ApiComponent,
+  globalShareState,
+  I18nMessageInput,
+  IconPicker,
+} from '@vben/common-ui';
 import { $t } from '@vben/locales';
 
 import { ElNotification } from 'element-plus';
@@ -183,6 +189,7 @@ export type ComponentType =
   | 'CheckboxGroup'
   | 'DatePicker'
   | 'Divider'
+  | 'I18nMessageInput'
   | 'IconPicker'
   | 'Input'
   | 'InputNumber'
@@ -206,6 +213,7 @@ export interface ComponentPropsMap {
   DatePicker: DatePickerProps;
   Divider: DividerProps;
   IconPicker: IconPickerProps;
+  I18nMessageInput: I18nMessageInputProps;
   Input: InputProps;
   InputNumber: InputNumberProps;
   RadioGroup: RadioGroupProps;
@@ -283,6 +291,7 @@ async function initComponentAdapter() {
       modelValueProp: 'model-value',
       inputComponent: ElInput,
     }),
+    I18nMessageInput: withDefaultPlaceholder(I18nMessageInput, 'select'),
     Input: withDefaultPlaceholder(ElInput, 'input'),
     InputNumber: withDefaultPlaceholder(ElInputNumber, 'input', {
       style: { width: '100%' },

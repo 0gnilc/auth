@@ -5,7 +5,7 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 /**
- * 单个语种的国际化消息值。
+ * 单个语言的国际化消息值。
  */
 @Data
 public class I18nMessageValueDto {

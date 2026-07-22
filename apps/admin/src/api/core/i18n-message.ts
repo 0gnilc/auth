@@ -9,7 +9,7 @@ export namespace I18nMessageApi {
   }
 
   export interface Message {
-    i18nKey: string;
+    messageKey: string;
     values: MessageValue[];
   }
 
@@ -19,9 +19,7 @@ export namespace I18nMessageApi {
 
   export type Bundle = Record<string, Record<string, unknown>>;
 
-  export type SaveInput = Pick<Message, 'i18nKey' | 'values'> & {
-    previousKey?: string;
-  };
+  export type SaveInput = Message;
 }
 
 export async function getI18nMessageBundle() {
@@ -42,9 +40,9 @@ export async function getI18nMessagePage(
   );
 }
 
-export async function getI18nMessageValues(i18nKey: string) {
+export async function getI18nMessageValues(messageKey: string) {
   return requestClient.post<I18nMessageApi.Message | null>(
-    `/sys/i18n-message/values/${encodeURIComponent(i18nKey)}`,
+    `/sys/i18n-message/values/${encodeURIComponent(messageKey)}`,
   );
 }
 
@@ -55,8 +53,8 @@ export async function saveI18nMessage(input: I18nMessageApi.SaveInput) {
   );
 }
 
-export async function removeI18nMessage(i18nKey: string) {
+export async function removeI18nMessage(messageKey: string) {
   return requestClient.post<null>(
-    `/sys/i18n-message/remove/${encodeURIComponent(i18nKey)}`,
+    `/sys/i18n-message/remove/${encodeURIComponent(messageKey)}`,
   );
 }

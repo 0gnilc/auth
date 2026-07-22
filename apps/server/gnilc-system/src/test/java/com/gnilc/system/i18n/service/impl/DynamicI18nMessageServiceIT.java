@@ -47,7 +47,7 @@ class DynamicI18nMessageServiceIT {
                 "test.workflow.heading",
                 "test.workflow.title",
                 value("zh-CN", "工作流")));
-        assertThat(migrated.getI18nKey()).isEqualTo("test.workflow.heading");
+        assertThat(migrated.getMessageKey()).isEqualTo("test.workflow.heading");
         assertThat(migrated.getValues())
                 .extracting(value -> value.getLocale() + ":" + value.getValue())
                 .containsExactly("zh-CN:工作流", "en-US:Workflow");
@@ -63,7 +63,7 @@ class DynamicI18nMessageServiceIT {
         messages.removeMessage("admin", "test.workflow.heading");
         assertThat(jdbc.queryForObject("""
                 SELECT COUNT(*) FROM sys_i18n
-                 WHERE client = 'admin' AND i18n_key = 'test.workflow.heading'
+                 WHERE client = 'admin' AND message_key = 'test.workflow.heading'
                 """, Integer.class)).isZero();
     }
 
@@ -93,7 +93,7 @@ class DynamicI18nMessageServiceIT {
 
         assertThat(result.getTotalCount()).isEqualTo(1);
         assertThat(result.getList()).singleElement().satisfies(item -> {
-            assertThat(item.getI18nKey()).isEqualTo("test.page.subtitle");
+            assertThat(item.getMessageKey()).isEqualTo("test.page.subtitle");
             assertThat(item.getValues()).hasSize(2);
         });
     }
@@ -113,7 +113,7 @@ class DynamicI18nMessageServiceIT {
             String previousKey,
             I18nMessageValueDto... values) {
         I18nMessageDto dto = new I18nMessageDto();
-        dto.setI18nKey(key);
+        dto.setMessageKey(key);
         dto.setPreviousKey(previousKey);
         dto.setValues(List.of(values));
         return dto;

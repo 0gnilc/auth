@@ -50,6 +50,25 @@
     "placeholder": "选择一个图标",
     "search": "搜索图标..."
   },
+  "i18nMessageInput": {
+    "cancel": "取消",
+    "confirmCancel": "确认取消",
+    "keepEditing": "继续编辑",
+    "key": "Message Key",
+    "keyInvalid": "Message Key必须是合法的点分割路径",
+    "keyPlaceholder": "请输入点分割的Message Key",
+    "keyReserved": "Message Key包含保留路径段",
+    "keyTooLong": "Message Key不能超过 191 个字符",
+    "loadError": "加载翻译失败",
+    "loading": "正在加载",
+    "placeholder": "请选择国际化消息",
+    "retry": "重试",
+    "save": "保存",
+    "unsavedDescription": "取消后，本次修改将丢失。",
+    "unsavedTitle": "未保存，确认取消吗？",
+    "valuePlaceholder": "请输入翻译内容",
+    "valueTooLong": "单条翻译不能超过 4000 个字符"
+  },
   "jsonViewer": {
     "copy": "复制",
     "copied": "已复制"

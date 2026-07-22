@@ -60,8 +60,8 @@ export const useAuthStore = defineStore('auth', () => {
         userStore.setUserInfo(userInfo);
         accessStore.setAccessCodes(accessCodes);
 
-        const { ensureDynamicMessages } = await import('#/locales/dynamic');
-        await ensureDynamicMessages();
+        const { loadDynamicMessages } = await import('#/locales/dynamic');
+        await loadDynamicMessages();
 
         if (accessStore.loginExpired) {
           accessStore.setLoginExpired(false);

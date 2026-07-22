@@ -1,71 +1,41 @@
-import type { MaybeRef } from 'vue';
-
+/** 单个语言的 Message 文本。 */
 export interface I18nMessageValue {
+  /** 语言代码，例如 zh-CN。 */
   locale: string;
+  /** 当前语言对应的文本。 */
   value: string;
 }
 
+/** 一个 Message Key 及其全部语言文本。 */
 export interface I18nMessage {
-  i18nKey: string;
+  /** 唯一标识 Message 的点分割 Message Key。 */
+  messageKey: string;
+  /** 各语言的 Message 文本。 */
   values: I18nMessageValue[];
 }
 
+/** 按 Message Key 加载各语言文本，Message Key 不存在时返回 null。 */
 export type I18nMessageLoader = (
-  i18nKey: string,
+  messageKey: string,
 ) => Promise<I18nMessage | null>;
 
-export type I18nMessageConfirm = (input: {
-  i18nKey: string;
-  previousKey?: string;
-  values: I18nMessageValue[];
-}) => Promise<I18nMessage>;
+/** 保存 Message 并返回后端确认后的完整数据。 */
+export type I18nMessageSaver = (message: I18nMessage) => Promise<I18nMessage>;
 
-export type I18nMessageChange =
-  | {
-      i18nKey: string;
-      message: I18nMessage;
-      type: 'key';
-    }
-  | {
-      i18nKey: string;
-      locale: string;
-      message: I18nMessage;
-      type: 'value';
-      value: string;
-    };
-
-export type I18nMessageChangeHandler = (change: I18nMessageChange) => void;
-
-export interface I18nMessageInputExpose {
-  close: () => void;
-  open: () => Promise<void>;
+/** I18nMessageInput 的公开属性。 */
+export interface I18nMessageInputProps {
+  /** 外部输入框用于显示文本的默认语言。 */
+  defaultLocale?: string;
+  /** 是否禁用组件。 */
+  disabled?: boolean;
+  /** 打开浮层时使用的数据加载函数。 */
+  load: I18nMessageLoader;
+  /** 浮层内允许编辑的语言列表。 */
+  locales?: string[];
+  /** 外部输入框为空时的占位文案。 */
+  placeholder?: string;
+  /** 每个语言文本框的默认行数。 */
+  rows?: number;
+  /** 点击保存时使用的数据保存函数。 */
+  save: I18nMessageSaver;
 }
-
-export interface I18nMessageInputTexts {
-  cancel: string;
-  confirm: string;
-  discard: string;
-  discardDescription: string;
-  discardTitle: string;
-  i18nKey: string;
-  keyInvalid: string;
-  keyPlaceholder: string;
-  keyRequired: string;
-  keyReserved: string;
-  keyTooLong: string;
-  loadError: string;
-  loading: string;
-  keepEditing: string;
-  retry: string;
-  valueTooLong: string;
-  valuePlaceholder: string;
-}
-
-export type I18nMessageSource = MaybeRef<I18nMessage | null | undefined>;
-
-export type I18nMessageInputPosition =
-  | 'bottom'
-  | 'center'
-  | 'left'
-  | 'right'
-  | 'top';

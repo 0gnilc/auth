@@ -28,11 +28,15 @@ mvn -f apps/server/pom.xml verify
 
 ### Git commits
 
-All agents and automated tools must create commits with `pnpm run commit`, which uses the repository's `"commit": "czg"` script. Do not invoke `git commit` directly.
+Leave completed changes uncommitted by default so a human can review the working-tree diff. Create a commit only when the user explicitly requests one.
+
+When a commit is explicitly requested, all agents and automated tools must use `pnpm run commit`, which uses the repository's `"commit": "czg"` script. Do not invoke `git commit` directly.
 
 ### Pull requests
 
-All agents and automated tools must deliver remote changes through a pull request. Never push directly to `main` or another target branch. Push the working branch to `origin`, then create or update a pull request; use `main` as the default base unless the user specifies another target branch.
+Do not push changes or create or update a pull request unless the user explicitly requests remote delivery.
+
+When remote delivery is explicitly requested, all agents and automated tools must deliver changes through a pull request. Never push directly to `main` or another target branch. Push the working branch to `origin`, then create or update a pull request; use `main` as the default base unless the user specifies another target branch.
 
 ### Domain docs
 

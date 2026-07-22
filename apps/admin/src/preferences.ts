@@ -11,7 +11,7 @@ import {
 export const overridesPreferences = defineOverridesPreferences({
   // overrides
   app: {
-    accessMode: 'frontend',
+    accessMode: 'backend',
     defaultAvatar: '',
     defaultHomePath: '/dashboard',
     enableRefreshToken: true,

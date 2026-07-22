@@ -20,12 +20,12 @@ async function reloadDynamicMessages() {
 }
 
 /**
- * 确保当前会话已经加载动态消息。
+ * 加载当前会话的动态消息。
  *
  * 已成功加载时直接返回；首次并发调用共享同一个 Promise。失败会返回 false
  * 且清除进行中状态，后续导航可以再次尝试，不会被一次网络错误永久阻塞。
  */
-async function ensureDynamicMessages() {
+async function loadDynamicMessages() {
   if (loaded) {
     return true;
   }
@@ -57,4 +57,4 @@ async function clearDynamicMessages() {
   await applyDynamicMessages({});
 }
 
-export { clearDynamicMessages, ensureDynamicMessages, reloadDynamicMessages };
+export { clearDynamicMessages, loadDynamicMessages, reloadDynamicMessages };

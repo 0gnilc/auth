@@ -16,9 +16,9 @@ public interface DynamicI18nMessageService extends IService<I18nMessageBo> {
 
     PageResult<I18nMessageItemVo> getMessagePage(String client, I18nMessagePageDto dto);
 
-    I18nMessageVo getMessageValues(String client, String i18nKey);
+    I18nMessageVo getMessageValues(String client, String messageKey);
 
     I18nMessageVo saveMessage(String client, I18nMessageDto dto);
 
-    void removeMessage(String client, String i18nKey);
+    void removeMessage(String client, String messageKey);
 }

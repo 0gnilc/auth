@@ -50,7 +50,7 @@ class I18nMessageApiIT extends AdminApiTestSupport {
                 .contentType(ContentType.JSON)
                 .body("""
                         {
-                          "i18nKey":"api.message.title",
+                          "messageKey":"api.message.title",
                           "values":[
                             {"locale":"zh-CN","value":"接口消息"},
                             {"locale":"en-US","value":"API message"}
@@ -70,14 +70,14 @@ class I18nMessageApiIT extends AdminApiTestSupport {
                 .body("""
                         {
                           "previousKey":"api.message.title",
-                          "i18nKey":"api.message.heading",
+                          "messageKey":"api.message.heading",
                           "values":[{"locale":"zh-CN","value":"接口标题"}]
                         }
                         """)
                 .post("/api/sys/i18n-message/save")
                 .then()
                 .statusCode(200)
-                .body("data.i18nKey", equalTo("api.message.heading"))
+                .body("data.messageKey", equalTo("api.message.heading"))
                 .body("data.values", hasSize(2));
 
         given()
@@ -87,7 +87,7 @@ class I18nMessageApiIT extends AdminApiTestSupport {
                 .then()
                 .statusCode(200)
                 .body("code", equalTo(0))
-                .body("data.i18nKey", equalTo("api.message.heading"));
+                .body("data.messageKey", equalTo("api.message.heading"));
 
         given()
                 .header("Authorization", auth)
@@ -99,7 +99,7 @@ class I18nMessageApiIT extends AdminApiTestSupport {
 
         assertThat(jdbc.queryForObject("""
                 SELECT COUNT(*) FROM sys_i18n
-                 WHERE client = 'admin' AND i18n_key LIKE 'api.message.%'
+                 WHERE client = 'admin' AND message_key LIKE 'api.message.%'
                 """, Integer.class)).isZero();
     }
 
@@ -172,7 +172,7 @@ class I18nMessageApiIT extends AdminApiTestSupport {
         given()
                 .header("Authorization", auth)
                 .header("X-Client", "admin")
-                .post("/api/sys/i18n-message/remove/{i18nKey}", "a".repeat(192))
+                .post("/api/sys/i18n-message/remove/{messageKey}", "a".repeat(192))
                 .then()
                 .statusCode(200)
                 .body("code", equalTo(10001))
