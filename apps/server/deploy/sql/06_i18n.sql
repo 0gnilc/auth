@@ -144,6 +144,18 @@ SET del = 0,
 WHERE name = 'I18n'
   AND @system_menu_id IS NOT NULL;
 
+UPDATE az_permission
+SET code = 'POST:/sys/i18n/values/{i18nKey}',
+    name = 'POST:/sys/i18n/values/{i18nKey}',
+    target_identifier = '/sys/i18n/values/{i18nKey}'
+WHERE code = 'POST:/sys/i18n/values';
+
+UPDATE az_permission
+SET code = 'POST:/sys/i18n/remove/{i18nKey}',
+    name = 'POST:/sys/i18n/remove/{i18nKey}',
+    target_identifier = '/sys/i18n/remove/{i18nKey}'
+WHERE code = 'POST:/sys/i18n/remove';
+
 INSERT INTO az_permission (create_time, code, name, target_identifier, target_qualifier, public_access)
 SELECT NOW(), 'POST:/sys/i18n/bundle', 'POST:/sys/i18n/bundle', '/sys/i18n/bundle', 'POST', 0
 WHERE NOT EXISTS (SELECT 1 FROM az_permission WHERE code = 'POST:/sys/i18n/bundle');
@@ -151,23 +163,23 @@ INSERT INTO az_permission (create_time, code, name, target_identifier, target_qu
 SELECT NOW(), 'POST:/sys/i18n/page', 'POST:/sys/i18n/page', '/sys/i18n/page', 'POST', 0
 WHERE NOT EXISTS (SELECT 1 FROM az_permission WHERE code = 'POST:/sys/i18n/page');
 INSERT INTO az_permission (create_time, code, name, target_identifier, target_qualifier, public_access)
-SELECT NOW(), 'POST:/sys/i18n/values', 'POST:/sys/i18n/values', '/sys/i18n/values', 'POST', 0
-WHERE NOT EXISTS (SELECT 1 FROM az_permission WHERE code = 'POST:/sys/i18n/values');
+SELECT NOW(), 'POST:/sys/i18n/values/{i18nKey}', 'POST:/sys/i18n/values/{i18nKey}', '/sys/i18n/values/{i18nKey}', 'POST', 0
+WHERE NOT EXISTS (SELECT 1 FROM az_permission WHERE code = 'POST:/sys/i18n/values/{i18nKey}');
 INSERT INTO az_permission (create_time, code, name, target_identifier, target_qualifier, public_access)
 SELECT NOW(), 'POST:/sys/i18n/save', 'POST:/sys/i18n/save', '/sys/i18n/save', 'POST', 0
 WHERE NOT EXISTS (SELECT 1 FROM az_permission WHERE code = 'POST:/sys/i18n/save');
 INSERT INTO az_permission (create_time, code, name, target_identifier, target_qualifier, public_access)
-SELECT NOW(), 'POST:/sys/i18n/remove', 'POST:/sys/i18n/remove', '/sys/i18n/remove', 'POST', 0
-WHERE NOT EXISTS (SELECT 1 FROM az_permission WHERE code = 'POST:/sys/i18n/remove');
+SELECT NOW(), 'POST:/sys/i18n/remove/{i18nKey}', 'POST:/sys/i18n/remove/{i18nKey}', '/sys/i18n/remove/{i18nKey}', 'POST', 0
+WHERE NOT EXISTS (SELECT 1 FROM az_permission WHERE code = 'POST:/sys/i18n/remove/{i18nKey}');
 
 UPDATE az_permission
 SET public_access = 0
 WHERE code IN (
     'POST:/sys/i18n/bundle',
     'POST:/sys/i18n/page',
-    'POST:/sys/i18n/values',
+    'POST:/sys/i18n/values/{i18nKey}',
     'POST:/sys/i18n/save',
-    'POST:/sys/i18n/remove'
+    'POST:/sys/i18n/remove/{i18nKey}'
 );
 
 SET @admin_role_id := (
@@ -198,9 +210,9 @@ SELECT 0, NOW(), NULL, @i18n_manager_role_id, p.id
 FROM az_permission p
 WHERE p.code IN (
     'POST:/sys/i18n/page',
-    'POST:/sys/i18n/values',
+    'POST:/sys/i18n/values/{i18nKey}',
     'POST:/sys/i18n/save',
-    'POST:/sys/i18n/remove'
+    'POST:/sys/i18n/remove/{i18nKey}'
 )
   AND @i18n_manager_role_id IS NOT NULL
   AND NOT EXISTS (

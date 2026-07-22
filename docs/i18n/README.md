@@ -356,11 +356,12 @@ public record ProfileDto(
 自定义的 `FieldError` 只是 `R.data` 中的数据类型，不是对 `R` 增加字段：
 
 ```java
-public record FieldError(
-        String field,
-        String code,
-        String message
-) {
+@Data
+@AllArgsConstructor
+public class FieldError {
+    private String field;
+    private String code;
+    private String message;
 }
 ```
 
@@ -375,7 +376,7 @@ List<FieldError> fieldErrors = bindingResult.getFieldErrors().stream()
         .toList();
 
 String error = fieldErrors.stream()
-        .map(FieldError::message)
+        .map(FieldError::getMessage)
         .findFirst()
         .orElse(i18nMessageService.get("validation.argument.invalid"));
 
@@ -493,14 +494,14 @@ Profile   -> menu.profile.title
 ```http
 POST /sys/i18n/bundle
 POST /sys/i18n/page
-POST /sys/i18n/values
+POST /sys/i18n/values/{i18nKey}
 POST /sys/i18n/save
-POST /sys/i18n/remove
+POST /sys/i18n/remove/{i18nKey}
 ```
 
 接口命名沿用当前 RBAC 模块的动词路径风格，例如 `/tree`、`/page`、`/save`、`/remove`，不强制采用 REST 资源风格。
 
-`POST /sys/i18n/values` 表示“按 key 查询各语言值”，比 `/get` 更明确：
+`POST /sys/i18n/values/{i18nKey}` 表示“按 key 查询各语言值”，比 `/get` 更明确。`i18nKey` 作为路径参数传递，请求不包含请求体：
 
 ```json
 {
@@ -541,7 +542,7 @@ POST /sys/i18n/remove
 
 `previousKey` 可选：有值且与 `i18nKey` 不同时，旧 key 必须存在且新 key 必须不存在，然后执行上述 key 迁移；没有值或与 `i18nKey` 相同时，直接保存 `i18nKey`。
 
-`POST /sys/i18n/remove` 只接受 `i18nKey`，物理删除该 key 在当前 `client` 下的全部语种记录；不支持指定语种删除。单语种删除统一通过 `POST /sys/i18n/save` 提交空白值完成。该接口使用幂等语义：目标 key 原本不存在时仍返回成功，不因重复点击、请求重试或列表数据过期返回额外错误。
+`POST /sys/i18n/remove/{i18nKey}` 通过路径参数接受 `i18nKey`，请求不包含请求体；物理删除该 key 在当前 `client` 下的全部语种记录，不支持指定语种删除。单语种删除统一通过 `POST /sys/i18n/save` 提交空白值完成。该接口使用幂等语义：目标 key 原本不存在时仍返回成功，不因重复点击、请求重试或列表数据过期返回额外错误。
 
 管理列表 `POST /sys/i18n/page` 支持以下查询参数：
 
@@ -708,9 +709,9 @@ interface I18nMessageInputExpose {
 
 ```text
 POST /sys/i18n/page
-POST /sys/i18n/values
+POST /sys/i18n/values/{i18nKey}
 POST /sys/i18n/save
-POST /sys/i18n/remove
+POST /sys/i18n/remove/{i18nKey}
 ```
 
 新增和编辑共用 `I18nMessageInput`，固定使用 `load` 模式，不把 `/page` 返回的 `values` 传给组件 `data`。列表数据只用于表格展示；编辑打开时，组件以当前 `i18nKey` 调用一次 `/values` 获取最新数据。新增时 `i18nKey` 为空，不调用 `load`，页面可以通过 `presetKey` 预填 key 草稿。
@@ -733,7 +734,7 @@ System（CATALOG）
 权限按使用目的分开：
 
 - `/sys/i18n/bundle` 为非公开接口，授予内置 `admin` 基线角色，供所有已登录管理端加载动态语言包。
-- `/sys/i18n/page`、`/sys/i18n/values`、`/sys/i18n/save` 和 `/sys/i18n/remove` 均为非公开接口，只授予新增的 `i18n-manager` 角色。
+- `/sys/i18n/page`、`/sys/i18n/values/{i18nKey}`、`/sys/i18n/save` 和 `/sys/i18n/remove/{i18nKey}` 均为非公开接口，只授予新增的 `i18n-manager` 角色。
 - `System` 目录和 `/system/i18n` 子菜单都绑定 `i18n-manager` 角色，满足菜单层级闭包；后续系统管理页面可以复用该目录。
 - `i18n-manager` 是 `built_in = 1` 的内置角色，角色代码和角色本身不可修改、删除；用户、菜单和权限关系仍按现有 RBAC 机制维护。
 - 初始化脚本恢复该角色及其默认菜单、权限关系，并只为默认 `admin` 账号恢复初始绑定；其他后台管理员不会自动获得国际化配置维护权限。

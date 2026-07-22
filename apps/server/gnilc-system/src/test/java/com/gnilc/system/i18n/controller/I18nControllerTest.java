@@ -5,10 +5,10 @@ import com.gnilc.common.exception.InvalidArgumentException;
 import com.gnilc.common.exception.RestExceptionHandlingConfiguration;
 import com.gnilc.common.i18n.I18nMessageService;
 import com.gnilc.system.i18n.entity.dto.I18nPageDto;
-import com.gnilc.system.i18n.entity.dto.I18nSaveDto;
-import com.gnilc.system.i18n.entity.vo.I18nMessageValueVo;
-import com.gnilc.system.i18n.entity.vo.I18nMessageVo;
-import com.gnilc.system.i18n.entity.vo.I18nPageVo;
+import com.gnilc.system.i18n.entity.dto.I18nDto;
+import com.gnilc.system.i18n.entity.vo.I18nValueVo;
+import com.gnilc.system.i18n.entity.vo.I18nValuesVo;
+import com.gnilc.system.i18n.entity.vo.I18nItemVo;
 import com.gnilc.system.i18n.service.I18nService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -61,12 +61,12 @@ class I18nControllerTest {
 
     @Test
     void readRoutesReturnGroupedMessagesForRequestClient() throws Exception {
-        I18nMessageVo message = message("menu.dashboard.title", "首页", "Dashboard");
+        I18nValuesVo message = message("menu.dashboard.title", "首页", "Dashboard");
         when(service.getBundle("admin"))
                 .thenReturn(Map.of("zh-CN", Map.of("menu", Map.of("title", "首页"))));
         when(service.getPage(eq("admin"), any(I18nPageDto.class)))
                 .thenReturn(new PageResult<>(
-                        List.of(new I18nPageVo("admin", message.getI18nKey(), message.getValues())),
+                        List.of(new I18nItemVo("admin", message.getI18nKey(), message.getValues())),
                         1,
                         10,
                         1));
@@ -82,10 +82,8 @@ class I18nControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.list[0].client").value("admin"))
                 .andExpect(jsonPath("$.data.list[0].values[1].locale").value("en-US"));
-        mvc.perform(post("/sys/i18n/values")
-                        .header("X-Client", "admin")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"i18nKey\":\"menu.dashboard.title\"}"))
+        mvc.perform(post("/sys/i18n/values/menu.dashboard.title")
+                        .header("X-Client", "admin"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.i18nKey").value("menu.dashboard.title"));
 
@@ -95,8 +93,8 @@ class I18nControllerTest {
 
     @Test
     void saveAndRemoveRoutesDelegateUnifiedCommands() throws Exception {
-        I18nMessageVo saved = message("menu.home.title", "首页", "Home");
-        when(service.saveMessage(eq("admin"), any(I18nSaveDto.class))).thenReturn(saved);
+        I18nValuesVo saved = message("menu.home.title", "首页", "Home");
+        when(service.saveMessage(eq("admin"), any(I18nDto.class))).thenReturn(saved);
 
         mvc.perform(post("/sys/i18n/save")
                         .header("X-Client", "admin")
@@ -110,14 +108,12 @@ class I18nControllerTest {
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.i18nKey").value("menu.home.title"));
-        mvc.perform(post("/sys/i18n/remove")
-                        .header("X-Client", "admin")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"i18nKey\":\"menu.home.title\"}"))
+        mvc.perform(post("/sys/i18n/remove/menu.home.title")
+                        .header("X-Client", "admin"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0));
 
-        verify(service).saveMessage(eq("admin"), any(I18nSaveDto.class));
+        verify(service).saveMessage(eq("admin"), any(I18nDto.class));
         verify(service).removeMessage("admin", "menu.home.title");
     }
 
@@ -153,7 +149,7 @@ class I18nControllerTest {
                 .andExpect(jsonPath("$.code").value(10001))
                 .andExpect(jsonPath("$.error").value("请求体格式错误。"));
 
-        when(service.saveMessage(eq("admin"), any(I18nSaveDto.class)))
+        when(service.saveMessage(eq("admin"), any(I18nDto.class)))
                 .thenThrow(new InvalidArgumentException("invalid key"));
         mvc.perform(post("/sys/i18n/save")
                         .header("X-Client", "admin")
@@ -164,9 +160,9 @@ class I18nControllerTest {
                 .andExpect(jsonPath("$.error").value("invalid key"));
     }
 
-    private I18nMessageVo message(String key, String zhCn, String enUs) {
-        return new I18nMessageVo(key, List.of(
-                new I18nMessageValueVo("zh-CN", zhCn),
-                new I18nMessageValueVo("en-US", enUs)));
+    private I18nValuesVo message(String key, String zhCn, String enUs) {
+        return new I18nValuesVo(key, List.of(
+                new I18nValueVo("zh-CN", zhCn),
+                new I18nValueVo("en-US", enUs)));
     }
 }

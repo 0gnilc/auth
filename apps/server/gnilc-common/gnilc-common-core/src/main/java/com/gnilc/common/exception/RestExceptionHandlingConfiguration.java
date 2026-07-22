@@ -73,7 +73,7 @@ public class RestExceptionHandlingConfiguration {
                             error.getDefaultMessage()))
                     .toList();
             String message = fieldErrors.stream()
-                    .map(FieldError::message)
+                    .map(FieldError::getMessage)
                     .filter(value -> value != null && !value.isBlank())
                     .findFirst()
                     .orElse(i18nMessageService.get("validation.argument.invalid"));

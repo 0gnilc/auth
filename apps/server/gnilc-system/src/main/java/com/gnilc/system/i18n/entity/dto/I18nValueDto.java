@@ -8,7 +8,7 @@ import lombok.Data;
  * 单个语种的国际化值。
  */
 @Data
-public class I18nMessageValueDto {
+public class I18nValueDto {
 
     @NotBlank(message = "{system.i18n.locale.required}")
     private String locale;

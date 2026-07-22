@@ -123,9 +123,9 @@ class I18nSchemaIT {
                  WHERE r.code = 'i18n-manager'
                    AND p.code IN (
                        'POST:/sys/i18n/page',
-                       'POST:/sys/i18n/values',
+                       'POST:/sys/i18n/values/{i18nKey}',
                        'POST:/sys/i18n/save',
-                       'POST:/sys/i18n/remove')
+                       'POST:/sys/i18n/remove/{i18nKey}')
                    AND rp.del = 0
                 """, Integer.class)).isEqualTo(4);
     }

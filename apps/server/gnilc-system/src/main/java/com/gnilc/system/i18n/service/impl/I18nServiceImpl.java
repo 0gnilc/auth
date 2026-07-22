@@ -10,12 +10,12 @@ import com.gnilc.common.utils.PageResult;
 import com.gnilc.system.i18n.I18nConstants;
 import com.gnilc.system.i18n.dao.I18nDao;
 import com.gnilc.system.i18n.entity.bo.I18nBo;
-import com.gnilc.system.i18n.entity.dto.I18nMessageValueDto;
+import com.gnilc.system.i18n.entity.dto.I18nValueDto;
 import com.gnilc.system.i18n.entity.dto.I18nPageDto;
-import com.gnilc.system.i18n.entity.dto.I18nSaveDto;
-import com.gnilc.system.i18n.entity.vo.I18nMessageValueVo;
-import com.gnilc.system.i18n.entity.vo.I18nMessageVo;
-import com.gnilc.system.i18n.entity.vo.I18nPageVo;
+import com.gnilc.system.i18n.entity.dto.I18nDto;
+import com.gnilc.system.i18n.entity.vo.I18nValueVo;
+import com.gnilc.system.i18n.entity.vo.I18nValuesVo;
+import com.gnilc.system.i18n.entity.vo.I18nItemVo;
 import com.gnilc.system.i18n.service.I18nService;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
@@ -67,7 +67,7 @@ public class I18nServiceImpl extends ServiceImpl<I18nDao, I18nBo> implements I18
     }
 
     @Override
-    public PageResult<I18nPageVo> getPage(String client, I18nPageDto dto) {
+    public PageResult<I18nItemVo> getPage(String client, I18nPageDto dto) {
         String targetClient = requireClient(client);
         I18nPageDto query = dto == null ? new I18nPageDto() : dto;
         if (StringUtils.isNotBlank(query.getClient())) {
@@ -98,8 +98,8 @@ public class I18nServiceImpl extends ServiceImpl<I18nDao, I18nBo> implements I18
                 .list()
                 .stream()
                 .collect(Collectors.groupingBy(I18nBo::getI18nKey));
-        List<I18nPageVo> items = keys.stream()
-                .map(key -> new I18nPageVo(
+        List<I18nItemVo> items = keys.stream()
+                .map(key -> new I18nItemVo(
                         targetClient,
                         key,
                         toValues(rowsByKey.getOrDefault(key, List.of()))))
@@ -108,16 +108,16 @@ public class I18nServiceImpl extends ServiceImpl<I18nDao, I18nBo> implements I18
     }
 
     @Override
-    public I18nMessageVo getValues(String client, String i18nKey) {
+    public I18nValuesVo getValues(String client, String i18nKey) {
         String targetClient = requireClient(client);
         String targetKey = requireKey(i18nKey);
         List<I18nBo> rows = findRows(targetClient, targetKey);
-        return rows.isEmpty() ? null : new I18nMessageVo(targetKey, toValues(rows));
+        return rows.isEmpty() ? null : new I18nValuesVo(targetKey, toValues(rows));
     }
 
     @Transactional
     @Override
-    public I18nMessageVo saveMessage(String client, I18nSaveDto dto) {
+    public I18nValuesVo saveMessage(String client, I18nDto dto) {
         String targetClient = requireClient(client);
         Preconditions.checkArgument(dto != null, messages.get("system.i18n.message.required"));
         String targetKey = requireKey(dto.getI18nKey());
@@ -125,7 +125,7 @@ public class I18nServiceImpl extends ServiceImpl<I18nDao, I18nBo> implements I18
         if (previousKey != null) {
             previousKey = requireKey(previousKey);
         }
-        List<I18nMessageValueDto> submittedValues = validateValues(dto.getValues());
+        List<I18nValueDto> submittedValues = validateValues(dto.getValues());
         boolean migrating = previousKey != null && !previousKey.equals(targetKey);
 
         List<I18nBo> sourceRows = findRows(targetClient, migrating ? previousKey : targetKey);
@@ -157,7 +157,7 @@ public class I18nServiceImpl extends ServiceImpl<I18nDao, I18nBo> implements I18
         } else {
             persistRows(targetClient, targetKey, sourceRows, mergedValues);
         }
-        return new I18nMessageVo(targetKey, toValues(mergedValues));
+        return new I18nValuesVo(targetKey, toValues(mergedValues));
     }
 
     @Transactional
@@ -198,12 +198,12 @@ public class I18nServiceImpl extends ServiceImpl<I18nDao, I18nBo> implements I18
         return locale;
     }
 
-    private List<I18nMessageValueDto> validateValues(List<I18nMessageValueDto> values) {
+    private List<I18nValueDto> validateValues(List<I18nValueDto> values) {
         if (values == null) {
             return List.of();
         }
         Set<String> locales = new HashSet<>();
-        for (I18nMessageValueDto value : values) {
+        for (I18nValueDto value : values) {
             Preconditions.checkArgument(value != null, messages.get("system.i18n.value.required"));
             String locale = requireLocale(value.getLocale());
             Preconditions.checkArgument(locales.add(locale),
@@ -241,8 +241,8 @@ public class I18nServiceImpl extends ServiceImpl<I18nDao, I18nBo> implements I18
                 .list();
     }
 
-    private void applyValues(Map<String, String> values, List<I18nMessageValueDto> submittedValues) {
-        for (I18nMessageValueDto submitted : submittedValues) {
+    private void applyValues(Map<String, String> values, List<I18nValueDto> submittedValues) {
+        for (I18nValueDto submitted : submittedValues) {
             if (StringUtils.isBlank(submitted.getValue())) {
                 values.remove(submitted.getLocale());
             } else {
@@ -292,7 +292,7 @@ public class I18nServiceImpl extends ServiceImpl<I18nDao, I18nBo> implements I18
         return row;
     }
 
-    private List<I18nMessageValueVo> toValues(Collection<I18nBo> rows) {
+    private List<I18nValueVo> toValues(Collection<I18nBo> rows) {
         Map<String, String> values = rows.stream().collect(Collectors.toMap(
                 I18nBo::getLocale,
                 I18nBo::getI18nValue,
@@ -300,10 +300,10 @@ public class I18nServiceImpl extends ServiceImpl<I18nDao, I18nBo> implements I18
         return toValues(values);
     }
 
-    private List<I18nMessageValueVo> toValues(Map<String, String> values) {
+    private List<I18nValueVo> toValues(Map<String, String> values) {
         return SupportedLocale.codes().stream()
                 .filter(values::containsKey)
-                .map(locale -> new I18nMessageValueVo(locale, values.get(locale)))
+                .map(locale -> new I18nValueVo(locale, values.get(locale)))
                 .toList();
     }
 

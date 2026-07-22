@@ -3,13 +3,13 @@ package com.gnilc.system.i18n.controller;
 import com.gnilc.common.utils.PageResult;
 import com.gnilc.common.utils.R;
 import com.gnilc.system.i18n.I18nConstants;
-import com.gnilc.system.i18n.entity.dto.I18nKeyDto;
+import com.gnilc.system.i18n.entity.dto.I18nDto;
 import com.gnilc.system.i18n.entity.dto.I18nPageDto;
-import com.gnilc.system.i18n.entity.dto.I18nSaveDto;
-import com.gnilc.system.i18n.entity.vo.I18nMessageVo;
-import com.gnilc.system.i18n.entity.vo.I18nPageVo;
+import com.gnilc.system.i18n.entity.vo.I18nItemVo;
+import com.gnilc.system.i18n.entity.vo.I18nValuesVo;
 import com.gnilc.system.i18n.service.I18nService;
 import jakarta.validation.Valid;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -35,31 +35,31 @@ public class I18nController {
     }
 
     @PostMapping("/page")
-    public R<PageResult<I18nPageVo>> getPage(
+    public R<PageResult<I18nItemVo>> getPage(
             @RequestHeader(value = I18nConstants.CLIENT_HEADER, required = false) String client,
             @RequestBody(required = false) I18nPageDto dto) {
         return R.success(i18nService.getPage(client, dto));
     }
 
-    @PostMapping("/values")
-    public R<I18nMessageVo> getValues(
+    @PostMapping("/values/{i18nKey}")
+    public R<I18nValuesVo> getValues(
             @RequestHeader(value = I18nConstants.CLIENT_HEADER, required = false) String client,
-            @Valid @RequestBody I18nKeyDto dto) {
-        return R.success(i18nService.getValues(client, dto.getI18nKey()));
+            @PathVariable("i18nKey") String i18nKey) {
+        return R.success(i18nService.getValues(client, i18nKey));
     }
 
     @PostMapping("/save")
-    public R<I18nMessageVo> saveMessage(
+    public R<I18nValuesVo> saveMessage(
             @RequestHeader(value = I18nConstants.CLIENT_HEADER, required = false) String client,
-            @Valid @RequestBody I18nSaveDto dto) {
+            @Valid @RequestBody I18nDto dto) {
         return R.success(i18nService.saveMessage(client, dto));
     }
 
-    @PostMapping("/remove")
+    @PostMapping("/remove/{i18nKey}")
     public R<?> removeMessage(
             @RequestHeader(value = I18nConstants.CLIENT_HEADER, required = false) String client,
-            @Valid @RequestBody I18nKeyDto dto) {
-        i18nService.removeMessage(client, dto.getI18nKey());
+            @PathVariable("i18nKey") String i18nKey) {
+        i18nService.removeMessage(client, i18nKey);
         return R.success();
     }
 }

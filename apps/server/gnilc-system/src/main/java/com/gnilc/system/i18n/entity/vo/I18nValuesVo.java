@@ -10,7 +10,7 @@ import java.util.List;
  */
 @Data
 @AllArgsConstructor
-public class I18nMessageVo {
+public class I18nValuesVo {
     private String i18nKey;
-    private List<I18nMessageValueVo> values;
+    private List<I18nValueVo> values;
 }

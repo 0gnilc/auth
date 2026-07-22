@@ -10,8 +10,8 @@ import java.util.List;
  */
 @Data
 @AllArgsConstructor
-public class I18nPageVo {
+public class I18nItemVo {
     private String client;
     private String i18nKey;
-    private List<I18nMessageValueVo> values;
+    private List<I18nValueVo> values;
 }

@@ -8,7 +8,7 @@ import lombok.Data;
  */
 @Data
 @AllArgsConstructor
-public class I18nMessageValueVo {
+public class I18nValueVo {
     private String locale;
     private String value;
 }

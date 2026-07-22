@@ -83,9 +83,16 @@ class I18nApiIT extends AdminApiTestSupport {
         given()
                 .header("Authorization", auth)
                 .header("X-Client", "admin")
-                .contentType(ContentType.JSON)
-                .body("{\"i18nKey\":\"api.message.heading\"}")
-                .post("/api/sys/i18n/remove")
+                .post("/api/sys/i18n/values/api.message.heading")
+                .then()
+                .statusCode(200)
+                .body("code", equalTo(0))
+                .body("data.i18nKey", equalTo("api.message.heading"));
+
+        given()
+                .header("Authorization", auth)
+                .header("X-Client", "admin")
+                .post("/api/sys/i18n/remove/api.message.heading")
                 .then()
                 .statusCode(200)
                 .body("code", equalTo(0));
@@ -147,5 +154,28 @@ class I18nApiIT extends AdminApiTestSupport {
                 .statusCode(200)
                 .body("code", equalTo(10001))
                 .body("error", equalTo("Client unknown is not supported."));
+    }
+
+    @Test
+    void pathKeysUseTheExistingServiceValidationAndErrorEnvelope() {
+        String auth = bearer(loginAsDefaultAdmin().accessToken());
+
+        given()
+                .header("Authorization", auth)
+                .header("X-Client", "admin")
+                .post("/api/sys/i18n/values/menu..title")
+                .then()
+                .statusCode(200)
+                .body("code", equalTo(10001))
+                .body("error", equalTo("国际化 key 必须使用合法的点分路径。"));
+
+        given()
+                .header("Authorization", auth)
+                .header("X-Client", "admin")
+                .post("/api/sys/i18n/remove/{i18nKey}", "a".repeat(192))
+                .then()
+                .statusCode(200)
+                .body("code", equalTo(10001))
+                .body("error", equalTo("国际化 key 长度不能超过 191 个字符。"));
     }
 }

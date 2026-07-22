@@ -8,8 +8,8 @@ import com.gnilc.common.exception.InvalidArgumentException;
 import com.gnilc.common.i18n.I18nMessageService;
 import com.gnilc.system.i18n.dao.I18nDao;
 import com.gnilc.system.i18n.entity.bo.I18nBo;
-import com.gnilc.system.i18n.entity.dto.I18nMessageValueDto;
-import com.gnilc.system.i18n.entity.dto.I18nSaveDto;
+import com.gnilc.system.i18n.entity.dto.I18nValueDto;
+import com.gnilc.system.i18n.entity.dto.I18nDto;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -70,7 +70,7 @@ class I18nServiceImplTest {
 
     @Test
     void saveRejectsInvalidInputBeforeDatabaseAccess() {
-        I18nSaveDto duplicateLocales = save("menu.home.title",
+        I18nDto duplicateLocales = save("menu.home.title",
                 value("zh-CN", "首页"), value("zh-CN", "主页"));
 
         assertThatThrownBy(() -> service.saveMessage("admin", duplicateLocales))
@@ -91,15 +91,15 @@ class I18nServiceImplTest {
         return row;
     }
 
-    private I18nSaveDto save(String key, I18nMessageValueDto... values) {
-        I18nSaveDto dto = new I18nSaveDto();
+    private I18nDto save(String key, I18nValueDto... values) {
+        I18nDto dto = new I18nDto();
         dto.setI18nKey(key);
         dto.setValues(List.of(values));
         return dto;
     }
 
-    private I18nMessageValueDto value(String locale, String value) {
-        I18nMessageValueDto dto = new I18nMessageValueDto();
+    private I18nValueDto value(String locale, String value) {
+        I18nValueDto dto = new I18nValueDto();
         dto.setLocale(locale);
         dto.setValue(value);
         return dto;

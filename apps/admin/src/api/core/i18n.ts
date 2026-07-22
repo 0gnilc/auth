@@ -43,9 +43,9 @@ export async function getI18nPage(
 }
 
 export async function getI18nValues(i18nKey: string) {
-  return requestClient.post<I18nApi.Message | null>('/sys/i18n/values', {
-    i18nKey,
-  });
+  return requestClient.post<I18nApi.Message | null>(
+    `/sys/i18n/values/${encodeURIComponent(i18nKey)}`,
+  );
 }
 
 export async function saveI18nMessage(input: I18nApi.SaveInput) {
@@ -53,5 +53,7 @@ export async function saveI18nMessage(input: I18nApi.SaveInput) {
 }
 
 export async function removeI18nMessage(i18nKey: string) {
-  return requestClient.post<null>('/sys/i18n/remove', { i18nKey });
+  return requestClient.post<null>(
+    `/sys/i18n/remove/${encodeURIComponent(i18nKey)}`,
+  );
 }

@@ -1,9 +1,9 @@
 package com.gnilc.system.i18n.service.impl;
 
 import com.gnilc.common.exception.IllegalConditionException;
-import com.gnilc.system.i18n.entity.dto.I18nMessageValueDto;
+import com.gnilc.system.i18n.entity.dto.I18nValueDto;
 import com.gnilc.system.i18n.entity.dto.I18nPageDto;
-import com.gnilc.system.i18n.entity.dto.I18nSaveDto;
+import com.gnilc.system.i18n.entity.dto.I18nDto;
 import com.gnilc.system.i18n.service.I18nService;
 import com.gnilc.system.support.SystemContainerContextInitializer;
 import com.gnilc.system.support.SystemTestApplication;
@@ -108,19 +108,19 @@ class I18nServiceIT {
                 .isInstanceOf(IllegalConditionException.class);
     }
 
-    private I18nSaveDto save(
+    private I18nDto save(
             String key,
             String previousKey,
-            I18nMessageValueDto... values) {
-        I18nSaveDto dto = new I18nSaveDto();
+            I18nValueDto... values) {
+        I18nDto dto = new I18nDto();
         dto.setI18nKey(key);
         dto.setPreviousKey(previousKey);
         dto.setValues(List.of(values));
         return dto;
     }
 
-    private I18nMessageValueDto value(String locale, String value) {
-        I18nMessageValueDto dto = new I18nMessageValueDto();
+    private I18nValueDto value(String locale, String value) {
+        I18nValueDto dto = new I18nValueDto();
         dto.setLocale(locale);
         dto.setValue(value);
         return dto;
