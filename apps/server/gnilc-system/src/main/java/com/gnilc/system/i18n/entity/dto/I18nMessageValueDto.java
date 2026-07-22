@@ -5,10 +5,10 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 /**
- * 单个语种的国际化值。
+ * 单个语种的国际化消息值。
  */
 @Data
-public class I18nValueDto {
+public class I18nMessageValueDto {
 
     @NotBlank(message = "{system.i18n.locale.required}")
     private String locale;

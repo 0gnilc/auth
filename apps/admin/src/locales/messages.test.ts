@@ -7,7 +7,7 @@ describe('internationalization message composition', () => {
     const databaseMessages = {
       menu: {
         dashboard: { title: 'Database dashboard' },
-        i18n: { title: 'Database i18n' },
+        i18nMessage: { title: 'Database i18n message' },
       },
     };
     const localMessages = {
@@ -19,7 +19,7 @@ describe('internationalization message composition', () => {
     expect(mergeMessages(databaseMessages, localMessages)).toEqual({
       menu: {
         dashboard: { title: 'Local dashboard' },
-        i18n: { title: 'Database i18n' },
+        i18nMessage: { title: 'Database i18n message' },
       },
     });
   });
@@ -49,8 +49,8 @@ describe('internationalization message composition', () => {
     collectLeafKeys(
       {
         page: {
-          i18n: {
-            title: 'Internationalization',
+          i18nMessage: {
+            title: 'I18n Messages',
           },
         },
       },
@@ -58,6 +58,6 @@ describe('internationalization message composition', () => {
       keys,
     );
 
-    expect([...keys]).toEqual(['page.i18n.title']);
+    expect([...keys]).toEqual(['page.i18nMessage.title']);
   });
 });

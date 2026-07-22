@@ -47,8 +47,8 @@
     "accessCodes": "Button Access Codes",
     "emptyAccessCodes": "No button access codes"
   },
-  "i18n": {
-    "title": "Internationalization",
+  "i18nMessage": {
+    "title": "I18n Messages",
     "filters": {
       "key": "Internationalization key",
       "keyPlaceholder": "Search by key",

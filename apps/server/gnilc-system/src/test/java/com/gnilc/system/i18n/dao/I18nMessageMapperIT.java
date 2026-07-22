@@ -1,6 +1,6 @@
 package com.gnilc.system.i18n.dao;
 
-import com.gnilc.system.i18n.entity.bo.I18nBo;
+import com.gnilc.system.i18n.entity.bo.I18nMessageBo;
 import com.gnilc.system.support.SystemContainerContextInitializer;
 import com.gnilc.system.support.SystemTestApplication;
 import org.junit.jupiter.api.Test;
@@ -19,16 +19,16 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @ActiveProfiles("test")
 @ContextConfiguration(initializers = SystemContainerContextInitializer.class)
 @Transactional
-class I18nMapperIT {
+class I18nMessageMapperIT {
 
     @Autowired
-    private I18nDao messages;
+    private I18nMessageDao messages;
     @Autowired
     private JdbcTemplate jdbc;
 
     @Test
     void mappingUsesCaseSensitiveUniqueKeyAutoFillAndPhysicalDelete() {
-        I18nBo lower = message("test.mapper.title", "zh-CN", "标题");
+        I18nMessageBo lower = message("test.mapper.title", "zh-CN", "标题");
         messages.insert(lower);
         messages.insert(message("test.Mapper.title", "zh-CN", "大写标题"));
 
@@ -44,8 +44,8 @@ class I18nMapperIT {
                 .isZero();
     }
 
-    private I18nBo message(String key, String locale, String value) {
-        I18nBo row = new I18nBo();
+    private I18nMessageBo message(String key, String locale, String value) {
+        I18nMessageBo row = new I18nMessageBo();
         row.setClient("admin");
         row.setI18nKey(key);
         row.setLocale(locale);

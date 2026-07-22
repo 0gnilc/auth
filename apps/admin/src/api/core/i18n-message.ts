@@ -2,7 +2,7 @@ import type { PageParams, PageResult } from '#/api/types';
 
 import { requestClient } from '#/api/request';
 
-export namespace I18nApi {
+export namespace I18nMessageApi {
   export interface MessageValue {
     locale: string;
     value: string;
@@ -24,11 +24,11 @@ export namespace I18nApi {
   };
 }
 
-export async function getI18nBundle() {
-  return requestClient.post<I18nApi.Bundle>('/sys/i18n/bundle');
+export async function getI18nMessageBundle() {
+  return requestClient.post<I18nMessageApi.Bundle>('/sys/i18n-message/bundle');
 }
 
-export async function getI18nPage(
+export async function getI18nMessagePage(
   params?: PageParams & {
     client?: string;
     key?: string;
@@ -36,24 +36,27 @@ export async function getI18nPage(
     value?: string;
   },
 ) {
-  return requestClient.post<PageResult<I18nApi.PageItem>>(
-    '/sys/i18n/page',
+  return requestClient.post<PageResult<I18nMessageApi.PageItem>>(
+    '/sys/i18n-message/page',
     params,
   );
 }
 
-export async function getI18nValues(i18nKey: string) {
-  return requestClient.post<I18nApi.Message | null>(
-    `/sys/i18n/values/${encodeURIComponent(i18nKey)}`,
+export async function getI18nMessageValues(i18nKey: string) {
+  return requestClient.post<I18nMessageApi.Message | null>(
+    `/sys/i18n-message/values/${encodeURIComponent(i18nKey)}`,
   );
 }
 
-export async function saveI18nMessage(input: I18nApi.SaveInput) {
-  return requestClient.post<I18nApi.Message>('/sys/i18n/save', input);
+export async function saveI18nMessage(input: I18nMessageApi.SaveInput) {
+  return requestClient.post<I18nMessageApi.Message>(
+    '/sys/i18n-message/save',
+    input,
+  );
 }
 
 export async function removeI18nMessage(i18nKey: string) {
   return requestClient.post<null>(
-    `/sys/i18n/remove/${encodeURIComponent(i18nKey)}`,
+    `/sys/i18n-message/remove/${encodeURIComponent(i18nKey)}`,
   );
 }

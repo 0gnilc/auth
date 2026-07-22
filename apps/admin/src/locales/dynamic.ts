@@ -1,4 +1,4 @@
-import { getI18nBundle } from '#/api/core/i18n';
+import { getI18nMessageBundle } from '#/api/core/i18n-message';
 
 import { applyDynamicMessages } from './index';
 
@@ -6,7 +6,7 @@ let loaded = false;
 let loading: null | Promise<void> = null;
 
 async function reloadDynamicMessages() {
-  const bundle = await getI18nBundle();
+  const bundle = await getI18nMessageBundle();
   await applyDynamicMessages(bundle);
   loaded = true;
 }

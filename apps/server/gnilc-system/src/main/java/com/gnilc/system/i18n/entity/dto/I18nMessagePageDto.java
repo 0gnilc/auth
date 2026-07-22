@@ -9,7 +9,7 @@ import lombok.EqualsAndHashCode;
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
-public class I18nPageDto extends PageParams {
+public class I18nMessagePageDto extends PageParams {
     private String key;
     private String value;
     private String client;

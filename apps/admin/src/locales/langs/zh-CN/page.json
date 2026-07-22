@@ -47,8 +47,8 @@
     "accessCodes": "按钮访问码",
     "emptyAccessCodes": "暂无按钮访问码"
   },
-  "i18n": {
-    "title": "国际化管理",
+  "i18nMessage": {
+    "title": "国际化消息管理",
     "filters": {
       "key": "国际化 key",
       "keyPlaceholder": "按 key 模糊查询",

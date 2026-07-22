@@ -23,7 +23,7 @@ import static org.hamcrest.Matchers.hasSize;
 @ContextConfiguration(
         classes = SystemTestApplication.class,
         initializers = SystemContainerContextInitializer.class)
-class I18nApiIT extends AdminApiTestSupport {
+class I18nMessageApiIT extends AdminApiTestSupport {
 
     @Autowired
     private JdbcTemplate jdbc;
@@ -38,7 +38,7 @@ class I18nApiIT extends AdminApiTestSupport {
         given()
                 .header("Authorization", auth)
                 .header("X-Client", "admin")
-                .post("/api/sys/i18n/bundle")
+                .post("/api/sys/i18n-message/bundle")
                 .then()
                 .statusCode(200)
                 .body("code", equalTo(0))
@@ -57,7 +57,7 @@ class I18nApiIT extends AdminApiTestSupport {
                           ]
                         }
                         """)
-                .post("/api/sys/i18n/save")
+                .post("/api/sys/i18n-message/save")
                 .then()
                 .statusCode(200)
                 .body("code", equalTo(0))
@@ -74,7 +74,7 @@ class I18nApiIT extends AdminApiTestSupport {
                           "values":[{"locale":"zh-CN","value":"接口标题"}]
                         }
                         """)
-                .post("/api/sys/i18n/save")
+                .post("/api/sys/i18n-message/save")
                 .then()
                 .statusCode(200)
                 .body("data.i18nKey", equalTo("api.message.heading"))
@@ -83,7 +83,7 @@ class I18nApiIT extends AdminApiTestSupport {
         given()
                 .header("Authorization", auth)
                 .header("X-Client", "admin")
-                .post("/api/sys/i18n/values/api.message.heading")
+                .post("/api/sys/i18n-message/values/api.message.heading")
                 .then()
                 .statusCode(200)
                 .body("code", equalTo(0))
@@ -92,7 +92,7 @@ class I18nApiIT extends AdminApiTestSupport {
         given()
                 .header("Authorization", auth)
                 .header("X-Client", "admin")
-                .post("/api/sys/i18n/remove/api.message.heading")
+                .post("/api/sys/i18n-message/remove/api.message.heading")
                 .then()
                 .statusCode(200)
                 .body("code", equalTo(0));
@@ -121,7 +121,7 @@ class I18nApiIT extends AdminApiTestSupport {
         given()
                 .header("Authorization", bearer(limited.accessToken()))
                 .header("X-Client", "admin")
-                .post("/api/sys/i18n/bundle")
+                .post("/api/sys/i18n-message/bundle")
                 .then()
                 .statusCode(200)
                 .body("code", equalTo(0));
@@ -130,18 +130,18 @@ class I18nApiIT extends AdminApiTestSupport {
                 .header("X-Client", "admin")
                 .contentType(ContentType.JSON)
                 .body("{\"currentPage\":1,\"pageSize\":10}")
-                .post("/api/sys/i18n/page")
+                .post("/api/sys/i18n-message/page")
                 .then()
                 .statusCode(403)
                 .body("code", equalTo(20003));
     }
 
     @Test
-    void i18nApisRequireAValidClientHeader() {
+    void i18nMessageApisRequireAValidClientHeader() {
         TokenPair admin = loginAsDefaultAdmin();
         given()
                 .header("Authorization", bearer(admin.accessToken()))
-                .post("/api/sys/i18n/bundle")
+                .post("/api/sys/i18n-message/bundle")
                 .then()
                 .statusCode(200)
                 .body("code", equalTo(10001));
@@ -149,7 +149,7 @@ class I18nApiIT extends AdminApiTestSupport {
                 .header("Authorization", bearer(admin.accessToken()))
                 .header("Accept-Language", "en-US")
                 .header("X-Client", "unknown")
-                .post("/api/sys/i18n/bundle")
+                .post("/api/sys/i18n-message/bundle")
                 .then()
                 .statusCode(200)
                 .body("code", equalTo(10001))
@@ -163,7 +163,7 @@ class I18nApiIT extends AdminApiTestSupport {
         given()
                 .header("Authorization", auth)
                 .header("X-Client", "admin")
-                .post("/api/sys/i18n/values/menu..title")
+                .post("/api/sys/i18n-message/values/menu..title")
                 .then()
                 .statusCode(200)
                 .body("code", equalTo(10001))
@@ -172,7 +172,7 @@ class I18nApiIT extends AdminApiTestSupport {
         given()
                 .header("Authorization", auth)
                 .header("X-Client", "admin")
-                .post("/api/sys/i18n/remove/{i18nKey}", "a".repeat(192))
+                .post("/api/sys/i18n-message/remove/{i18nKey}", "a".repeat(192))
                 .then()
                 .statusCode(200)
                 .body("code", equalTo(10001))

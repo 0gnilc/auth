@@ -37,7 +37,7 @@ ADMIN_CLIENT = admin
 
 1. 保存时从请求头读取 `client` 并写入表。
 2. 查询时从请求头读取 `client` 并作为过滤条件。
-3. `/sys/i18n/page` 可以接收 `client` 查询参数，但该参数只能作为请求头值的显式校验；传入值与 `X-Client` 不一致时返回参数错误，不能用它切换客户端。
+3. `/sys/i18n-message/page` 可以接收 `client` 查询参数，但该参数只能作为请求头值的显式校验；传入值与 `X-Client` 不一致时返回参数错误，不能用它切换客户端。
 4. 缺失、空白或格式非法时返回参数错误。
 5. 当前只允许代码层已知的 `admin`；所有国际化接口仍遵循现有认证机制，其中 `save`、`remove` 等管理写入操作必须受现有 RBAC 权限控制；不会因为请求头值合法就跳过权限校验。
 
@@ -69,7 +69,7 @@ CREATE TABLE sys_i18n (
     KEY idx_client_locale_key (client, locale, i18n_key)
 ) ENGINE=InnoDB
   DEFAULT CHARSET=utf8mb4
-  COMMENT='客户端国际化配置';
+  COMMENT='客户端国际化消息';
 ```
 
 最核心的字段仍然只有：
@@ -411,7 +411,7 @@ JSON 字段名本身不国际化。业务响应中的状态、字典和菜单标
 ### 7.1 请求
 
 ```http
-POST /sys/i18n/bundle
+POST /sys/i18n-message/bundle
 X-Client: admin
 ```
 
@@ -462,7 +462,7 @@ i18n_value = 首页
 前端按以下顺序处理：
 
 1. 应用启动时先执行 `setupI18n(app)` 并加载本地静态 JSON，未登录页面不请求数据库 bundle。
-2. 登录成功或恢复有效会话后，在生成动态路由和菜单之前请求一次 `/sys/i18n/bundle`，携带 `X-Client: admin`。
+2. 登录成功或恢复有效会话后，在生成动态路由和菜单之前请求一次 `/sys/i18n-message/bundle`，携带 `X-Client: admin`。
 3. `setupI18n` 完成后仍可使用 `i18n.global.mergeLocaleMessage()` 或 `setLocaleMessage()` 动态写入消息，更新会响应式地传递到已渲染组件。
 4. 对每个 locale 按“数据库 bundle 在前、本地 JSON 在后”做深度合并，再写入 `vue-i18n`，不能直接用后加载的 bundle 覆盖本地值。
 5. 确保当前语种和固定回退语种 `zh-CN` 都已加载，并将 `vue-i18n.fallbackLocale` 显式设为 `zh-CN`。
@@ -485,23 +485,25 @@ Profile   -> menu.profile.title
 
 同时在 `sys_i18n` 中为 `client = admin` 初始化这两个 key 的 `zh-CN` 和 `en-US` 记录。 `page.*` 继续由前端本地 JSON 管理，`menu.*` 用于数据库可配置菜单文案。
 
-菜单表单与国际化组件各自调用菜单接口和 `/sys/i18n/save`，不建立跨模块事务，也不新增组合接口。允许翻译暂时未被菜单引用，也允许菜单暂时只有 key 而无翻译；两个保存操作的失败独立提示，不相互回滚。
+菜单表单与国际化组件各自调用菜单接口和 `/sys/i18n-message/save`，不建立跨模块事务，也不新增组合接口。允许翻译暂时未被菜单引用，也允许菜单暂时只有 key 而无翻译；两个保存操作的失败独立提示，不相互回滚。
 
-## 8. 国际化管理接口
+## 8. 国际化消息管理接口
 
 所有接口都从 `X-Client` 获取客户端标识。
 
+动态消息代码统一使用 `I18nMessage` 命名，不以单独的 `I18n` 代替消息资源：后端入口为 `I18nMessageController`，数据库业务服务为 `DynamicI18nMessageService`，传输对象使用 `I18nMessage*Dto` / `I18nMessage*Vo`；前端使用 `I18nMessageApi`、`getI18nMessage*`、`saveI18nMessage` 和 `removeI18nMessage`。`setupI18n`、`SupportedLocale`、`i18nKey` 和 `sys_i18n` 仍表示国际化机制、语言、key 与既定存储结构，不做消息资源命名替换。
+
 ```http
-POST /sys/i18n/bundle
-POST /sys/i18n/page
-POST /sys/i18n/values/{i18nKey}
-POST /sys/i18n/save
-POST /sys/i18n/remove/{i18nKey}
+POST /sys/i18n-message/bundle
+POST /sys/i18n-message/page
+POST /sys/i18n-message/values/{i18nKey}
+POST /sys/i18n-message/save
+POST /sys/i18n-message/remove/{i18nKey}
 ```
 
 接口命名沿用当前 RBAC 模块的动词路径风格，例如 `/tree`、`/page`、`/save`、`/remove`，不强制采用 REST 资源风格。
 
-`POST /sys/i18n/values/{i18nKey}` 表示“按 key 查询各语言值”，比 `/get` 更明确。`i18nKey` 作为路径参数传递，请求不包含请求体：
+`POST /sys/i18n-message/values/{i18nKey}` 表示“按 key 查询各语言值”，比 `/get` 更明确。`i18nKey` 作为路径参数传递，请求不包含请求体：
 
 ```json
 {
@@ -515,7 +517,7 @@ POST /sys/i18n/remove/{i18nKey}
 
 查询的 `i18nKey` 在当前 `client` 下不存在时，接口仍返回成功，但现有 `R.data` 为 `null`；标准的前端 `load` 因而返回 `null` 并保留当前草稿。`R.data = null` 与 `I18nMessage.values = []` 不是同一语义：后者是调用方明确提供的有效空数据，组件应清空语种编辑区。
 
-`POST /sys/i18n/save` 统一处理新增、修改语种值和修改 key，不再区分 `create` 和 `update`。 `previousKey` 缺省或与 `i18nKey` 相同时，保存当前 key：不存在则新增，已存在则局部更新。保存前必须检查 key 路径冲突，检查与写入属于同一事务。
+`POST /sys/i18n-message/save` 统一处理新增、修改语种值和修改 key，不再区分 `create` 和 `update`。 `previousKey` 缺省或与 `i18nKey` 相同时，保存当前 key：不存在则新增，已存在则局部更新。保存前必须检查 key 路径冲突，检查与写入属于同一事务。
 
 `save.values` 采用局部保存语义：只覆盖请求中提交的语种，未提交语种保持不变。同一请求内每个 locale 最多出现一次，且必须属于代码层支持的语种；重复 locale 或不支持的 locale 使整个请求参数校验失败，不使用数组先后顺序决定覆盖值。该校验在所有数据库操作之前完成，失败时不写入任何记录。每个非空 `value` 最长 4,000 个字符；数据库仍使用 `text`，由前端提供即时提示、后端执行最终长度校验。超过该上限的长内容不属于 UI 国际化消息，应由独立内容模块管理。提交语种的 `value` 去除首尾空白后为空时，表示删除该语种记录，不保存空字符串；未出现在 `values` 中的语种仍保持不变。如果一个 key 的所有语种记录都被删除，该 key 即不再存在。不强制要求 `zh-CN` 或任何其他语种必须存在；允许 key 只有部分语种。当前语种和 `zh-CN` 都缺失时，前端按既定回退规则显示原始 key。
 
@@ -542,9 +544,9 @@ POST /sys/i18n/remove/{i18nKey}
 
 `previousKey` 可选：有值且与 `i18nKey` 不同时，旧 key 必须存在且新 key 必须不存在，然后执行上述 key 迁移；没有值或与 `i18nKey` 相同时，直接保存 `i18nKey`。
 
-`POST /sys/i18n/remove/{i18nKey}` 通过路径参数接受 `i18nKey`，请求不包含请求体；物理删除该 key 在当前 `client` 下的全部语种记录，不支持指定语种删除。单语种删除统一通过 `POST /sys/i18n/save` 提交空白值完成。该接口使用幂等语义：目标 key 原本不存在时仍返回成功，不因重复点击、请求重试或列表数据过期返回额外错误。
+`POST /sys/i18n-message/remove/{i18nKey}` 通过路径参数接受 `i18nKey`，请求不包含请求体；物理删除该 key 在当前 `client` 下的全部语种记录，不支持指定语种删除。单语种删除统一通过 `POST /sys/i18n-message/save` 提交空白值完成。该接口使用幂等语义：目标 key 原本不存在时仍返回成功，不因重复点击、请求重试或列表数据过期返回额外错误。
 
-管理列表 `POST /sys/i18n/page` 支持以下查询参数：
+管理列表 `POST /sys/i18n-message/page` 支持以下查询参数：
 
 按 RBAC 模块的 `POST /page` 约定，这些参数放在分页请求体中；它们仍是列表查询条件，不设计为 URL 资源路径。
 
@@ -633,7 +635,7 @@ modelValue    外部输入框显示值，可选，与 i18nKey 独立
 
 ### 9.3 统一保存语义
 
-后端只保留一个 `POST /sys/i18n/save` 保存接口。新增 key、修改 key、修改语言值、同时修改 key 和语言值，都使用同一请求：
+后端只保留一个 `POST /sys/i18n-message/save` 保存接口。新增 key、修改 key、修改语言值、同时修改 key 和语言值，都使用同一请求：
 
 ```text
 previousKey 存在且 previousKey != i18nKey：迁移 previousKey 的全部语种值
@@ -703,15 +705,15 @@ interface I18nMessageInputExpose {
 
 ### 9.5 首个实际使用场景
 
-本轮在 `apps/admin` 新增国际化管理页面 `/system/i18n`，作为 `I18nMessageInput` 的首个实际使用场景，不额外创建仅用于展示组件的演示页。
+本轮在 `apps/admin` 新增国际化消息管理页面 `/system/i18n-message`，作为 `I18nMessageInput` 的首个实际使用场景，不额外创建仅用于展示组件的演示页。
 
 页面提供按 key、翻译值、客户端和语种查询的分组分页列表，并通过新增、编辑、删除操作完整调用：
 
 ```text
-POST /sys/i18n/page
-POST /sys/i18n/values/{i18nKey}
-POST /sys/i18n/save
-POST /sys/i18n/remove/{i18nKey}
+POST /sys/i18n-message/page
+POST /sys/i18n-message/values/{i18nKey}
+POST /sys/i18n-message/save
+POST /sys/i18n-message/remove/{i18nKey}
 ```
 
 新增和编辑共用 `I18nMessageInput`，固定使用 `load` 模式，不把 `/page` 返回的 `values` 传给组件 `data`。列表数据只用于表格展示；编辑打开时，组件以当前 `i18nKey` 调用一次 `/values` 获取最新数据。新增时 `i18nKey` 为空，不调用 `load`，页面可以通过 `presetKey` 预填 key 草稿。
@@ -726,16 +728,16 @@ POST /sys/i18n/remove/{i18nKey}
 
 ```text
 System（CATALOG）
-└── I18n（MENU）
+└── I18nMessage（MENU）
 ```
 
-`System` 目录使用路径 `/system`、组件 `BasicLayout` 和标题 key `menu.system.title`；`I18n` 子页面使用路径 `/system/i18n`、组件 `/system/i18n/index` 和标题 key `menu.i18n.title`。两个标题 key 都在 `sys_i18n` 中初始化 `client = admin` 的中英文值。
+`System` 目录使用路径 `/system`、组件 `BasicLayout` 和标题 key `menu.system.title`；`I18nMessage` 子页面使用路径 `/system/i18n-message`、组件 `/system/i18n-message/index` 和标题 key `menu.i18nMessage.title`。两个标题 key 都在 `sys_i18n` 中初始化 `client = admin` 的中英文值。
 
 权限按使用目的分开：
 
-- `/sys/i18n/bundle` 为非公开接口，授予内置 `admin` 基线角色，供所有已登录管理端加载动态语言包。
-- `/sys/i18n/page`、`/sys/i18n/values/{i18nKey}`、`/sys/i18n/save` 和 `/sys/i18n/remove/{i18nKey}` 均为非公开接口，只授予新增的 `i18n-manager` 角色。
-- `System` 目录和 `/system/i18n` 子菜单都绑定 `i18n-manager` 角色，满足菜单层级闭包；后续系统管理页面可以复用该目录。
+- `/sys/i18n-message/bundle` 为非公开接口，授予内置 `admin` 基线角色，供所有已登录管理端加载动态语言包。
+- `/sys/i18n-message/page`、`/sys/i18n-message/values/{i18nKey}`、`/sys/i18n-message/save` 和 `/sys/i18n-message/remove/{i18nKey}` 均为非公开接口，只授予新增的 `i18n-manager` 角色。
+- `System` 目录和 `/system/i18n-message` 子菜单都绑定 `i18n-manager` 角色，满足菜单层级闭包；后续系统管理页面可以复用该目录。
 - `i18n-manager` 是 `built_in = 1` 的内置角色，角色代码和角色本身不可修改、删除；用户、菜单和权限关系仍按现有 RBAC 机制维护。
 - 初始化脚本恢复该角色及其默认菜单、权限关系，并只为默认 `admin` 账号恢复初始绑定；其他后台管理员不会自动获得国际化配置维护权限。
 
@@ -751,6 +753,6 @@ System（CATALOG）
 8. 保持 `az_menu.title` 字段不变，将默认菜单的静态 `page.*` key 迁移到数据库 `menu.*` key，并初始化中英文翻译。
 9. 前端加载全量 bundle，并合并到现有 `vue-i18n` 结构；同时保留本地静态 key 集合，用于阻止管理端保存不会生效的同名数据库 key。
 10. 实现 `I18nMessageInput`，支持预设 key、加载数据覆盖、独立映射值和基于 `previousKey` 的统一 key 迁移。
-11. 新增 `/system/i18n` 国际化管理页面，在新增和编辑流程中实际接入 `I18nMessageInput`，并初始化对应菜单、翻译、内置 `i18n-manager` 角色和权限数据。
+11. 新增 `/system/i18n-message` 国际化消息管理页面，在新增和编辑流程中实际接入 `I18nMessageInput`，并初始化对应菜单、翻译、内置 `i18n-manager` 角色和权限数据。
 
-按深模块原则，外部调用方只需要学习 `I18nMessageService`、国际化管理接口和 `I18nMessageInput` 的少量接口；locale 解析、JSON 组装、客户端过滤、保存事务和前端语言包合并都集中在实现内部。
+按深模块原则，外部调用方只需要学习后端静态文案的 `I18nMessageService`、动态国际化消息管理接口和 `I18nMessageInput` 的少量接口；locale 解析、JSON 组装、客户端过滤、保存事务和前端语言包合并都集中在实现内部。

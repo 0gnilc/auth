@@ -1,3 +1,3 @@
 export * from './admin';
-export * from './i18n';
+export * from './i18n-message';
 export * from './menu';

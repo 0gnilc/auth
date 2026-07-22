@@ -1,4 +1,4 @@
--- 系统动态国际化表、默认数据、菜单和权限。
+-- 系统动态国际化消息表、默认数据、菜单和权限。
 -- 依赖依次执行 01_rbac.sql 和 02_admin.sql。
 
 CREATE TABLE IF NOT EXISTS sys_i18n (
@@ -13,7 +13,22 @@ CREATE TABLE IF NOT EXISTS sys_i18n (
     UNIQUE KEY uk_i18n_key_locale_client (i18n_key, locale, client),
     KEY idx_i18n_key_client (i18n_key, client),
     KEY idx_client_locale_key (client, locale, i18n_key)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='客户端国际化配置';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='客户端国际化消息';
+
+UPDATE sys_i18n AS old_message
+LEFT JOIN sys_i18n AS current_message
+  ON current_message.client = old_message.client
+ AND current_message.locale = old_message.locale
+ AND current_message.i18n_key = 'menu.i18nMessage.title'
+SET old_message.i18n_key = 'menu.i18nMessage.title',
+    old_message.update_time = NOW()
+WHERE old_message.i18n_key = 'menu.i18n.title'
+  AND old_message.client = 'admin'
+  AND current_message.id IS NULL;
+
+DELETE FROM sys_i18n
+WHERE client = 'admin'
+  AND i18n_key = 'menu.i18n.title';
 
 UPDATE az_menu
 SET title = 'menu.dashboard.title',
@@ -64,16 +79,16 @@ WHERE NOT EXISTS (
     WHERE client = 'admin' AND i18n_key = 'menu.system.title' AND locale = 'en-US'
 );
 INSERT INTO sys_i18n (client, i18n_key, locale, i18n_value, create_time)
-SELECT 'admin', 'menu.i18n.title', 'zh-CN', '国际化管理', NOW()
+SELECT 'admin', 'menu.i18nMessage.title', 'zh-CN', '国际化消息管理', NOW()
 WHERE NOT EXISTS (
     SELECT 1 FROM sys_i18n
-    WHERE client = 'admin' AND i18n_key = 'menu.i18n.title' AND locale = 'zh-CN'
+    WHERE client = 'admin' AND i18n_key = 'menu.i18nMessage.title' AND locale = 'zh-CN'
 );
 INSERT INTO sys_i18n (client, i18n_key, locale, i18n_value, create_time)
-SELECT 'admin', 'menu.i18n.title', 'en-US', 'Internationalization', NOW()
+SELECT 'admin', 'menu.i18nMessage.title', 'en-US', 'I18n Messages', NOW()
 WHERE NOT EXISTS (
     SELECT 1 FROM sys_i18n
-    WHERE client = 'admin' AND i18n_key = 'menu.i18n.title' AND locale = 'en-US'
+    WHERE client = 'admin' AND i18n_key = 'menu.i18nMessage.title' AND locale = 'en-US'
 );
 
 UPDATE az_role
@@ -122,64 +137,83 @@ INSERT INTO az_menu (
     affix_tab, hide_in_menu, icon, `order`, title
 )
 SELECT
-    0, NOW(), NULL, @system_menu_id, 'menu', 1, 'I18n', '/system/i18n', '/system/i18n/index',
-    0, 0, 'lucide:languages', 10, 'menu.i18n.title'
+    0, NOW(), NULL, @system_menu_id, 'menu', 1, 'I18nMessage', '/system/i18n-message', '/system/i18n-message/index',
+    0, 0, 'lucide:languages', 10, 'menu.i18nMessage.title'
 WHERE @system_menu_id IS NOT NULL
   AND NOT EXISTS (
-      SELECT 1 FROM az_menu WHERE name = 'I18n'
+      SELECT 1 FROM az_menu WHERE name IN ('I18n', 'I18nMessage')
   );
 
 UPDATE az_menu
-SET del = 0,
+SET name = 'I18nMessage',
+    del = 0,
     pid = @system_menu_id,
     type = 'menu',
     status = 1,
-    path = '/system/i18n',
-    component = '/system/i18n/index',
+    path = '/system/i18n-message',
+    component = '/system/i18n-message/index',
     hide_in_menu = 0,
     icon = 'lucide:languages',
     `order` = 10,
-    title = 'menu.i18n.title',
+    title = 'menu.i18nMessage.title',
     update_time = NOW()
-WHERE name = 'I18n'
+WHERE name IN ('I18n', 'I18nMessage')
   AND @system_menu_id IS NOT NULL;
 
 UPDATE az_permission
-SET code = 'POST:/sys/i18n/values/{i18nKey}',
-    name = 'POST:/sys/i18n/values/{i18nKey}',
-    target_identifier = '/sys/i18n/values/{i18nKey}'
-WHERE code = 'POST:/sys/i18n/values';
+SET code = 'POST:/sys/i18n-message/bundle',
+    name = 'POST:/sys/i18n-message/bundle',
+    target_identifier = '/sys/i18n-message/bundle'
+WHERE code = 'POST:/sys/i18n/bundle';
 
 UPDATE az_permission
-SET code = 'POST:/sys/i18n/remove/{i18nKey}',
-    name = 'POST:/sys/i18n/remove/{i18nKey}',
-    target_identifier = '/sys/i18n/remove/{i18nKey}'
-WHERE code = 'POST:/sys/i18n/remove';
+SET code = 'POST:/sys/i18n-message/page',
+    name = 'POST:/sys/i18n-message/page',
+    target_identifier = '/sys/i18n-message/page'
+WHERE code = 'POST:/sys/i18n/page';
+
+UPDATE az_permission
+SET code = 'POST:/sys/i18n-message/values/{i18nKey}',
+    name = 'POST:/sys/i18n-message/values/{i18nKey}',
+    target_identifier = '/sys/i18n-message/values/{i18nKey}'
+WHERE code IN ('POST:/sys/i18n/values', 'POST:/sys/i18n/values/{i18nKey}');
+
+UPDATE az_permission
+SET code = 'POST:/sys/i18n-message/save',
+    name = 'POST:/sys/i18n-message/save',
+    target_identifier = '/sys/i18n-message/save'
+WHERE code = 'POST:/sys/i18n/save';
+
+UPDATE az_permission
+SET code = 'POST:/sys/i18n-message/remove/{i18nKey}',
+    name = 'POST:/sys/i18n-message/remove/{i18nKey}',
+    target_identifier = '/sys/i18n-message/remove/{i18nKey}'
+WHERE code IN ('POST:/sys/i18n/remove', 'POST:/sys/i18n/remove/{i18nKey}');
 
 INSERT INTO az_permission (create_time, code, name, target_identifier, target_qualifier, public_access)
-SELECT NOW(), 'POST:/sys/i18n/bundle', 'POST:/sys/i18n/bundle', '/sys/i18n/bundle', 'POST', 0
-WHERE NOT EXISTS (SELECT 1 FROM az_permission WHERE code = 'POST:/sys/i18n/bundle');
+SELECT NOW(), 'POST:/sys/i18n-message/bundle', 'POST:/sys/i18n-message/bundle', '/sys/i18n-message/bundle', 'POST', 0
+WHERE NOT EXISTS (SELECT 1 FROM az_permission WHERE code = 'POST:/sys/i18n-message/bundle');
 INSERT INTO az_permission (create_time, code, name, target_identifier, target_qualifier, public_access)
-SELECT NOW(), 'POST:/sys/i18n/page', 'POST:/sys/i18n/page', '/sys/i18n/page', 'POST', 0
-WHERE NOT EXISTS (SELECT 1 FROM az_permission WHERE code = 'POST:/sys/i18n/page');
+SELECT NOW(), 'POST:/sys/i18n-message/page', 'POST:/sys/i18n-message/page', '/sys/i18n-message/page', 'POST', 0
+WHERE NOT EXISTS (SELECT 1 FROM az_permission WHERE code = 'POST:/sys/i18n-message/page');
 INSERT INTO az_permission (create_time, code, name, target_identifier, target_qualifier, public_access)
-SELECT NOW(), 'POST:/sys/i18n/values/{i18nKey}', 'POST:/sys/i18n/values/{i18nKey}', '/sys/i18n/values/{i18nKey}', 'POST', 0
-WHERE NOT EXISTS (SELECT 1 FROM az_permission WHERE code = 'POST:/sys/i18n/values/{i18nKey}');
+SELECT NOW(), 'POST:/sys/i18n-message/values/{i18nKey}', 'POST:/sys/i18n-message/values/{i18nKey}', '/sys/i18n-message/values/{i18nKey}', 'POST', 0
+WHERE NOT EXISTS (SELECT 1 FROM az_permission WHERE code = 'POST:/sys/i18n-message/values/{i18nKey}');
 INSERT INTO az_permission (create_time, code, name, target_identifier, target_qualifier, public_access)
-SELECT NOW(), 'POST:/sys/i18n/save', 'POST:/sys/i18n/save', '/sys/i18n/save', 'POST', 0
-WHERE NOT EXISTS (SELECT 1 FROM az_permission WHERE code = 'POST:/sys/i18n/save');
+SELECT NOW(), 'POST:/sys/i18n-message/save', 'POST:/sys/i18n-message/save', '/sys/i18n-message/save', 'POST', 0
+WHERE NOT EXISTS (SELECT 1 FROM az_permission WHERE code = 'POST:/sys/i18n-message/save');
 INSERT INTO az_permission (create_time, code, name, target_identifier, target_qualifier, public_access)
-SELECT NOW(), 'POST:/sys/i18n/remove/{i18nKey}', 'POST:/sys/i18n/remove/{i18nKey}', '/sys/i18n/remove/{i18nKey}', 'POST', 0
-WHERE NOT EXISTS (SELECT 1 FROM az_permission WHERE code = 'POST:/sys/i18n/remove/{i18nKey}');
+SELECT NOW(), 'POST:/sys/i18n-message/remove/{i18nKey}', 'POST:/sys/i18n-message/remove/{i18nKey}', '/sys/i18n-message/remove/{i18nKey}', 'POST', 0
+WHERE NOT EXISTS (SELECT 1 FROM az_permission WHERE code = 'POST:/sys/i18n-message/remove/{i18nKey}');
 
 UPDATE az_permission
 SET public_access = 0
 WHERE code IN (
-    'POST:/sys/i18n/bundle',
-    'POST:/sys/i18n/page',
-    'POST:/sys/i18n/values/{i18nKey}',
-    'POST:/sys/i18n/save',
-    'POST:/sys/i18n/remove/{i18nKey}'
+    'POST:/sys/i18n-message/bundle',
+    'POST:/sys/i18n-message/page',
+    'POST:/sys/i18n-message/values/{i18nKey}',
+    'POST:/sys/i18n-message/save',
+    'POST:/sys/i18n-message/remove/{i18nKey}'
 );
 
 SET @admin_role_id := (
@@ -191,14 +225,10 @@ SET @i18n_manager_role_id := (
 SET @default_admin_user_id := (
     SELECT user_id FROM sys_admin WHERE username = 'admin' AND del = 0 LIMIT 1
 );
-SET @i18n_menu_id := (
-    SELECT id FROM az_menu WHERE name = 'I18n' AND del = 0 LIMIT 1
-);
-
 INSERT INTO az_role_permission (del, create_time, update_time, role_id, permission_id)
 SELECT 0, NOW(), NULL, @admin_role_id, p.id
 FROM az_permission p
-WHERE p.code = 'POST:/sys/i18n/bundle'
+WHERE p.code = 'POST:/sys/i18n-message/bundle'
   AND @admin_role_id IS NOT NULL
   AND NOT EXISTS (
       SELECT 1 FROM az_role_permission rp
@@ -209,10 +239,10 @@ INSERT INTO az_role_permission (del, create_time, update_time, role_id, permissi
 SELECT 0, NOW(), NULL, @i18n_manager_role_id, p.id
 FROM az_permission p
 WHERE p.code IN (
-    'POST:/sys/i18n/page',
-    'POST:/sys/i18n/values/{i18nKey}',
-    'POST:/sys/i18n/save',
-    'POST:/sys/i18n/remove/{i18nKey}'
+    'POST:/sys/i18n-message/page',
+    'POST:/sys/i18n-message/values/{i18nKey}',
+    'POST:/sys/i18n-message/save',
+    'POST:/sys/i18n-message/remove/{i18nKey}'
 )
   AND @i18n_manager_role_id IS NOT NULL
   AND NOT EXISTS (
@@ -223,7 +253,7 @@ WHERE p.code IN (
 INSERT INTO az_role_menu (del, create_time, update_time, role_id, menu_id)
 SELECT 0, NOW(), NULL, @i18n_manager_role_id, m.id
 FROM az_menu m
-WHERE m.name IN ('System', 'I18n')
+WHERE m.name IN ('System', 'I18nMessage')
   AND m.del = 0
   AND @i18n_manager_role_id IS NOT NULL
   AND NOT EXISTS (

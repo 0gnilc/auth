@@ -12,11 +12,11 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
- * 客户端动态国际化记录。
+ * 客户端动态国际化消息记录。
  */
 @Data
 @TableName("sys_i18n")
-public class I18nBo implements Serializable {
+public class I18nMessageBo implements Serializable {
     @Serial
     private static final long serialVersionUID = 1L;
 

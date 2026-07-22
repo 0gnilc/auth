@@ -4,11 +4,11 @@ import { flushPromises, mount } from '@vue/test-utils';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import I18nManagementPage from '../index.vue';
+import I18nMessageManagementPage from '../index.vue';
 
 const api = vi.hoisted(() => ({
-  getI18nPage: vi.fn(),
-  getI18nValues: vi.fn(),
+  getI18nMessagePage: vi.fn(),
+  getI18nMessageValues: vi.fn(),
   removeI18nMessage: vi.fn(),
   saveI18nMessage: vi.fn(),
 }));
@@ -147,7 +147,7 @@ const input = {
 };
 
 function mountPage() {
-  return mount(I18nManagementPage, {
+  return mount(I18nMessageManagementPage, {
     global: {
       directives: { loading: () => {} },
     },
@@ -160,11 +160,11 @@ function getConfirm(wrapper: ReturnType<typeof mountPage>) {
     .props('confirm') as I18nMessageConfirm;
 }
 
-describe('internationalization management page', () => {
+describe('internationalization message management page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     editorState.openedKeys.length = 0;
-    api.getI18nPage.mockResolvedValue({ list: [], totalCount: 0 });
+    api.getI18nMessagePage.mockResolvedValue({ list: [], totalCount: 0 });
     api.removeI18nMessage.mockResolvedValue(undefined);
     api.saveI18nMessage.mockImplementation(async (value) => value);
     locale.ensureStaticKeys.mockResolvedValue(new Set<string>());
@@ -182,15 +182,15 @@ describe('internationalization management page', () => {
     await expect(getConfirm(wrapper)(input)).resolves.toEqual(input);
 
     expect(api.saveI18nMessage).toHaveBeenCalledWith(input);
-    expect(api.getI18nPage).toHaveBeenCalledTimes(2);
+    expect(api.getI18nMessagePage).toHaveBeenCalledTimes(2);
     expect(messages.warning).toHaveBeenCalledWith(
-      'page.i18n.messages.runtimeReloadFailed',
+      'page.i18nMessage.messages.runtimeReloadFailed',
     );
     expect(messages.success).not.toHaveBeenCalled();
   });
 
   it('reports list reload failure without repeating the successful save', async () => {
-    api.getI18nPage
+    api.getI18nMessagePage
       .mockResolvedValueOnce({ list: [], totalCount: 0 })
       .mockRejectedValueOnce(new Error('list reload failed'));
     const wrapper = mountPage();
@@ -200,10 +200,10 @@ describe('internationalization management page', () => {
 
     expect(api.saveI18nMessage).toHaveBeenCalledTimes(1);
     expect(messages.warning).toHaveBeenCalledWith(
-      'page.i18n.messages.listReloadFailed',
+      'page.i18nMessage.messages.listReloadFailed',
     );
     expect(messages.success).toHaveBeenCalledWith(
-      'page.i18n.messages.saveSuccess',
+      'page.i18nMessage.messages.saveSuccess',
     );
   });
 
@@ -217,11 +217,13 @@ describe('internationalization management page', () => {
     );
 
     expect(api.saveI18nMessage).not.toHaveBeenCalled();
-    expect(messages.error).toHaveBeenCalledWith('page.i18n.messages.staticKey');
+    expect(messages.error).toHaveBeenCalledWith(
+      'page.i18nMessage.messages.staticKey',
+    );
   });
 
   it('opens row editing only after the selected key reaches the shared editor', async () => {
-    api.getI18nPage.mockResolvedValue({
+    api.getI18nMessagePage.mockResolvedValue({
       list: [
         {
           client: 'admin',
@@ -235,7 +237,7 @@ describe('internationalization management page', () => {
     await flushPromises();
 
     await wrapper
-      .get('[data-tooltip="page.i18n.actions.edit"]')
+      .get('[data-tooltip="page.i18nMessage.actions.edit"]')
       .trigger('click');
     await flushPromises();
 
@@ -243,7 +245,7 @@ describe('internationalization management page', () => {
   });
 
   it('keeps removal successful when the list reload fails', async () => {
-    api.getI18nPage
+    api.getI18nMessagePage
       .mockResolvedValueOnce({
         list: [
           {
@@ -259,22 +261,22 @@ describe('internationalization management page', () => {
     await flushPromises();
 
     await wrapper
-      .get('[data-tooltip="page.i18n.actions.remove"]')
+      .get('[data-tooltip="page.i18nMessage.actions.remove"]')
       .trigger('click');
     await flushPromises();
 
     expect(api.removeI18nMessage).toHaveBeenCalledWith('menu.row.title');
     expect(messages.warning).toHaveBeenCalledWith(
-      'page.i18n.messages.listReloadFailed',
+      'page.i18nMessage.messages.listReloadFailed',
     );
     expect(messages.success).toHaveBeenCalledWith(
-      'page.i18n.messages.removeSuccess',
+      'page.i18nMessage.messages.removeSuccess',
     );
   });
 
   it('treats removal confirmation cancellation as a no-op', async () => {
     messages.confirm.mockRejectedValueOnce(new Error('cancelled'));
-    api.getI18nPage.mockResolvedValue({
+    api.getI18nMessagePage.mockResolvedValue({
       list: [
         {
           client: 'admin',
@@ -288,7 +290,7 @@ describe('internationalization management page', () => {
     await flushPromises();
 
     await wrapper
-      .get('[data-tooltip="page.i18n.actions.remove"]')
+      .get('[data-tooltip="page.i18nMessage.actions.remove"]')
       .trigger('click');
     await flushPromises();
 

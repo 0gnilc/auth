@@ -6,10 +6,10 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.conditions.query.LambdaQueryChainWrapper;
 import com.gnilc.common.exception.InvalidArgumentException;
 import com.gnilc.common.i18n.I18nMessageService;
-import com.gnilc.system.i18n.dao.I18nDao;
-import com.gnilc.system.i18n.entity.bo.I18nBo;
-import com.gnilc.system.i18n.entity.dto.I18nValueDto;
-import com.gnilc.system.i18n.entity.dto.I18nDto;
+import com.gnilc.system.i18n.dao.I18nMessageDao;
+import com.gnilc.system.i18n.entity.bo.I18nMessageBo;
+import com.gnilc.system.i18n.entity.dto.I18nMessageValueDto;
+import com.gnilc.system.i18n.entity.dto.I18nMessageDto;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -30,36 +30,36 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class I18nServiceImplTest {
+class DynamicI18nMessageServiceImplTest {
 
     @Mock
-    private I18nDao dao;
+    private I18nMessageDao dao;
 
-    private I18nServiceImpl service;
+    private DynamicI18nMessageServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        if (TableInfoHelper.getTableInfo(I18nBo.class) == null) {
+        if (TableInfoHelper.getTableInfo(I18nMessageBo.class) == null) {
             TableInfoHelper.initTableInfo(
                     new MapperBuilderAssistant(new MybatisConfiguration(), "i18n-service-test"),
-                    I18nBo.class);
+                    I18nMessageBo.class);
         }
         ResourceBundleMessageSource messageSource = new ResourceBundleMessageSource();
         messageSource.setBasenames("i18n/system/messages");
         messageSource.setDefaultEncoding("UTF-8");
-        service = spy(new I18nServiceImpl(new I18nMessageService(messageSource, "zh-CN")));
+        service = spy(new DynamicI18nMessageServiceImpl(new I18nMessageService(messageSource, "zh-CN")));
     }
 
     @Test
     void getValuesUsesMapperAndReturnsSupportedLocaleOrder() {
         doAnswer(invocation -> new LambdaQueryChainWrapper<>(
-                dao, Wrappers.lambdaQuery(I18nBo.class)))
+                dao, Wrappers.lambdaQuery(I18nMessageBo.class)))
                 .when(service).lambdaQuery();
         when(dao.selectList(any())).thenReturn(List.of(
                 row("en-US", "Home"),
                 row("zh-CN", "首页")));
 
-        var message = service.getValues("admin", "menu.home.title");
+        var message = service.getMessageValues("admin", "menu.home.title");
 
         assertThat(message.getI18nKey()).isEqualTo("menu.home.title");
         assertThat(message.getValues())
@@ -70,7 +70,7 @@ class I18nServiceImplTest {
 
     @Test
     void saveRejectsInvalidInputBeforeDatabaseAccess() {
-        I18nDto duplicateLocales = save("menu.home.title",
+        I18nMessageDto duplicateLocales = save("menu.home.title",
                 value("zh-CN", "首页"), value("zh-CN", "主页"));
 
         assertThatThrownBy(() -> service.saveMessage("admin", duplicateLocales))
@@ -82,8 +82,8 @@ class I18nServiceImplTest {
         verifyNoInteractions(dao);
     }
 
-    private I18nBo row(String locale, String value) {
-        I18nBo row = new I18nBo();
+    private I18nMessageBo row(String locale, String value) {
+        I18nMessageBo row = new I18nMessageBo();
         row.setClient("admin");
         row.setI18nKey("menu.home.title");
         row.setLocale(locale);
@@ -91,15 +91,15 @@ class I18nServiceImplTest {
         return row;
     }
 
-    private I18nDto save(String key, I18nValueDto... values) {
-        I18nDto dto = new I18nDto();
+    private I18nMessageDto save(String key, I18nMessageValueDto... values) {
+        I18nMessageDto dto = new I18nMessageDto();
         dto.setI18nKey(key);
         dto.setValues(List.of(values));
         return dto;
     }
 
-    private I18nValueDto value(String locale, String value) {
-        I18nValueDto dto = new I18nValueDto();
+    private I18nMessageValueDto value(String locale, String value) {
+        I18nMessageValueDto dto = new I18nMessageValueDto();
         dto.setLocale(locale);
         dto.setValue(value);
         return dto;

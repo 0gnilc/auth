@@ -28,7 +28,7 @@ import static org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTest
 @ContextConfiguration(classes = SystemTestApplication.class)
 @Testcontainers
 @SuppressWarnings("resource")
-class I18nSchemaIT {
+class I18nMessageSchemaIT {
 
     @Container
     @ServiceConnection
@@ -52,7 +52,7 @@ class I18nSchemaIT {
     }
 
     @Test
-    void i18nSchemaIsIdempotentAndSeedsMenusRolesAndPermissions() {
+    void i18nMessageSchemaIsIdempotentAndSeedsMenusRolesAndPermissions() {
         runScript("sql/schema/06_i18n.sql");
         runScript("sql/schema/06_i18n.sql");
 
@@ -78,13 +78,13 @@ class I18nSchemaIT {
                 .isEqualTo(8);
         assertThat(jdbc.queryForList("""
                 SELECT title FROM az_menu
-                 WHERE name IN ('Dashboard', 'Profile', 'System', 'I18n') AND del = 0
+                 WHERE name IN ('Dashboard', 'Profile', 'System', 'I18nMessage') AND del = 0
                  ORDER BY name
                 """, String.class)).containsExactlyInAnyOrder(
                         "menu.dashboard.title",
                         "menu.profile.title",
                         "menu.system.title",
-                        "menu.i18n.title");
+                        "menu.i18nMessage.title");
         assertThat(jdbc.queryForObject("""
                 SELECT component FROM az_menu
                  WHERE name = 'System' AND del = 0
@@ -104,7 +104,7 @@ class I18nSchemaIT {
                 """, Integer.class)).isEqualTo(1);
         assertThat(jdbc.queryForObject("""
                 SELECT COUNT(*) FROM az_permission
-                 WHERE code LIKE 'POST:/sys/i18n/%' AND public_access = 0
+                 WHERE code LIKE 'POST:/sys/i18n-message/%' AND public_access = 0
                 """, Integer.class)).isEqualTo(5);
         assertThat(jdbc.queryForObject("""
                 SELECT COUNT(*)
@@ -112,7 +112,7 @@ class I18nSchemaIT {
                   JOIN az_role r ON r.id = rp.role_id
                   JOIN az_permission p ON p.id = rp.permission_id
                  WHERE r.code = 'admin'
-                   AND p.code = 'POST:/sys/i18n/bundle'
+                   AND p.code = 'POST:/sys/i18n-message/bundle'
                    AND rp.del = 0
                 """, Integer.class)).isEqualTo(1);
         assertThat(jdbc.queryForObject("""
@@ -122,10 +122,10 @@ class I18nSchemaIT {
                   JOIN az_permission p ON p.id = rp.permission_id
                  WHERE r.code = 'i18n-manager'
                    AND p.code IN (
-                       'POST:/sys/i18n/page',
-                       'POST:/sys/i18n/values/{i18nKey}',
-                       'POST:/sys/i18n/save',
-                       'POST:/sys/i18n/remove/{i18nKey}')
+                       'POST:/sys/i18n-message/page',
+                       'POST:/sys/i18n-message/values/{i18nKey}',
+                       'POST:/sys/i18n-message/save',
+                       'POST:/sys/i18n-message/remove/{i18nKey}')
                    AND rp.del = 0
                 """, Integer.class)).isEqualTo(4);
     }

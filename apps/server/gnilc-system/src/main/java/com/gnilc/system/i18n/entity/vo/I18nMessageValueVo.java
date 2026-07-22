@@ -4,11 +4,11 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 
 /**
- * 单个语种的国际化值。
+ * 单个语种的国际化消息值。
  */
 @Data
 @AllArgsConstructor
-public class I18nValueVo {
+public class I18nMessageValueVo {
     private String locale;
     private String value;
 }

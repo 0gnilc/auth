@@ -1,10 +1,10 @@
 package com.gnilc.system.i18n.service.impl;
 
 import com.gnilc.common.exception.IllegalConditionException;
-import com.gnilc.system.i18n.entity.dto.I18nValueDto;
-import com.gnilc.system.i18n.entity.dto.I18nPageDto;
-import com.gnilc.system.i18n.entity.dto.I18nDto;
-import com.gnilc.system.i18n.service.I18nService;
+import com.gnilc.system.i18n.entity.dto.I18nMessageValueDto;
+import com.gnilc.system.i18n.entity.dto.I18nMessagePageDto;
+import com.gnilc.system.i18n.entity.dto.I18nMessageDto;
+import com.gnilc.system.i18n.service.DynamicI18nMessageService;
 import com.gnilc.system.support.SystemContainerContextInitializer;
 import com.gnilc.system.support.SystemTestApplication;
 import org.junit.jupiter.api.Test;
@@ -25,10 +25,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @ActiveProfiles("test")
 @ContextConfiguration(initializers = SystemContainerContextInitializer.class)
 @Transactional
-class I18nServiceIT {
+class DynamicI18nMessageServiceIT {
 
     @Autowired
-    private I18nService messages;
+    private DynamicI18nMessageService messages;
     @Autowired
     private JdbcTemplate jdbc;
 
@@ -39,7 +39,7 @@ class I18nServiceIT {
         messages.saveMessage("admin", save("test.workflow.title", null,
                 value("en-US", "Workflow")));
 
-        assertThat(messages.getValues("admin", "test.workflow.title").getValues())
+        assertThat(messages.getMessageValues("admin", "test.workflow.title").getValues())
                 .extracting(value -> value.getLocale() + ":" + value.getValue())
                 .containsExactly("zh-CN:流程", "en-US:Workflow");
 
@@ -51,11 +51,11 @@ class I18nServiceIT {
         assertThat(migrated.getValues())
                 .extracting(value -> value.getLocale() + ":" + value.getValue())
                 .containsExactly("zh-CN:工作流", "en-US:Workflow");
-        assertThat(messages.getValues("admin", "test.workflow.title")).isNull();
+        assertThat(messages.getMessageValues("admin", "test.workflow.title")).isNull();
 
         messages.saveMessage("admin", save("test.workflow.heading", null,
                 value("zh-CN", " ")));
-        assertThat(messages.getValues("admin", "test.workflow.heading").getValues())
+        assertThat(messages.getMessageValues("admin", "test.workflow.heading").getValues())
                 .extracting(value -> value.getLocale())
                 .containsExactly("en-US");
 
@@ -74,7 +74,7 @@ class I18nServiceIT {
         messages.saveMessage("admin", save("test.page.subtitle", null,
                 value("zh-CN", "副标题"), value("en-US", "Special subtitle")));
 
-        Map<String, Object> bundle = messages.getBundle("admin");
+        Map<String, Object> bundle = messages.getMessageBundle("admin");
         @SuppressWarnings("unchecked")
         Map<String, Object> zhCn = (Map<String, Object>) bundle.get("zh-CN");
         @SuppressWarnings("unchecked")
@@ -83,13 +83,13 @@ class I18nServiceIT {
         Map<String, Object> page = (Map<String, Object>) test.get("page");
         assertThat(page).containsEntry("title", "页面").containsEntry("subtitle", "副标题");
 
-        I18nPageDto query = new I18nPageDto();
+        I18nMessagePageDto query = new I18nMessagePageDto();
         query.setKey("test.page");
         query.setLocale("en-US");
         query.setValue("Special");
         query.setCurrentPage(1L);
         query.setPageSize(1L);
-        var result = messages.getPage("admin", query);
+        var result = messages.getMessagePage("admin", query);
 
         assertThat(result.getTotalCount()).isEqualTo(1);
         assertThat(result.getList()).singleElement().satisfies(item -> {
@@ -108,19 +108,19 @@ class I18nServiceIT {
                 .isInstanceOf(IllegalConditionException.class);
     }
 
-    private I18nDto save(
+    private I18nMessageDto save(
             String key,
             String previousKey,
-            I18nValueDto... values) {
-        I18nDto dto = new I18nDto();
+            I18nMessageValueDto... values) {
+        I18nMessageDto dto = new I18nMessageDto();
         dto.setI18nKey(key);
         dto.setPreviousKey(previousKey);
         dto.setValues(List.of(values));
         return dto;
     }
 
-    private I18nValueDto value(String locale, String value) {
-        I18nValueDto dto = new I18nValueDto();
+    private I18nMessageValueDto value(String locale, String value) {
+        I18nMessageValueDto dto = new I18nMessageValueDto();
         dto.setLocale(locale);
         dto.setValue(value);
         return dto;
