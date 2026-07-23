@@ -163,7 +163,7 @@ apps/web-ele
   "dev:antd": "...",
   "dev:antdv-next": "...",
   "dev:naive": "...",
-  "dev:tdesign": "..."
+  "dev:tdesign": "...",
 }
 ```
 
@@ -172,7 +172,7 @@ apps/web-ele
 ```jsonc
 {
   "build:ele": "pnpm run build --filter=@vben/web-ele",
-  "dev:ele": "pnpm -F @vben/web-ele run dev"
+  "dev:ele": "pnpm -F @vben/web-ele run dev",
 }
 ```
 
@@ -183,7 +183,7 @@ apps/web-ele
 ```jsonc
 {
   "dev:admin": "pnpm -F @vben/web-ele run dev",
-  "build:admin": "pnpm run build --filter=@vben/web-ele"
+  "build:admin": "pnpm run build --filter=@vben/web-ele",
 }
 ```
 
@@ -209,8 +209,8 @@ apps/backend-mock
 {
   "@vben/backend-mock#build": {
     "dependsOn": ["^build"],
-    "outputs": [".nitro/**", ".output/**"]
-  }
+    "outputs": [".nitro/**", ".output/**"],
+  },
 }
 ```
 
@@ -266,7 +266,7 @@ docs/
   "build:docs": "...",
   "dev:docs": "...",
   "build:play": "...",
-  "dev:play": "..."
+  "dev:play": "...",
 }
 ```
 
@@ -327,7 +327,7 @@ docs/
 ```jsonc
 {
   "changeset": "...",
-  "version": "..."
+  "version": "...",
 }
 ```
 
@@ -446,7 +446,7 @@ package.json
   "build:mp-lark": "...",
   "build:mp-qq": "...",
   "build:mp-toutiao": "...",
-  "build:quickapp-webview": "..."
+  "build:quickapp-webview": "...",
 }
 ```
 
@@ -458,7 +458,7 @@ package.json
   "build:mp-weixin": "uni build -p mp-weixin",
   "typecheck": "vue-tsc --noEmit",
   "lint": "eslint .",
-  "alova-gen": "alova gen -f"
+  "alova-gen": "alova gen -f",
 }
 ```
 
@@ -467,7 +467,7 @@ package.json
 ```jsonc
 {
   "dev:h5": "uni",
-  "build:h5": "uni build"
+  "build:h5": "uni build",
 }
 ```
 
@@ -656,7 +656,7 @@ apps/mobile/
   "commit": "git-cz",
   "release-major": "...",
   "release-minor": "...",
-  "release-patch": "..."
+  "release-patch": "...",
 }
 ```
 
@@ -886,40 +886,32 @@ overrides:
     "**/tsconfig*.json",
     "**/pom.xml",
     "**/mvnw",
-    "**/mvnw.cmd"
+    "**/mvnw.cmd",
   ],
-  "globalEnv": [
-    "NODE_ENV",
-    "SPRING_PROFILES_ACTIVE"
-  ],
+  "globalEnv": ["NODE_ENV", "SPRING_PROFILES_ACTIVE"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": [
-        "dist/**",
-        "dist.zip",
-        "target/**",
-        "build/libs/**"
-      ]
+      "outputs": ["dist/**", "dist.zip", "target/**", "build/libs/**"],
     },
     "dev": {
       "cache": false,
       "persistent": true,
-      "outputs": []
+      "outputs": [],
     },
     "typecheck": {
-      "outputs": []
+      "outputs": [],
     },
     "test": {
-      "outputs": []
+      "outputs": [],
     },
     "@app/api#build": {
-      "outputs": ["target/**"]
+      "outputs": ["target/**"],
     },
     "@app/mobile#build": {
-      "outputs": ["dist/build/**"]
-    }
-  }
+      "outputs": ["dist/build/**"],
+    },
+  },
 }
 ```
 
@@ -1517,9 +1509,11 @@ flowchart TD
 
 ```md
 ## What to build
+
 只保留 apps/web-ele，删除其他 UI app、backend-mock、docs、playground，并修正根配置。
 
 ## Acceptance criteria
+
 - [ ] 删除 apps/web-antd / web-antdv-next / web-naive / web-tdesign
 - [ ] 删除 apps/backend-mock
 - [ ] 删除 docs / playground 或重建为项目 docs
@@ -1534,23 +1528,27 @@ flowchart TD
 
 ```md
 ## What to build
+
 新增 apps/api Spring Boot 3 项目，并通过 package.json scripts 接入 Turborepo。
 
 ## Acceptance criteria
+
 - [ ] apps/api 有 package.json / pom.xml / Maven Wrapper
 - [ ] pnpm dev:api 可启动 Spring Boot
 - [ ] GET /api/health 返回 ok
 - [ ] pnpm build:api 通过
-- [ ] turbo build 能识别 api 输出 target/**
+- [ ] turbo build 能识别 api 输出 target/\*\*
 ```
 
 ## Issue 3：接入 Wot Starter skeleton
 
 ```md
 ## What to build
+
 将 wot-starter v2 作为 apps/mobile 迁入 monorepo，只保留微信小程序相关脚本。
 
 ## Acceptance criteria
+
 - [ ] apps/mobile 有 src / vite.config.ts / pages.config.ts / manifest.config.ts / uno.config.ts
 - [ ] package name 改为 @app/mobile
 - [ ] 删除子包 packageManager / prepare / release scripts
@@ -1562,9 +1560,11 @@ flowchart TD
 
 ```md
 ## What to build
+
 新增 packages/contracts，并定义 admin/mobile 最小 OpenAPI contract。
 
 ## Acceptance criteria
+
 - [ ] 定义 /api/health
 - [ ] 定义 /api/auth/login
 - [ ] 定义 /api/user/info
@@ -1577,9 +1577,11 @@ flowchart TD
 
 ```md
 ## What to build
+
 关闭 Nitro Mock，web-ele 登录、用户信息、菜单权限改走 Spring Boot。
 
 ## Acceptance criteria
+
 - [ ] VITE_NITRO_MOCK=false
 - [ ] Vite proxy 指向 localhost:8080
 - [ ] 登录 API 走 Spring Boot
@@ -1592,9 +1594,11 @@ flowchart TD
 
 ```md
 ## What to build
+
 小程序端通过 Alova 请求 Spring Boot mobile API。
 
 ## Acceptance criteria
+
 - [ ] apps/mobile 配置 VITE_API_BASE_URL
 - [ ] Alova request 层统一 token / error handling
 - [ ] 首页可以请求 /api/mobile/home 或 /api/mobile/health
@@ -1605,9 +1609,11 @@ flowchart TD
 
 ```md
 ## What to build
+
 补齐 CI、Docker Compose、README、architecture docs。
 
 ## Acceptance criteria
+
 - [ ] CI 安装 Node / pnpm / JDK
 - [ ] CI 跑 build:admin
 - [ ] CI 跑 build:api 或 test:api

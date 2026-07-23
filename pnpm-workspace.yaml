@@ -34,6 +34,8 @@ overrides:
   pinia: 'catalog:'
   vue: 'catalog:'
 
+# Catalog also reserves dependencies for planned tooling, documentation, tests, and UI capabilities.
+# eslint-disable pnpm/yaml-no-unused-catalog-item
 catalog:
   '@ast-grep/napi': ^0.43.0
   '@changesets/changelog-github': ^0.7.0

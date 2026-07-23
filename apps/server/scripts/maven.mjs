@@ -37,7 +37,7 @@ function resolveMavenExecutable() {
 
   if (existsSync(wrapper)) {
     return {
-      command: isWindows ? '.\\mvnw.cmd' : wrapper,
+      command: isWindows ? String.raw`.\mvnw.cmd` : wrapper,
       shell: isWindows,
       source: 'wrapper',
     };

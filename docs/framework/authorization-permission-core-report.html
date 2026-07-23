@@ -1,79 +1,169 @@
 <!doctype html>
 <html lang="zh-CN">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Authz 授权与权限校验分层报告</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script type="module">
-    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
-    mermaid.initialize({
-      startOnLoad: true,
-      theme: "neutral",
-      securityLevel: "loose",
-      flowchart: { htmlLabels: true, curve: "basis", nodeSpacing: 64, rankSpacing: 78 },
-      themeVariables: {
-        fontFamily: "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-        fontSize: "18px",
-        edgeLabelBackground: "#ffffff"
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Authz 授权与权限校验分层报告</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({
+        startOnLoad: true,
+        theme: 'neutral',
+        securityLevel: 'loose',
+        flowchart: {
+          htmlLabels: true,
+          curve: 'basis',
+          nodeSpacing: 64,
+          rankSpacing: 78,
+        },
+        themeVariables: {
+          fontFamily:
+            "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+          fontSize: '18px',
+          edgeLabelBackground: '#ffffff',
+        },
+      });
+    </script>
+    <style>
+      body {
+        font-feature-settings: 'tnum' 1;
       }
-    });
-  </script>
-  <style>
-    body { font-feature-settings: "tnum" 1; }
-    .code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-    .diagram-card { overflow-x: auto; }
-    .mermaid { min-width: 980px; font-size: 18px !important; }
-    .mermaid svg { max-width: none !important; height: auto !important; }
-    .mermaid .nodeLabel,
-    .mermaid .edgeLabel,
-    .mermaid text,
-    .mermaid tspan { font-size: 18px !important; line-height: 1.35 !important; }
-    .module-card { border: 1px solid #cbd5e1; background: #ffffff; border-radius: 1rem; padding: 1rem; }
-    .layer-title { color: #0f172a; font-weight: 700; }
-    .badge { border-radius: 9999px; padding: .25rem .65rem; font-size: .75rem; font-weight: 700; }
-  </style>
-</head>
-<body class="bg-stone-50 text-slate-950">
-  <main class="max-w-7xl mx-auto px-6 py-10 space-y-10">
-    <header class="space-y-5">
-      <div class="flex flex-wrap items-start justify-between gap-5">
-        <div class="max-w-4xl">
-          <p class="text-sm uppercase tracking-[0.25em] text-slate-600">Authorization architecture report</p>
-          <h1 class="mt-2 text-4xl font-semibold tracking-tight text-slate-950">Authz 授权与权限校验分层报告</h1>
-          <p class="mt-3 text-lg leading-8 text-slate-800">范围：先澄清 <span class="code">authz</span> 底层模型，不展开 Web 环境 implementation 分析或改造。</p>
+      .code {
+        font-family:
+          ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          'Liberation Mono', 'Courier New', monospace;
+      }
+      .diagram-card {
+        overflow-x: auto;
+      }
+      .mermaid {
+        min-width: 980px;
+        font-size: 18px !important;
+      }
+      .mermaid svg {
+        max-width: none !important;
+        height: auto !important;
+      }
+      .mermaid .nodeLabel,
+      .mermaid .edgeLabel,
+      .mermaid text,
+      .mermaid tspan {
+        font-size: 18px !important;
+        line-height: 1.35 !important;
+      }
+      .module-card {
+        border: 1px solid #cbd5e1;
+        background: #ffffff;
+        border-radius: 1rem;
+        padding: 1rem;
+      }
+      .layer-title {
+        color: #0f172a;
+        font-weight: 700;
+      }
+      .badge {
+        border-radius: 9999px;
+        padding: 0.25rem 0.65rem;
+        font-size: 0.75rem;
+        font-weight: 700;
+      }
+    </style>
+  </head>
+  <body class="bg-stone-50 text-slate-950">
+    <main class="max-w-7xl mx-auto px-6 py-10 space-y-10">
+      <header class="space-y-5">
+        <div class="flex flex-wrap items-start justify-between gap-5">
+          <div class="max-w-4xl">
+            <p class="text-sm uppercase tracking-[0.25em] text-slate-600">
+              Authorization architecture report
+            </p>
+            <h1
+              class="mt-2 text-4xl font-semibold tracking-tight text-slate-950"
+            >
+              Authz 授权与权限校验分层报告
+            </h1>
+            <p class="mt-3 text-lg leading-8 text-slate-800">
+              范围：先澄清 <span class="code">authz</span> 底层模型，不展开 Web
+              环境 implementation 分析或改造。
+            </p>
+          </div>
+          <div
+            class="rounded-2xl border border-indigo-200 bg-indigo-50 p-4 shadow-sm max-w-xl"
+          >
+            <p class="font-semibold text-indigo-950">核心结论</p>
+            <p class="mt-2 text-sm leading-6 text-indigo-950">
+              <span class="code">authz</span>
+              由两个功能模块组成：授权和权限校验。权限校验从
+              <span class="code">AccessDecision</span>
+              开始；授权围绕访问事实、provider 和拒绝处理展开。第二层 helper
+              seam 包含：<span class="code">AccessEnvironmentResolver</span
+              >、<span class="code">AccessIdentityResolver</span>、<span
+                class="code"
+                >AccessTargetResolver</span
+              >。
+            </p>
+          </div>
         </div>
-        <div class="rounded-2xl border border-indigo-200 bg-indigo-50 p-4 shadow-sm max-w-xl">
-          <p class="font-semibold text-indigo-950">核心结论</p>
-          <p class="mt-2 text-sm leading-6 text-indigo-950"><span class="code">authz</span> 由两个功能模块组成：授权和权限校验。权限校验从 <span class="code">AccessDecision</span> 开始；授权围绕访问事实、provider 和拒绝处理展开。第二层 helper seam 包含：<span class="code">AccessEnvironmentResolver</span>、<span class="code">AccessIdentityResolver</span>、<span class="code">AccessTargetResolver</span>。</p>
+        <div class="grid md:grid-cols-4 gap-3 text-sm text-slate-800">
+          <div class="rounded-xl border border-slate-200 bg-white p-3">
+            <span
+              class="inline-block h-3 w-3 rounded-sm bg-slate-900 align-middle"
+            ></span>
+            第一层核心 module
+          </div>
+          <div class="rounded-xl border border-slate-200 bg-white p-3">
+            <span
+              class="inline-block h-3 w-8 border-t-2 border-dashed border-slate-500 align-middle"
+            ></span>
+            seam
+          </div>
+          <div class="rounded-xl border border-slate-200 bg-white p-3">
+            <span class="font-bold text-indigo-700">蓝色</span> 表示
+            adapter/helper
+          </div>
+          <div class="rounded-xl border border-slate-200 bg-white p-3">
+            <span class="font-bold text-emerald-700">绿色</span> 表示独立
+            implementation module
+          </div>
         </div>
-      </div>
-      <div class="grid md:grid-cols-4 gap-3 text-sm text-slate-800">
-        <div class="rounded-xl border border-slate-200 bg-white p-3"><span class="inline-block h-3 w-3 rounded-sm bg-slate-900 align-middle"></span> 第一层核心 module</div>
-        <div class="rounded-xl border border-slate-200 bg-white p-3"><span class="inline-block h-3 w-8 border-t-2 border-dashed border-slate-500 align-middle"></span> seam</div>
-        <div class="rounded-xl border border-slate-200 bg-white p-3"><span class="font-bold text-indigo-700">蓝色</span> 表示 adapter/helper</div>
-        <div class="rounded-xl border border-slate-200 bg-white p-3"><span class="font-bold text-emerald-700">绿色</span> 表示独立 implementation module</div>
-      </div>
-    </header>
+      </header>
 
-    <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-5">
-      <h2 class="text-2xl font-semibold text-slate-950">1. Authz 的两个功能模块</h2>
-      <div class="grid lg:grid-cols-2 gap-5">
-        <div class="rounded-2xl border border-amber-200 bg-amber-50 p-5">
-          <h3 class="text-xl font-semibold text-amber-950">授权（Authorization）</h3>
-          <p class="mt-3 leading-7 text-amber-950">授权负责为一次访问准备事实和权限集合：访问环境、访问身份、访问目标、已授予权限、所需权限，以及拒绝后的环境动作。授权不等于单个 <span class="code">AccessDecision</span>。</p>
+      <section
+        class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-5"
+      >
+        <h2 class="text-2xl font-semibold text-slate-950">
+          1. Authz 的两个功能模块
+        </h2>
+        <div class="grid lg:grid-cols-2 gap-5">
+          <div class="rounded-2xl border border-amber-200 bg-amber-50 p-5">
+            <h3 class="text-xl font-semibold text-amber-950">
+              授权（Authorization）
+            </h3>
+            <p class="mt-3 leading-7 text-amber-950">
+              授权负责为一次访问准备事实和权限集合：访问环境、访问身份、访问目标、已授予权限、所需权限，以及拒绝后的环境动作。授权不等于单个
+              <span class="code">AccessDecision</span>。
+            </p>
+          </div>
+          <div class="rounded-2xl border border-slate-300 bg-slate-50 p-5">
+            <h3 class="text-xl font-semibold text-slate-950">
+              权限校验（Permission Checking）
+            </h3>
+            <p class="mt-3 leading-7 text-slate-900">
+              权限校验由 <span class="code">AccessDecision</span> module
+              负责：它只比较 granted permissions 与 required permissions，并返回
+              allow/deny，不解析权限来源，也不处理拒绝响应。
+            </p>
+          </div>
         </div>
-        <div class="rounded-2xl border border-slate-300 bg-slate-50 p-5">
-          <h3 class="text-xl font-semibold text-slate-950">权限校验（Permission Checking）</h3>
-          <p class="mt-3 leading-7 text-slate-900">权限校验由 <span class="code">AccessDecision</span> module 负责：它只比较 granted permissions 与 required permissions，并返回 allow/deny，不解析权限来源，也不处理拒绝响应。</p>
-        </div>
-      </div>
-    </section>
+      </section>
 
-    <section class="space-y-5">
-      <h2 class="text-2xl font-semibold text-slate-950">2. 目标三层结构图</h2>
-      <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm diagram-card">
-        <pre class="mermaid">
+      <section class="space-y-5">
+        <h2 class="text-2xl font-semibold text-slate-950">2. 目标三层结构图</h2>
+        <div
+          class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm diagram-card"
+        >
+          <pre class="mermaid">
 flowchart TB
   subgraph L1["第一层：授权与权限校验核心 module"]
     DEC["AccessDecision<br/>权限校验"]
@@ -131,59 +221,148 @@ flowchart TB
   class ENTRY env;
   class GPIMPL,RPIMPL provider;
         </pre>
-      </div>
-    </section>
+        </div>
+      </section>
 
-    <section class="space-y-5">
-      <h2 class="text-2xl font-semibold text-slate-950">3. 第一层：授权与权限校验核心 module</h2>
-      <div class="overflow-x-auto rounded-3xl border border-slate-200 bg-white shadow-sm">
-        <table class="min-w-full text-sm">
-          <thead class="bg-slate-100 text-left text-xs uppercase tracking-wider text-slate-700">
-            <tr><th class="px-4 py-3">Module</th><th class="px-4 py-3">所属功能</th><th class="px-4 py-3">职责</th></tr>
-          </thead>
-          <tbody class="divide-y divide-slate-100 text-slate-900">
-            <tr><td class="px-4 py-3 code">AccessDecision</td><td class="px-4 py-3 font-semibold">权限校验</td><td class="px-4 py-3">判断 granted permissions 是否满足 required permissions，只返回 allow/deny。</td></tr>
-            <tr><td class="px-4 py-3 code">GrantedPermissionsProvider</td><td class="px-4 py-3 font-semibold">授权</td><td class="px-4 py-3">根据 <span class="code">AccessContext</span> 提供已授予权限。</td></tr>
-            <tr><td class="px-4 py-3 code">RequiredPermissionsProvider</td><td class="px-4 py-3 font-semibold">授权</td><td class="px-4 py-3">根据 <span class="code">AccessContext</span> 提供所需权限。</td></tr>
-            <tr><td class="px-4 py-3 code">AccessContext</td><td class="px-4 py-3 font-semibold">授权事实</td><td class="px-4 py-3">承载 <span class="code">AccessEnvironment</span>、<span class="code">AccessIdentity</span>、<span class="code">AccessTarget</span> 和 attributes。</td></tr>
-            <tr><td class="px-4 py-3 code">Permission</td><td class="px-4 py-3 font-semibold">权限值</td><td class="px-4 py-3">provider implementation 围绕它产出权限集合，decision 围绕它执行匹配。</td></tr>
-            <tr><td class="px-4 py-3 code">AccessDenied</td><td class="px-4 py-3 font-semibold">访问拒绝入口</td><td class="px-4 py-3">决策失败后的全局唯一入口 module，通过 denied 执行访问拒绝，不参与权限校验。</td></tr>
-            <tr><td class="px-4 py-3 code">AccessDeniedContext</td><td class="px-4 py-3 font-semibold">拒绝处理上下文</td><td class="px-4 py-3">承载执行环境拒绝处理数据，与授权事实 AccessContext 分离。</td></tr>
-            <tr><td class="px-4 py-3 code">AccessDeniedHandler</td><td class="px-4 py-3 font-semibold">拒绝处理策略</td><td class="px-4 py-3">可存在多个 implementation，只处理自己支持的 AccessDeniedContext。</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
+      <section class="space-y-5">
+        <h2 class="text-2xl font-semibold text-slate-950">
+          3. 第一层：授权与权限校验核心 module
+        </h2>
+        <div
+          class="overflow-x-auto rounded-3xl border border-slate-200 bg-white shadow-sm"
+        >
+          <table class="min-w-full text-sm">
+            <thead
+              class="bg-slate-100 text-left text-xs uppercase tracking-wider text-slate-700"
+            >
+              <tr>
+                <th class="px-4 py-3">Module</th>
+                <th class="px-4 py-3">所属功能</th>
+                <th class="px-4 py-3">职责</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 text-slate-900">
+              <tr>
+                <td class="px-4 py-3 code">AccessDecision</td>
+                <td class="px-4 py-3 font-semibold">权限校验</td>
+                <td class="px-4 py-3">
+                  判断 granted permissions 是否满足 required permissions，只返回
+                  allow/deny。
+                </td>
+              </tr>
+              <tr>
+                <td class="px-4 py-3 code">GrantedPermissionsProvider</td>
+                <td class="px-4 py-3 font-semibold">授权</td>
+                <td class="px-4 py-3">
+                  根据 <span class="code">AccessContext</span> 提供已授予权限。
+                </td>
+              </tr>
+              <tr>
+                <td class="px-4 py-3 code">RequiredPermissionsProvider</td>
+                <td class="px-4 py-3 font-semibold">授权</td>
+                <td class="px-4 py-3">
+                  根据 <span class="code">AccessContext</span> 提供所需权限。
+                </td>
+              </tr>
+              <tr>
+                <td class="px-4 py-3 code">AccessContext</td>
+                <td class="px-4 py-3 font-semibold">授权事实</td>
+                <td class="px-4 py-3">
+                  承载 <span class="code">AccessEnvironment</span>、<span
+                    class="code"
+                    >AccessIdentity</span
+                  >、<span class="code">AccessTarget</span> 和 attributes。
+                </td>
+              </tr>
+              <tr>
+                <td class="px-4 py-3 code">Permission</td>
+                <td class="px-4 py-3 font-semibold">权限值</td>
+                <td class="px-4 py-3">
+                  provider implementation 围绕它产出权限集合，decision
+                  围绕它执行匹配。
+                </td>
+              </tr>
+              <tr>
+                <td class="px-4 py-3 code">AccessDenied</td>
+                <td class="px-4 py-3 font-semibold">访问拒绝入口</td>
+                <td class="px-4 py-3">
+                  决策失败后的全局唯一入口 module，通过 denied
+                  执行访问拒绝，不参与权限校验。
+                </td>
+              </tr>
+              <tr>
+                <td class="px-4 py-3 code">AccessDeniedContext</td>
+                <td class="px-4 py-3 font-semibold">拒绝处理上下文</td>
+                <td class="px-4 py-3">
+                  承载执行环境拒绝处理数据，与授权事实 AccessContext 分离。
+                </td>
+              </tr>
+              <tr>
+                <td class="px-4 py-3 code">AccessDeniedHandler</td>
+                <td class="px-4 py-3 font-semibold">拒绝处理策略</td>
+                <td class="px-4 py-3">
+                  可存在多个 implementation，只处理自己支持的
+                  AccessDeniedContext。
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
 
-    <section class="space-y-5">
-      <h2 class="text-2xl font-semibold text-slate-950">4. 第二层：组合式 adapter/helper seam</h2>
-      <div class="grid lg:grid-cols-4 gap-4">
-        <div class="module-card">
-          <p class="layer-title code">AccessContextAdapter&lt;T&gt;</p>
-          <p class="mt-3 text-slate-800 leading-6">执行环境对象进入 authz 的主 seam。它输出完整 <span class="code">AccessContext</span>，而不是把原始执行环境对象交给第一层。</p>
+      <section class="space-y-5">
+        <h2 class="text-2xl font-semibold text-slate-950">
+          4. 第二层：组合式 adapter/helper seam
+        </h2>
+        <div class="grid lg:grid-cols-4 gap-4">
+          <div class="module-card">
+            <p class="layer-title code">AccessContextAdapter&lt;T&gt;</p>
+            <p class="mt-3 text-slate-800 leading-6">
+              执行环境对象进入 authz 的主 seam。它输出完整
+              <span class="code">AccessContext</span
+              >，而不是把原始执行环境对象交给第一层。
+            </p>
+          </div>
+          <div class="module-card border-dashed border-blue-300 bg-blue-50">
+            <p class="layer-title code">AccessEnvironmentResolver&lt;T&gt;</p>
+            <p class="mt-3 text-slate-800 leading-6">
+              adapter implementation 内部的 environment helper seam，只提取
+              <span class="code">AccessEnvironment</span>。
+            </p>
+          </div>
+          <div class="module-card border-dashed border-blue-300 bg-blue-50">
+            <p class="layer-title code">AccessIdentityResolver&lt;T&gt;</p>
+            <p class="mt-3 text-slate-800 leading-6">
+              adapter implementation 内部的 identity helper seam，只提取
+              <span class="code">AccessIdentity</span>。
+            </p>
+          </div>
+          <div class="module-card border-dashed border-blue-300 bg-blue-50">
+            <p class="layer-title code">AccessTargetResolver&lt;T&gt;</p>
+            <p class="mt-3 text-slate-800 leading-6">
+              adapter implementation 内部的 target helper seam，只提取
+              <span class="code">AccessTarget</span>。
+            </p>
+          </div>
         </div>
-        <div class="module-card border-dashed border-blue-300 bg-blue-50">
-          <p class="layer-title code">AccessEnvironmentResolver&lt;T&gt;</p>
-          <p class="mt-3 text-slate-800 leading-6">adapter implementation 内部的 environment helper seam，只提取 <span class="code">AccessEnvironment</span>。</p>
+        <div
+          class="rounded-2xl border border-indigo-200 bg-indigo-50 p-5 text-indigo-950 leading-7"
+        >
+          四者是组合关系：adapter 可以组合 environment resolver、identity
+          resolver 与 target resolver，也可以自己直接构造 environment、identity
+          和 target。resolver 不反向依赖 adapter，adapter 也不强制依赖
+          resolver。
         </div>
-        <div class="module-card border-dashed border-blue-300 bg-blue-50">
-          <p class="layer-title code">AccessIdentityResolver&lt;T&gt;</p>
-          <p class="mt-3 text-slate-800 leading-6">adapter implementation 内部的 identity helper seam，只提取 <span class="code">AccessIdentity</span>。</p>
-        </div>
-        <div class="module-card border-dashed border-blue-300 bg-blue-50">
-          <p class="layer-title code">AccessTargetResolver&lt;T&gt;</p>
-          <p class="mt-3 text-slate-800 leading-6">adapter implementation 内部的 target helper seam，只提取 <span class="code">AccessTarget</span>。</p>
-        </div>
-      </div>
-      <div class="rounded-2xl border border-indigo-200 bg-indigo-50 p-5 text-indigo-950 leading-7">
-        四者是组合关系：adapter 可以组合 environment resolver、identity resolver 与 target resolver，也可以自己直接构造 environment、identity 和 target。resolver 不反向依赖 adapter，adapter 也不强制依赖 resolver。
-      </div>
-    </section>
+      </section>
 
-    <section class="space-y-5">
-      <h2 class="text-2xl font-semibold text-slate-950">5. 第三层：两个互不强依赖的功能模块</h2>
-      <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm diagram-card">
-        <pre class="mermaid">
+      <section class="space-y-5">
+        <h2 class="text-2xl font-semibold text-slate-950">
+          5. 第三层：两个互不强依赖的功能模块
+        </h2>
+        <div
+          class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm diagram-card"
+        >
+          <pre class="mermaid">
 flowchart LR
   subgraph EA["环境入口抽象实现 module"]
     PREP["准备环境/身份/目标事实"]
@@ -226,35 +405,83 @@ flowchart LR
   class CTX,DEC,GP,RP,PERM core;
   class PREP,CALL,HANDLE env;
   class GRANTED,REQUIRED,SUPPORTS provider;
-        </pre>
-      </div>
-      <div class="grid lg:grid-cols-2 gap-5">
-        <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
-          <h3 class="text-xl font-semibold text-emerald-950">环境入口抽象实现 module</h3>
-          <ul class="mt-3 list-disc pl-5 space-y-2 text-emerald-950 leading-6">
-            <li>负责授权前准备。</li>
-            <li>准备 <span class="code">AccessEnvironment</span>、<span class="code">AccessIdentity</span>、<span class="code">AccessTarget</span> 和 attributes。</li>
-            <li>组合当前环境的 <span class="code">AccessContextAdapter</span> 与全局 <span class="code">AccessDecision</span>。</li>
-            <li>决策失败后调用全局 <span class="code">AccessDenied</span>，由它执行访问拒绝；默认 implementation 可调用多个 <span class="code">AccessDeniedHandler</span> 策略。</li>
-          </ul>
+        </pre
+          >
         </div>
-        <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
-          <h3 class="text-xl font-semibold text-emerald-950">Provider 授权实现 module</h3>
-          <ul class="mt-3 list-disc pl-5 space-y-2 text-emerald-950 leading-6">
-            <li>负责 concrete <span class="code">GrantedPermissionsProvider</span> / <span class="code">RequiredPermissionsProvider</span> implementation。</li>
-            <li>根据 <span class="code">AccessContext</span> 产出 granted/required permissions。</li>
-            <li>通过 <span class="code">supports(AccessContext)</span> 做环境参与判断。</li>
-            <li>不依赖环境入口 implementation。</li>
-          </ul>
+        <div class="grid lg:grid-cols-2 gap-5">
+          <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+            <h3 class="text-xl font-semibold text-emerald-950">
+              环境入口抽象实现 module
+            </h3>
+            <ul
+              class="mt-3 list-disc pl-5 space-y-2 text-emerald-950 leading-6"
+            >
+              <li>负责授权前准备。</li>
+              <li>
+                准备 <span class="code">AccessEnvironment</span>、<span
+                  class="code"
+                  >AccessIdentity</span
+                >、<span class="code">AccessTarget</span> 和 attributes。
+              </li>
+              <li>
+                组合当前环境的
+                <span class="code">AccessContextAdapter</span> 与全局
+                <span class="code">AccessDecision</span>。
+              </li>
+              <li>
+                决策失败后调用全局
+                <span class="code">AccessDenied</span>，由它执行访问拒绝；默认
+                implementation 可调用多个
+                <span class="code">AccessDeniedHandler</span> 策略。
+              </li>
+            </ul>
+          </div>
+          <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+            <h3 class="text-xl font-semibold text-emerald-950">
+              Provider 授权实现 module
+            </h3>
+            <ul
+              class="mt-3 list-disc pl-5 space-y-2 text-emerald-950 leading-6"
+            >
+              <li>
+                负责 concrete
+                <span class="code">GrantedPermissionsProvider</span> /
+                <span class="code">RequiredPermissionsProvider</span>
+                implementation。
+              </li>
+              <li>
+                根据 <span class="code">AccessContext</span> 产出
+                granted/required permissions。
+              </li>
+              <li>
+                通过
+                <span class="code">supports(AccessContext)</span>
+                做环境参与判断。
+              </li>
+              <li>不依赖环境入口 implementation。</li>
+            </ul>
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <section class="rounded-3xl border border-amber-200 bg-amber-50 p-6 shadow-sm">
-      <p class="text-sm uppercase tracking-[0.2em] text-amber-800 font-semibold">Scope note</p>
-      <h2 class="mt-2 text-2xl font-semibold text-amber-950">本轮不展开 Web 环境 implementation</h2>
-      <p class="mt-3 text-amber-950 leading-7">当前报告只澄清 authz 底层分层、补齐 <span class="code">AccessTargetResolver</span> 抽象，并确认第三层两个功能模块之间的低耦合关系。具体环境入口 implementation 的拆分、迁移和重构应作为后续单独议题处理。</p>
-    </section>
-  </main>
-</body>
+      <section
+        class="rounded-3xl border border-amber-200 bg-amber-50 p-6 shadow-sm"
+      >
+        <p
+          class="text-sm uppercase tracking-[0.2em] text-amber-800 font-semibold"
+        >
+          Scope note
+        </p>
+        <h2 class="mt-2 text-2xl font-semibold text-amber-950">
+          本轮不展开 Web 环境 implementation
+        </h2>
+        <p class="mt-3 text-amber-950 leading-7">
+          当前报告只澄清 authz 底层分层、补齐
+          <span class="code">AccessTargetResolver</span>
+          抽象，并确认第三层两个功能模块之间的低耦合关系。具体环境入口
+          implementation 的拆分、迁移和重构应作为后续单独议题处理。
+        </p>
+      </section>
+    </main>
+  </body>
 </html>

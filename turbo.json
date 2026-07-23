@@ -17,11 +17,7 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": [
-        "dist/**",
-        "dist.zip",
-        "**/target/**"
-      ]
+      "outputs": ["dist/**", "dist.zip", "**/target/**"]
     },
     "preview": {
       "dependsOn": ["^build"],
