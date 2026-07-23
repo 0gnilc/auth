@@ -17,14 +17,14 @@ import java.util.Objects;
 public class I18nMessageService {
 
     private static final Logger log = LoggerFactory.getLogger(I18nMessageService.class);
-    private static final Locale FALLBACK_LOCALE = SupportedLocale.ZH_CN.toLocale();
+    private static final Locale FALLBACK_LOCALE = SupportedLocale.EN_US.toLocale();
 
     private final MessageSource messageSource;
     private final Locale defaultLocale;
 
     public I18nMessageService(
             MessageSource messageSource,
-            @Value("${app.i18n.default-locale:zh-CN}") String defaultLocale) {
+            @Value("${app.i18n.default-locale:en-US}") String defaultLocale) {
         this.messageSource = Objects.requireNonNull(messageSource, "messageSource");
         this.defaultLocale = toLocale(defaultLocale);
     }

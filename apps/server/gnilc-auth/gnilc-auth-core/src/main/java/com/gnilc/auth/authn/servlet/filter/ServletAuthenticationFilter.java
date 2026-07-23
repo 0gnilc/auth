@@ -13,6 +13,8 @@ import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.AnnotationAwareOrderComparator;
 import org.springframework.util.CollectionUtils;
 
@@ -27,6 +29,8 @@ import java.util.List;
  * 过滤器只负责编排认证处理器；认证成功后继续后续链路，认证失败时停止链路。
  */
 public class ServletAuthenticationFilter implements Filter {
+    private static final Logger log = LoggerFactory.getLogger(ServletAuthenticationFilter.class);
+
     private final List<ServletAuthenticationHandler> handlers;
     private final ServletAuthenticationFailureHandler failureHandler;
 
@@ -58,14 +62,15 @@ public class ServletAuthenticationFilter implements Filter {
                 }
                 result = handler.authenticate(context);
             } catch (Exception e) {
-                failureHandler.handle(context, AuthenticationResult.failed(e.getMessage(), e));
+                log.error("Authentication processing failed", e);
+                failureHandler.handle(context, AuthenticationResult.failed(null, e));
                 return;
             }
             if (result != null && result.isAuthenticated()) {
                 chain.doFilter(new AuthenticatedHttpServletRequest(httpRequest, result.getPrincipal()), response);
                 return;
             }
-            failureHandler.handle(context, result == null ? AuthenticationResult.failed("authentication failed") : result);
+            failureHandler.handle(context, result == null ? AuthenticationResult.failed(null) : result);
             return;
         }
         chain.doFilter(request, response);

@@ -20,7 +20,7 @@ import static org.hamcrest.Matchers.hasItem;
         initializers = SystemContainerContextInitializer.class)
 class AuthorizationApiIT extends AdminApiTestSupport {
     @Test
-    void anonymousProtectedRequestIsForbiddenWithJsonContract() {
+    void anonymousProtectedRequestIsForbiddenWithLocalizedJsonContract() {
         given()
                 .when()
                 .get("/api/sys/admin/user-info")
@@ -28,7 +28,16 @@ class AuthorizationApiIT extends AdminApiTestSupport {
                 .statusCode(403)
                 .contentType("application/json;charset=UTF-8")
                 .body("code", equalTo(20003))
-                .body("error", equalTo("access denied"));
+                .body("error", equalTo("Access denied."));
+
+        given()
+                .header("Accept-Language", "zh-CN")
+                .when()
+                .get("/api/sys/admin/user-info")
+                .then()
+                .statusCode(403)
+                .body("code", equalTo(20003))
+                .body("error", equalTo("访问被拒绝。"));
     }
 
     @Test

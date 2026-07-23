@@ -167,7 +167,7 @@ class I18nMessageApiIT extends AdminApiTestSupport {
                 .then()
                 .statusCode(200)
                 .body("code", equalTo(10001))
-                .body("error", equalTo("国际化 key 必须使用合法的点分路径。"));
+                .body("error", equalTo("The internationalization key must be a valid dot path."));
 
         given()
                 .header("Authorization", auth)
@@ -176,6 +176,6 @@ class I18nMessageApiIT extends AdminApiTestSupport {
                 .then()
                 .statusCode(200)
                 .body("code", equalTo(10001))
-                .body("error", equalTo("国际化 key 长度不能超过 191 个字符。"));
+                .body("error", equalTo("The internationalization key must not exceed 191 characters."));
     }
 }

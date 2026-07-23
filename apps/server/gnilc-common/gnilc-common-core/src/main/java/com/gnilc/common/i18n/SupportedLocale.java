@@ -41,7 +41,7 @@ public enum SupportedLocale {
         return Arrays.stream(values())
                 .filter(locale -> locale.code.equals(languageTag))
                 .findFirst()
-                .orElse(ZH_CN)
+                .orElse(EN_US)
                 .toLocale();
     }
 

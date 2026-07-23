@@ -87,6 +87,19 @@ class AdminAuthApiIT extends AdminApiTestSupport {
                 .statusCode(200)
                 .body("code", equalTo(20001))
                 .body("error", equalTo("Incorrect username or password."));
+
+        given()
+                .header("Accept-Language", "zh-CN")
+                .contentType(ContentType.JSON)
+                .body("""
+                        {"username":"admin","password":"wrong"}
+                        """)
+                .when()
+                .post("/api/sys/admin/login")
+                .then()
+                .statusCode(200)
+                .body("code", equalTo(20001))
+                .body("error", equalTo("用户名或密码错误。"));
     }
 
     @Test
@@ -217,7 +230,7 @@ class AdminAuthApiIT extends AdminApiTestSupport {
                 .then()
                 .statusCode(400)
                 .body("code", equalTo(10001))
-                .body("error", equalTo("请求体格式错误。"));
+                .body("error", equalTo("The request body is malformed."));
     }
 
     @Test

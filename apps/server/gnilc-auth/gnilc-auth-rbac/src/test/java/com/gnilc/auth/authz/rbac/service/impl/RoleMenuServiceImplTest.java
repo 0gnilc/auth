@@ -10,6 +10,7 @@ import com.gnilc.auth.authz.rbac.entity.bo.RoleMenuBo;
 import com.gnilc.auth.authz.rbac.entity.dto.RoleMenuDto;
 import com.gnilc.auth.authz.rbac.service.MenuService;
 import com.gnilc.common.exception.InvalidArgumentException;
+import com.gnilc.common.i18n.I18nMessageService;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.support.ResourceBundleMessageSource;
 
 import java.util.Collection;
 import java.util.List;
@@ -49,7 +51,12 @@ class RoleMenuServiceImplTest {
                     new MapperBuilderAssistant(new MybatisConfiguration(), "role-menu-service-test"),
                     RoleMenuBo.class);
         }
-        roleMenus = spy(new RoleMenuServiceImpl(menuService));
+        ResourceBundleMessageSource source = new ResourceBundleMessageSource();
+        source.setBasename("i18n/rbac/messages");
+        source.setDefaultEncoding("UTF-8");
+        roleMenus = spy(new RoleMenuServiceImpl(
+                menuService,
+                new I18nMessageService(source, "en-US")));
         doAnswer(invocation -> new LambdaQueryChainWrapper<>(
                 roleMenusDao, Wrappers.lambdaQuery(RoleMenuBo.class)))
                 .when(roleMenus).lambdaQuery();

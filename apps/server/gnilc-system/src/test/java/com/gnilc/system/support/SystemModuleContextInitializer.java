@@ -18,7 +18,7 @@ public final class SystemModuleContextInitializer
                 "server.servlet.context-path=/api",
                 "spring.messages.basename=i18n/common/messages,i18n/rbac/messages,i18n/system/messages",
                 "spring.messages.fallback-to-system-locale=false",
-                "app.i18n.default-locale=zh-CN",
+                "app.i18n.default-locale=en-US",
                 "mybatis-plus.configuration.map-underscore-to-camel-case=true",
                 "mybatis-plus.global-config.db-config.logic-delete-field=del",
                 "mybatis-plus.global-config.db-config.logic-delete-value=1",

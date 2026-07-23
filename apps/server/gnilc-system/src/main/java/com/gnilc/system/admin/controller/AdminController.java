@@ -2,6 +2,7 @@ package com.gnilc.system.admin.controller;
 
 import com.alibaba.fastjson2.JSONObject;
 import com.gnilc.common.constant.ResponseCode;
+import com.gnilc.common.i18n.I18nMessageService;
 import com.gnilc.common.utils.PageResult;
 import com.gnilc.common.utils.R;
 import com.gnilc.system.admin.entity.dto.AdminDto;
@@ -32,9 +33,11 @@ import java.util.List;
 public class AdminController {
     private static final String REFRESH_TOKEN_HEADER = "X-Refresh-Token";
     private final AdminService adminService;
+    private final I18nMessageService messages;
 
-    public AdminController(AdminService adminService) {
+    public AdminController(AdminService adminService, I18nMessageService messages) {
         this.adminService = adminService;
+        this.messages = messages;
     }
 
     /**
@@ -90,7 +93,8 @@ public class AdminController {
         String password = body == null ? null : body.getString("password");
         AdminTokenVo vo = adminService.login(username, password);
         if (vo == null) {
-            return R.error(ResponseCode.AUTHENTICATION_FAILED, "Incorrect username or password.");
+            return R.error(ResponseCode.AUTHENTICATION_FAILED,
+                    messages.get("system.admin.login.invalidCredentials"));
         }
         return R.success(vo);
     }
@@ -178,7 +182,8 @@ public class AdminController {
         return R.success(adminService.getMenuRoutes());
     }
 
-    private static ResponseEntity<R<?>> unauthorized() {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(R.error(ResponseCode.UNAUTHORIZED, "unauthorized"));
+    private ResponseEntity<R<?>> unauthorized() {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(R.error(ResponseCode.UNAUTHORIZED, messages.get("system.auth.unauthorized")));
     }
 }

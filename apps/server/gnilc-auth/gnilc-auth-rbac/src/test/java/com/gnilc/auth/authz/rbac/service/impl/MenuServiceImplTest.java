@@ -7,13 +7,18 @@ import com.gnilc.auth.authz.rbac.entity.enums.MenuType;
 import com.gnilc.auth.authz.rbac.entity.vo.MenuRouteVo;
 import com.gnilc.auth.authz.rbac.service.RoleMenuService;
 import com.gnilc.common.exception.InvalidArgumentException;
+import com.gnilc.common.i18n.I18nMessageService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.context.support.ResourceBundleMessageSource;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -34,7 +39,20 @@ class MenuServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        menus = spy(new MenuServiceImpl(menuDao, roleMenuService, new ObjectMapper()));
+        LocaleContextHolder.setLocale(Locale.US);
+        ResourceBundleMessageSource source = new ResourceBundleMessageSource();
+        source.setBasename("i18n/rbac/messages");
+        source.setDefaultEncoding("UTF-8");
+        menus = spy(new MenuServiceImpl(
+                menuDao,
+                roleMenuService,
+                new ObjectMapper(),
+                new I18nMessageService(source, "en-US")));
+    }
+
+    @AfterEach
+    void tearDown() {
+        LocaleContextHolder.resetLocaleContext();
     }
 
     @Test
@@ -79,6 +97,17 @@ class MenuServiceImplTest {
                 .isInstanceOf(InvalidArgumentException.class)
                 .hasMessage("A selected menu no longer exists. Refresh and try again.");
         verify(menus).list();
+    }
+
+    @Test
+    void getMenusWithAncestorsUsesTheRequestLocaleForValidationErrors() {
+        LocaleContextHolder.setLocale(Locale.SIMPLIFIED_CHINESE);
+        doReturn(List.of(menu(1L, 0L, MenuType.CATALOG, "Root", "/root", 1)))
+                .when(menus).list();
+
+        assertThatThrownBy(() -> menus.getMenusWithAncestors(Set.of(Long.MAX_VALUE), true))
+                .isInstanceOf(InvalidArgumentException.class)
+                .hasMessage("所选菜单已不存在，请刷新后重试。");
     }
 
     @Test

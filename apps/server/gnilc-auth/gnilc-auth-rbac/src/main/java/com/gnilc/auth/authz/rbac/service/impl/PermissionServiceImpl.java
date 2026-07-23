@@ -2,6 +2,7 @@ package com.gnilc.auth.authz.rbac.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.gnilc.common.base.Preconditions;
+import com.gnilc.common.i18n.I18nMessageService;
 import com.gnilc.auth.authz.rbac.dao.PermissionDao;
 import com.gnilc.auth.authz.rbac.entity.bo.PermissionBo;
 import com.gnilc.auth.authz.rbac.entity.dto.PermissionDto;
@@ -26,29 +27,34 @@ public class PermissionServiceImpl extends ServiceImpl<PermissionDao, Permission
     private final ApplicationEventPublisher eventPublisher;
     private final UserRoleService userRoleService;
     private final RolePermissionService rolePermissionService;
+    private final I18nMessageService messages;
 
     public PermissionServiceImpl(ApplicationEventPublisher eventPublisher,
                                  UserRoleService userRoleService,
-                                 RolePermissionService rolePermissionService) {
+                                 RolePermissionService rolePermissionService,
+                                 I18nMessageService messages) {
         this.eventPublisher = eventPublisher;
         this.userRoleService = userRoleService;
         this.rolePermissionService = rolePermissionService;
+        this.messages = messages;
     }
 
     @Transactional
     @Override
     public void createPermission(PermissionDto dto) {
-        Preconditions.checkArgument(dto != null, "Permission information is required.");
+        Preconditions.checkArgument(dto != null, messages.get("rbac.permission.information.required"));
         String name = dto.getName();
         String code = dto.getCode();
         String targetIdentifier = dto.getTargetIdentifier();
         String targetQualifier = dto.getTargetQualifier();
         String remark = dto.getRemark();
         Boolean publicAccess = dto.getPublicAccess();
-        Preconditions.checkArgument(StringUtils.isNotBlank(name), "Permission name is required.");
-        Preconditions.checkArgument(StringUtils.isNotBlank(code), "Permission code is required.");
-        Preconditions.checkArgument(StringUtils.isNotBlank(targetIdentifier), "Access target identifier is required.");
-        Preconditions.checkArgument(getPermissionByCode(code) == null, "A permission with this code already exists.");
+        Preconditions.checkArgument(StringUtils.isNotBlank(name), messages.get("rbac.permission.name.required"));
+        Preconditions.checkArgument(StringUtils.isNotBlank(code), messages.get("rbac.permission.code.required"));
+        Preconditions.checkArgument(StringUtils.isNotBlank(targetIdentifier),
+                messages.get("rbac.permission.targetIdentifier.required"));
+        Preconditions.checkArgument(getPermissionByCode(code) == null,
+                messages.get("rbac.permission.code.exists"));
         PermissionBo bo = new PermissionBo();
         bo.setName(name);
         bo.setCode(code);
@@ -68,7 +74,7 @@ public class PermissionServiceImpl extends ServiceImpl<PermissionDao, Permission
     @Transactional
     @Override
     public void updatePermission(PermissionDto dto) {
-        Preconditions.checkArgument(dto != null, "Permission information is required.");
+        Preconditions.checkArgument(dto != null, messages.get("rbac.permission.information.required"));
         Long permissionId = dto.getId();
         String name = dto.getName();
         String code = dto.getCode();
@@ -76,16 +82,17 @@ public class PermissionServiceImpl extends ServiceImpl<PermissionDao, Permission
         String targetQualifier = dto.getTargetQualifier();
         String remark = dto.getRemark();
         Boolean publicAccess = dto.getPublicAccess();
-        Preconditions.checkArgument(permissionId != null, "A permission must be selected.");
+        Preconditions.checkArgument(permissionId != null, messages.get("rbac.permission.selection.required"));
         PermissionBo bo = getById(permissionId);
-        Preconditions.checkCondition(bo != null, "The permission no longer exists. Refresh and try again.");
+        Preconditions.checkCondition(bo != null, messages.get("rbac.permission.notFound"));
         if (StringUtils.isNotBlank(code) && !code.equals(bo.getCode())) {
             PermissionBo sameBo = getPermissionByCode(code);
-            Preconditions.checkArgument(sameBo == null, "A permission with this code already exists.");
+            Preconditions.checkArgument(sameBo == null, messages.get("rbac.permission.code.exists"));
         }
-        Preconditions.checkArgument(StringUtils.isNotBlank(name), "Permission name is required.");
-        Preconditions.checkArgument(StringUtils.isNotBlank(code), "Permission code is required.");
-        Preconditions.checkArgument(StringUtils.isNotBlank(targetIdentifier), "Access target identifier is required.");
+        Preconditions.checkArgument(StringUtils.isNotBlank(name), messages.get("rbac.permission.name.required"));
+        Preconditions.checkArgument(StringUtils.isNotBlank(code), messages.get("rbac.permission.code.required"));
+        Preconditions.checkArgument(StringUtils.isNotBlank(targetIdentifier),
+                messages.get("rbac.permission.targetIdentifier.required"));
         bo.setName(name);
         bo.setCode(code);
         bo.setTargetIdentifier(targetIdentifier);
@@ -102,9 +109,9 @@ public class PermissionServiceImpl extends ServiceImpl<PermissionDao, Permission
     @Transactional
     @Override
     public void removePermission(Long id) {
-        Preconditions.checkArgument(id != null, "A permission must be selected.");
+        Preconditions.checkArgument(id != null, messages.get("rbac.permission.selection.required"));
         PermissionBo bo = getById(id);
-        Preconditions.checkCondition(bo != null, "The permission no longer exists. Refresh and try again.");
+        Preconditions.checkCondition(bo != null, messages.get("rbac.permission.notFound"));
         bo.setCode(bo.getCode() + "_del_" + id);
         updateById(bo);
         removeById(id);

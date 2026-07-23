@@ -55,6 +55,18 @@ class I18nMessageServiceTest {
     }
 
     @Test
+    void invalidDefaultLocaleFallsBackToEnglish() {
+        StaticMessageSource messageSource = new StaticMessageSource();
+        messageSource.addMessage("greeting", Locale.SIMPLIFIED_CHINESE, "你好");
+        messageSource.addMessage("greeting", Locale.US, "Hello");
+        I18nMessageService messagesWithInvalidDefault =
+                new I18nMessageService(messageSource, "unsupported");
+
+        assertThat(messagesWithInvalidDefault.get("greeting", Locale.FRANCE))
+                .isEqualTo("Hello");
+    }
+
+    @Test
     void rejectsBlankMessageCode() {
         assertThatThrownBy(() -> messages.get(" "))
                 .isInstanceOf(IllegalArgumentException.class)

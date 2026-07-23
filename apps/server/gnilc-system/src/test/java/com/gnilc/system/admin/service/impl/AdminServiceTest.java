@@ -15,10 +15,12 @@ import com.gnilc.auth.authz.rbac.service.RoleService;
 import com.gnilc.auth.authz.rbac.service.UserRoleService;
 import com.gnilc.auth.authz.rbac.service.UserService;
 import com.gnilc.common.exception.InvalidArgumentException;
+import com.gnilc.common.i18n.I18nMessageService;
 import com.gnilc.system.admin.dao.AdminDao;
 import com.gnilc.system.admin.entity.bo.AdminBo;
 import com.gnilc.system.admin.entity.dto.AdminDto;
 import com.gnilc.system.session.AdminSessionManager;
+import com.gnilc.system.auth.AccessPrincipalUtils;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,11 +30,14 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.context.support.ResourceBundleMessageSource;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.util.List;
+import java.util.Locale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -74,7 +79,20 @@ class AdminServiceTest {
                     new MapperBuilderAssistant(new MybatisConfiguration(), "admin-service-test"),
                     AdminBo.class);
         }
-        admins = spy(new AdminServiceImpl(sessions, roles, menus, roleMenus, users, userRoles));
+        LocaleContextHolder.setLocale(Locale.US);
+        ResourceBundleMessageSource source = new ResourceBundleMessageSource();
+        source.setBasenames("i18n/rbac/messages", "i18n/system/messages");
+        source.setDefaultEncoding("UTF-8");
+        I18nMessageService messages = new I18nMessageService(source, "en-US");
+        admins = spy(new AdminServiceImpl(
+                sessions,
+                roles,
+                menus,
+                roleMenus,
+                users,
+                userRoles,
+                new AccessPrincipalUtils(messages),
+                messages));
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setUserPrincipal(DefaultAccessPrincipal.of(USER_ID));
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
@@ -83,6 +101,7 @@ class AdminServiceTest {
     @AfterEach
     void tearDown() {
         RequestContextHolder.resetRequestAttributes();
+        LocaleContextHolder.resetLocaleContext();
     }
 
     @Test
@@ -136,6 +155,17 @@ class AdminServiceTest {
                 .isInstanceOf(InvalidArgumentException.class)
                 .hasMessage("Description must be at most 500 characters.");
         verify(adminDao, never()).update(isNull(), any());
+    }
+
+    @Test
+    void updateProfileUsesTheRequestLocaleForValidationErrors() {
+        LocaleContextHolder.setLocale(Locale.SIMPLIFIED_CHINESE);
+        AdminDto profile = new AdminDto();
+        profile.setNickname("n".repeat(256));
+
+        assertThatThrownBy(() -> admins.updateProfile(profile))
+                .isInstanceOf(InvalidArgumentException.class)
+                .hasMessage("昵称长度不能超过 255 个字符。");
     }
 
     @Test

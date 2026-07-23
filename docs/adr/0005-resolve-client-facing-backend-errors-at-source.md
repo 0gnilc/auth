@@ -1,0 +1,7 @@
+---
+status: accepted
+---
+
+# Resolve client-facing backend errors at source
+
+Internationalize backend error messages when their failure represents a client-correctable request or business problem that can enter a client response; keep programmer contracts, component configuration checks, and internal invariant diagnostics as developer-facing text. The initial audit covers every `Preconditions.checkXxx` call and also includes other hard-coded errors confirmed to enter client responses. Resolve included messages through `I18nMessageService` at their source, following the existing dynamic-i18n service pattern, rather than carrying message keys through exceptions for translation at the response boundary. Store these backend messages in the owning module's classpath resource bundles so error handling does not depend on the database-backed dynamic client-message configuration. Keep `gnilc-auth-core` localization-agnostic and free of a `gnilc-common-core` dependency; the system composition layer supplies localized Servlet authentication responses. Change only localized message content: preserve each response path's existing HTTP status, business code, body shape, and content type. When authentication code catches an internal exception, log the full exception and return a generic localized authentication failure instead of exposing the exception message; explicitly produced, client-safe authentication reasons may remain specific. Use `en-US` as the global backend default locale when a request supplies no supported language preference.

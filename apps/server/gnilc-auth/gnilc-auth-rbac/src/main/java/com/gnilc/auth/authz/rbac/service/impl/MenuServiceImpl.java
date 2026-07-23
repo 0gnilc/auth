@@ -15,6 +15,7 @@ import com.gnilc.auth.authz.rbac.service.MenuService;
 import com.gnilc.auth.authz.rbac.service.RoleMenuService;
 import com.gnilc.common.base.Preconditions;
 import com.gnilc.common.exception.InvalidArgumentException;
+import com.gnilc.common.i18n.I18nMessageService;
 import com.gnilc.common.utils.BeanCopyUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
@@ -43,13 +44,16 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
     private final MenuDao menuDao;
     private final RoleMenuService roleMenuService;
     private final ObjectMapper objectMapper;
+    private final I18nMessageService messages;
 
     public MenuServiceImpl(MenuDao menuDao,
                            RoleMenuService roleMenuService,
-                           ObjectMapper objectMapper) {
+                           ObjectMapper objectMapper,
+                           I18nMessageService messages) {
         this.menuDao = menuDao;
         this.roleMenuService = roleMenuService;
         this.objectMapper = objectMapper;
+        this.messages = messages;
     }
 
     @Override
@@ -80,7 +84,7 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
 
     @Override
     public void createMenu(MenuDto dto) {
-        Preconditions.checkArgument(dto != null, "Menu information is required.");
+        Preconditions.checkArgument(dto != null, messages.get("rbac.menu.information.required"));
         MenuBo bo = new MenuBo();
         BeanUtils.copyProperties(dto, bo);
         validateMenu(bo);
@@ -89,11 +93,11 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
 
     @Override
     public void updateMenu(MenuDto dto) {
-        Preconditions.checkArgument(dto != null, "Menu information is required.");
+        Preconditions.checkArgument(dto != null, messages.get("rbac.menu.information.required"));
         Long menuId = dto.getId();
-        Preconditions.checkArgument(menuId != null, "A menu must be selected.");
+        Preconditions.checkArgument(menuId != null, messages.get("rbac.menu.selection.required"));
         MenuBo existing = getById(menuId);
-        Preconditions.checkArgument(existing != null, "The menu no longer exists. Refresh and try again.");
+        Preconditions.checkArgument(existing != null, messages.get("rbac.menu.notFound"));
         MenuBo bo = new MenuBo();
         BeanUtils.copyProperties(existing, bo);
         BeanCopyUtils.copyNonNullProperties(dto, bo);
@@ -104,9 +108,9 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
     @Transactional
     @Override
     public void removeMenu(Long id) {
-        Preconditions.checkArgument(id != null, "A menu must be selected.");
+        Preconditions.checkArgument(id != null, messages.get("rbac.menu.selection.required"));
         MenuBo bo = getById(id);
-        Preconditions.checkArgument(bo != null, "The menu no longer exists. Refresh and try again.");
+        Preconditions.checkArgument(bo != null, messages.get("rbac.menu.notFound"));
         List<Long> menuIds = getSubtreeIds(id);
         roleMenuService.removeByMenuIds(menuIds);
         removeByIds(menuIds);
@@ -156,15 +160,12 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
                 continue;
             }
             if (hierarchy.isEmpty()) {
-                throw new InvalidArgumentException(
-                        "A selected menu no longer exists. Refresh and try again.");
+                throw new InvalidArgumentException(messages.get("rbac.menu.selected.notFound"));
             }
             if (menu == null) {
-                throw new InvalidArgumentException(
-                        "The selected menu hierarchy is incomplete.");
+                throw new InvalidArgumentException(messages.get("rbac.menu.selectedHierarchy.incomplete"));
             }
-            throw new InvalidArgumentException(
-                    "The selected menu hierarchy is invalid.");
+            throw new InvalidArgumentException(messages.get("rbac.menu.selectedHierarchy.invalid"));
         }
 
         return result.values().stream()
@@ -239,38 +240,41 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
         String accessCode = bo.getAccessCode();
         String iframeSrc = bo.getIframeSrc();
         String link = bo.getLink();
-        Preconditions.checkArgument(pid != null, "A parent menu must be selected.");
+        Preconditions.checkArgument(pid != null, messages.get("rbac.menu.parent.selection.required"));
         validateParent(menuId, pid);
-        Preconditions.checkArgument(type != null, "A menu type must be selected.");
-        Preconditions.checkArgument(StringUtils.isNotBlank(name), "Menu name is required.");
-        Preconditions.checkArgument(StringUtils.isNotBlank(title), "Menu title is required.");
+        Preconditions.checkArgument(type != null, messages.get("rbac.menu.type.required"));
+        Preconditions.checkArgument(StringUtils.isNotBlank(name), messages.get("rbac.menu.name.required"));
+        Preconditions.checkArgument(StringUtils.isNotBlank(title), messages.get("rbac.menu.title.required"));
         switch (type) {
             case CATALOG ->
-                    Preconditions.checkArgument(StringUtils.isNotBlank(path), "Route path is required.");
+                    Preconditions.checkArgument(StringUtils.isNotBlank(path), messages.get("rbac.menu.path.required"));
             case MENU -> {
-                Preconditions.checkArgument(StringUtils.isNotBlank(path), "Route path is required.");
-                Preconditions.checkArgument(StringUtils.isNotBlank(component), "Page component is required.");
+                Preconditions.checkArgument(StringUtils.isNotBlank(path), messages.get("rbac.menu.path.required"));
+                Preconditions.checkArgument(StringUtils.isNotBlank(component),
+                        messages.get("rbac.menu.component.required"));
             }
             case BUTTON ->
-                    Preconditions.checkArgument(StringUtils.isNotBlank(accessCode), "Permission code is required.");
+                    Preconditions.checkArgument(StringUtils.isNotBlank(accessCode),
+                            messages.get("rbac.menu.accessCode.required"));
             case EMBEDDED -> {
-                Preconditions.checkArgument(StringUtils.isNotBlank(path), "Route path is required.");
-                Preconditions.checkArgument(StringUtils.isNotBlank(iframeSrc), "Embedded page URL is required.");
+                Preconditions.checkArgument(StringUtils.isNotBlank(path), messages.get("rbac.menu.path.required"));
+                Preconditions.checkArgument(StringUtils.isNotBlank(iframeSrc),
+                        messages.get("rbac.menu.iframeSrc.required"));
             }
             case LINK -> {
-                Preconditions.checkArgument(StringUtils.isNotBlank(path), "Route path is required.");
-                Preconditions.checkArgument(StringUtils.isNotBlank(link), "External URL is required.");
+                Preconditions.checkArgument(StringUtils.isNotBlank(path), messages.get("rbac.menu.path.required"));
+                Preconditions.checkArgument(StringUtils.isNotBlank(link), messages.get("rbac.menu.link.required"));
             }
         }
         MenuBo nameBo = getMenuByName(name);
         Preconditions.checkArgument(nameBo == null || Objects.equals(nameBo.getId(), menuId),
-                "A menu with this name already exists.");
+                messages.get("rbac.menu.name.exists"));
         MenuBo pathBo = getMenuByPath(path);
         Preconditions.checkArgument(pathBo == null || Objects.equals(pathBo.getId(), menuId),
-                "A menu with this route path already exists.");
+                messages.get("rbac.menu.path.exists"));
         MenuBo accessBo = getMenuByAccessCode(accessCode);
         Preconditions.checkArgument(accessBo == null || Objects.equals(accessBo.getId(), menuId),
-                "A menu with this permission code already exists.");
+                messages.get("rbac.menu.accessCode.exists"));
     }
 
     /**
@@ -282,20 +286,20 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
         }
         MenuBo parent = getById(pid);
         Preconditions.checkArgument(parent != null,
-                "The parent menu no longer exists. Select another menu.");
+                messages.get("rbac.menu.parent.notFound"));
         Set<Long> visited = new HashSet<>();
         // 从候选父节点回溯到根节点；途中遇到当前菜单即表示会形成父子环。
         while (true) {
             Preconditions.checkArgument(visited.add(parent.getId()),
-                    "The parent menu hierarchy is invalid.");
+                    messages.get("rbac.menu.parentHierarchy.invalid"));
             Preconditions.checkArgument(!Objects.equals(parent.getId(), menuId),
-                    "A menu cannot use itself or one of its descendants as its parent.");
+                    messages.get("rbac.menu.parent.cycle"));
             if (Objects.equals(parent.getPid(), MenuConstant.ROOT_PARENT_ID)) {
                 return;
             }
             parent = getById(parent.getPid());
             Preconditions.checkArgument(parent != null,
-                    "The parent menu hierarchy is incomplete.");
+                    messages.get("rbac.menu.parentHierarchy.incomplete"));
         }
     }
 

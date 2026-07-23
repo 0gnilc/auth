@@ -39,7 +39,7 @@ public class RestExceptionHandlingConfiguration {
 
     @Bean
     public LocaleResolver localeResolver(
-            @Value("${app.i18n.default-locale:zh-CN}") String defaultLocale) {
+            @Value("${app.i18n.default-locale:en-US}") String defaultLocale) {
         AcceptHeaderLocaleResolver resolver = new AcceptHeaderLocaleResolver();
         resolver.setSupportedLocales(SupportedLocale.locales());
         resolver.setDefaultLocale(SupportedLocale.fromLanguageTagOrDefault(defaultLocale));

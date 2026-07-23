@@ -2,6 +2,7 @@ package com.gnilc.auth.authz.rbac.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.gnilc.common.base.Preconditions;
+import com.gnilc.common.i18n.I18nMessageService;
 import com.gnilc.auth.authz.rbac.dao.RolePermissionDao;
 import com.gnilc.auth.authz.rbac.entity.bo.RolePermissionBo;
 import com.gnilc.auth.authz.rbac.entity.dto.RolePermissionDto;
@@ -23,14 +24,16 @@ public class RolePermissionServiceImpl extends ServiceImpl<RolePermissionDao, Ro
         implements RolePermissionService {
 
     private final ApplicationEventPublisher eventPublisher;
+    private final I18nMessageService messages;
 
-    public RolePermissionServiceImpl(ApplicationEventPublisher eventPublisher) {
+    public RolePermissionServiceImpl(ApplicationEventPublisher eventPublisher, I18nMessageService messages) {
         this.eventPublisher = eventPublisher;
+        this.messages = messages;
     }
 
     @Override
     public List<Long> getPermissionIds(Long roleId) {
-        Preconditions.checkArgument(roleId != null, "A role must be selected.");
+        Preconditions.checkArgument(roleId != null, messages.get("rbac.role.selection.required"));
         return lambdaQuery()
                 .select(RolePermissionBo::getPermissionId)
                 .eq(RolePermissionBo::getRoleId, roleId)
@@ -60,10 +63,10 @@ public class RolePermissionServiceImpl extends ServiceImpl<RolePermissionDao, Ro
     @Transactional
     @Override
     public void updateRolePermission(RolePermissionDto dto) {
-        Preconditions.checkArgument(dto != null, "Role permission assignment information is required.");
+        Preconditions.checkArgument(dto != null, messages.get("rbac.assignment.rolePermission.required"));
         Long roleId = dto.getRoleId();
         List<Long> permissionIds = dto.getPermissionIds();
-        Preconditions.checkArgument(roleId != null, "A role must be selected.");
+        Preconditions.checkArgument(roleId != null, messages.get("rbac.role.selection.required"));
 
         Set<Long> oldSet = lambdaQuery()
                 .select(RolePermissionBo::getPermissionId)

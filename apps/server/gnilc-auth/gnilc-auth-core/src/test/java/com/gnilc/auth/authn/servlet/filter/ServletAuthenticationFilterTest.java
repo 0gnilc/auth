@@ -77,7 +77,9 @@ class ServletAuthenticationFilterTest {
 
         verify(failures).handle(any(ServletAuthenticationContext.class),
                 org.mockito.ArgumentMatchers.argThat(result ->
-                        !result.isAuthenticated() && "backend unavailable".equals(result.getReason())));
+                        !result.isAuthenticated()
+                                && result.getReason() == null
+                                && result.getCause() instanceof IllegalStateException));
         verify(chain, never()).doFilter(any(), any());
     }
 

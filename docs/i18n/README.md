@@ -157,7 +157,7 @@ spring:
     use-code-as-default-message: false
 ```
 
-请求语言由 Spring MVC 的 `AcceptHeaderLocaleResolver` 根据 `Accept-Language` 解析，默认语言配置为 `app.i18n.default-locale=zh-CN`；业务服务通过 `LocaleContextHolder` 读取当前请求语言。解析器的支持列表与代码层 `SupportedLocale` 常量一致，只接受 `zh-CN` 和 `en-US`；`Accept-Language` 缺失、格式错误、包含不支持的语言或仅是受支持语言的其他变体时回退到 `zh-CN`，不返回参数错误。该解析发生在 Bean Validation 之前，因此注解校验和 `I18nMessageService` 使用同一语言规则。
+请求语言由 Spring MVC 的 `AcceptHeaderLocaleResolver` 根据 `Accept-Language` 解析，默认语言配置为 `app.i18n.default-locale=en-US`；业务服务通过 `LocaleContextHolder` 读取当前请求语言。解析器的支持列表与代码层 `SupportedLocale` 常量一致，只接受 `zh-CN` 和 `en-US`；显式 `zh-CN` 请求返回中文，`Accept-Language` 缺失、格式错误、包含不支持的语言或仅是受支持语言的其他变体时回退到 `en-US`，不返回参数错误。该解析发生在 Bean Validation 之前，因此注解校验和 `I18nMessageService` 使用同一语言规则。
 
 每个 basename 都提供不带语言后缀的默认 `messages.properties`；至少一个默认 bundle 必须存在，否则 Spring Boot 的 `MessageSource` 自动配置可能不会生效。应用组合层负责在 `spring.messages.basename` 中列出实际装配的模块语言包；`I18nMessageService` 仍放在 `gnilc-common-core`，只依赖统一 `MessageSource`。
 
@@ -166,17 +166,16 @@ spring:
 示例：
 
 ```properties
-common.success=操作成功
-common.unexpected.error=系统发生未知错误
-validation.argument.invalid=请求参数无效
-system.auth.authentication.failed=用户名或密码错误
-rbac.menu.title.required=菜单标题不能为空
+common.unexpected.error=An unexpected error occurred.
+validation.argument.invalid=The request contains invalid fields.
+system.auth.authentication.failed=Authentication failed.
+rbac.menu.title.required=Menu title is required.
 ```
 
 参数使用 Spring `MessageFormat` 位置参数：
 
 ```properties
-system.admin.nickname.max=昵称长度不能超过 {0} 个字符
+system.admin.nickname.tooLong=Nickname must be at most {0} characters.
 ```
 
 ### 5.2 Spring 支持的格式和区别
@@ -216,13 +215,13 @@ import java.util.Objects;
 public class I18nMessageService {
 
     private static final Logger log = LoggerFactory.getLogger(I18nMessageService.class);
-    private static final Locale FALLBACK_LOCALE = SupportedLocale.ZH_CN.toLocale();
+    private static final Locale FALLBACK_LOCALE = SupportedLocale.EN_US.toLocale();
     private final MessageSource messageSource;
     private final Locale defaultLocale;
 
     public I18nMessageService(
             MessageSource messageSource,
-            @Value("${app.i18n.default-locale:zh-CN}") String defaultLocale) {
+            @Value("${app.i18n.default-locale:en-US}") String defaultLocale) {
         this.messageSource = Objects.requireNonNull(messageSource, "messageSource");
         this.defaultLocale = toLocale(defaultLocale);
     }

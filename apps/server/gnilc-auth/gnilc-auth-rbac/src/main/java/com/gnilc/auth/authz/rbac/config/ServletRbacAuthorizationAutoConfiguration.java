@@ -7,6 +7,7 @@ import com.gnilc.auth.authz.rbac.provider.cache.PermissionCacheLoader;
 import com.gnilc.auth.authz.rbac.provider.cache.redis.PermissionCacheRedisConfiguration;
 import com.gnilc.auth.authz.servlet.config.ServletAuthorizationAutoConfiguration;
 import com.baomidou.mybatisplus.autoconfigure.MybatisPlusAutoConfiguration;
+import com.gnilc.common.i18n.I18nMessageService;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -30,7 +31,8 @@ import org.springframework.context.annotation.Import;
         RbacJacksonConfiguration.class,
         MybatisPlusConfiguration.class,
         RbacServletMvcConfigurer.class,
-        PermissionCacheRedisConfiguration.class
+        PermissionCacheRedisConfiguration.class,
+        I18nMessageService.class
 })
 public class ServletRbacAuthorizationAutoConfiguration {
 

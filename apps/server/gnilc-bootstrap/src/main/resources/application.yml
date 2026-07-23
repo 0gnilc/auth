@@ -47,4 +47,4 @@ logging:
     com.gnilc.auth.authz.rbac.dao: debug
 app:
   i18n:
-    default-locale: zh-CN
+    default-locale: en-US

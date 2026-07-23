@@ -3,6 +3,7 @@ package com.gnilc.auth.authz.rbac.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.gnilc.common.base.Preconditions;
+import com.gnilc.common.i18n.I18nMessageService;
 import com.gnilc.auth.authz.rbac.dao.UserRoleDao;
 import com.gnilc.auth.authz.rbac.entity.bo.UserRoleBo;
 import com.gnilc.auth.authz.rbac.entity.dto.UserRoleDto;
@@ -23,18 +24,20 @@ import java.util.stream.Collectors;
 public class UserRoleServiceImpl extends ServiceImpl<UserRoleDao, UserRoleBo> implements UserRoleService {
 
     private final ApplicationEventPublisher eventPublisher;
+    private final I18nMessageService messages;
 
-    public UserRoleServiceImpl(ApplicationEventPublisher eventPublisher) {
+    public UserRoleServiceImpl(ApplicationEventPublisher eventPublisher, I18nMessageService messages) {
         this.eventPublisher = eventPublisher;
+        this.messages = messages;
     }
 
     @Transactional
     @Override
     public void updateUserRole(UserRoleDto dto) {
-        Preconditions.checkArgument(dto != null, "User role assignment information is required.");
+        Preconditions.checkArgument(dto != null, messages.get("rbac.assignment.userRole.required"));
         Long userId = dto.getUserId();
         List<Long> roleIds = dto.getRoleIds();
-        Preconditions.checkArgument(userId != null, "A user must be selected.");
+        Preconditions.checkArgument(userId != null, messages.get("rbac.user.selection.required"));
         Set<Long> oldSet = lambdaQuery()
                 .select(UserRoleBo::getRoleId)
                 .eq(UserRoleBo::getUserId, userId)

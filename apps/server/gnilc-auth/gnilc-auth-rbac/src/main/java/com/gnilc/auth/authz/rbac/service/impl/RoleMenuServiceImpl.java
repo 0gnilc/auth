@@ -8,6 +8,7 @@ import com.gnilc.auth.authz.rbac.entity.dto.RoleMenuDto;
 import com.gnilc.auth.authz.rbac.service.MenuService;
 import com.gnilc.auth.authz.rbac.service.RoleMenuService;
 import com.gnilc.common.base.Preconditions;
+import com.gnilc.common.i18n.I18nMessageService;
 import com.google.common.collect.Sets;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -23,9 +24,11 @@ import java.util.stream.Collectors;
 @Service("roleMenuServiceImpl")
 public class RoleMenuServiceImpl extends ServiceImpl<RoleMenusDao, RoleMenuBo> implements RoleMenuService {
     private final MenuService menuService;
+    private final I18nMessageService messages;
 
-    public RoleMenuServiceImpl(@Lazy MenuService menuService) {
+    public RoleMenuServiceImpl(@Lazy MenuService menuService, I18nMessageService messages) {
         this.menuService = menuService;
+        this.messages = messages;
     }
 
     @Override
@@ -58,10 +61,10 @@ public class RoleMenuServiceImpl extends ServiceImpl<RoleMenusDao, RoleMenuBo> i
     @Transactional
     @Override
     public void updateRoleMenu(RoleMenuDto dto) {
-        Preconditions.checkArgument(dto != null, "Role menu assignment information is required.");
+        Preconditions.checkArgument(dto != null, messages.get("rbac.assignment.roleMenu.required"));
         Long roleId = dto.getRoleId();
         List<Long> menuIds = dto.getMenuIds();
-        Preconditions.checkArgument(roleId != null, "A role must be selected.");
+        Preconditions.checkArgument(roleId != null, messages.get("rbac.role.selection.required"));
 
         Set<Long> oldSet = lambdaQuery()
                 .select(RoleMenuBo::getMenuId)

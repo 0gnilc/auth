@@ -1,6 +1,7 @@
 package com.gnilc.system.admin.controller;
 
 import com.gnilc.common.utils.PageResult;
+import com.gnilc.common.i18n.I18nMessageService;
 import com.gnilc.system.admin.entity.dto.AdminDto;
 import com.gnilc.system.admin.entity.vo.AdminTokenVo;
 import com.gnilc.system.admin.entity.vo.AdminVo;
@@ -9,6 +10,7 @@ import com.gnilc.system.admin.service.AdminService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
+import org.springframework.context.support.ResourceBundleMessageSource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -31,7 +33,12 @@ class AdminControllerTest {
 
     @BeforeEach
     void setUp() {
-        mvc = MockMvcBuilders.standaloneSetup(new AdminController(service)).build();
+        ResourceBundleMessageSource source = new ResourceBundleMessageSource();
+        source.setBasename("i18n/system/messages");
+        source.setDefaultEncoding("UTF-8");
+        mvc = MockMvcBuilders.standaloneSetup(
+                new AdminController(service, new I18nMessageService(source, "en-US")))
+                .build();
     }
 
     @Test
@@ -46,7 +53,31 @@ class AdminControllerTest {
 
         mvc.perform(post("/sys/admin/login").contentType(MediaType.APPLICATION_JSON).content("{}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(20001));
+                .andExpect(jsonPath("$.code").value(20001))
+                .andExpect(jsonPath("$.error").value("Incorrect username or password."));
+    }
+
+    @Test
+    void loginAndUnauthorizedResponsesUseTheRequestLocale() throws Exception {
+        mvc.perform(post("/sys/admin/login")
+                        .header("Accept-Language", "zh-CN")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.error").value("用户名或密码错误。"));
+
+        mvc.perform(post("/sys/admin/refresh")
+                        .header("Accept-Language", "zh-CN"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value(20002))
+                .andExpect(jsonPath("$.error").value("未认证。"));
+
+        mvc.perform(post("/sys/admin/login")
+                        .header("Accept-Language", "fr-FR")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.error").value("Incorrect username or password."));
     }
 
     @Test
@@ -59,7 +90,8 @@ class AdminControllerTest {
                 .andExpect(jsonPath("$.data.accessToken").value("new"));
         mvc.perform(post("/sys/admin/refresh"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value(20002));
+                .andExpect(jsonPath("$.code").value(20002))
+                .andExpect(jsonPath("$.error").value("Unauthorized."));
         mvc.perform(post("/sys/admin/logout").header("X-Refresh-Token", "good"))
                 .andExpect(status().isOk());
         mvc.perform(post("/sys/admin/logout"))
