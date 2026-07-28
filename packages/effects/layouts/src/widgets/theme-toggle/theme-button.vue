@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, nextTick } from 'vue';
+import { computed } from 'vue';
 
 import { VbenButton } from '@vben-core/shadcn-ui';
 
@@ -19,6 +19,7 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const isDark = defineModel<boolean>();
+const THEME_SWITCHING_CLASS = 'theme-switching';
 
 const theme = computed(() => {
   return isDark.value ? 'light' : 'dark';
@@ -39,45 +40,15 @@ const bindProps = computed(() => {
       };
 });
 
-function toggleTheme(event: MouseEvent) {
-  const isAppearanceTransition =
-    // @ts-expect-error - startViewTransition is not available in the current DOM lib target
-    document.startViewTransition &&
-    !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (!isAppearanceTransition || !event) {
-    isDark.value = !isDark.value;
-    return;
-  }
-  const x = event.clientX;
-  const y = event.clientY;
-  const endRadius = Math.hypot(
-    Math.max(x, innerWidth - x),
-    Math.max(y, innerHeight - y),
-  );
-  const transition = document.startViewTransition(async () => {
-    isDark.value = !isDark.value;
-    await nextTick();
-  });
-  transition.ready.then(() => {
-    const clipPath = [
-      `circle(0px at ${x}px ${y}px)`,
-      `circle(${endRadius}px at ${x}px ${y}px)`,
-    ];
-    const animate = document.documentElement.animate(
-      {
-        clipPath: isDark.value ? [...clipPath].toReversed() : clipPath,
-      },
-      {
-        duration: 450,
-        easing: 'ease-in',
-        pseudoElement: isDark.value
-          ? '::view-transition-old(root)'
-          : '::view-transition-new(root)',
-      },
-    );
-    animate.onfinish = () => {
-      transition.skipTransition();
-    };
+function toggleTheme() {
+  const root = document.documentElement;
+  root.classList.add(THEME_SWITCHING_CLASS);
+  isDark.value = !isDark.value;
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      root.classList.remove(THEME_SWITCHING_CLASS);
+    });
   });
 }
 </script>

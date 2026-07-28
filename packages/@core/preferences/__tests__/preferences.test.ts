@@ -1,3 +1,5 @@
+import { nextTick, watch } from 'vue';
+
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { defaultPreferences } from '../src/config';
@@ -117,6 +119,35 @@ describe('preferences', () => {
     await preferenceManager.resetPreferences();
 
     expect(preferenceManager.getPreferences()).toEqual(defaultPreferences);
+  });
+
+  it('applies the reset theme before notifying reactive consumers', async () => {
+    await preferenceManager.initPreferences({
+      namespace: 'reset-theme-sync',
+    });
+    preferenceManager.updatePreferences({
+      theme: {
+        mode: 'light',
+      },
+    });
+    await nextTick();
+
+    const observedDarkClasses: boolean[] = [];
+    const stopWatching = watch(
+      () => preferenceManager.getPreferences().theme,
+      () => {
+        observedDarkClasses.push(
+          document.documentElement.classList.contains('dark'),
+        );
+      },
+    );
+
+    await preferenceManager.resetPreferences();
+    await nextTick();
+    stopWatching();
+
+    expect(preferenceManager.getPreferences().theme.mode).toBe('dark');
+    expect(observedDarkClasses).toEqual([true]);
   });
 
   it('updates isMobile correctly', () => {
