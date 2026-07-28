@@ -17,6 +17,7 @@ target/
 .env.local
 .env.*.local
 .eslintcache
+.stylelintcache
 logs
 *.log
 *-debug.log*

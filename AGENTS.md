@@ -1,49 +1,36 @@
-## Agent skills
+# Repository Agent Instructions
 
-### Issue tracker
+## Instruction Scope
 
-Issues and PRDs are tracked in this repo's GitHub Issues via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+- This file contains rules shared by the whole repository.
+- Before changing a subtree, check for a nearer `AGENTS.md`; local instructions add to or override this file for that subtree.
+- This repository uses only `AGENTS.md` for agent instructions and `CONTEXT.md` for domain context. Do not duplicate these rules in tool-specific instruction files.
+- Keep one `AGENTS.md` and one `CONTEXT.md` per independently managed large module. Do not add finer-grained files unless that subtree has genuinely independent ownership and rules.
+- Agent hosts that do not discover `AGENTS.md` automatically must be configured or prompted to read the applicable files.
+- See [`docs/agents/instruction-files.md`](docs/agents/instruction-files.md) for discovery and precedence rules.
 
-### Triage labels
+## Domain Documentation
 
-Triage uses the default canonical labels: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, and `wontfix`. See `docs/agents/triage-labels.md`.
+- Before changing domain behavior or terminology, read the root [`CONTEXT.md`](CONTEXT.md), then the relevant module `CONTEXT.md` and ADRs.
+- `CONTEXT.md` files are glossaries only. Put implementation constraints in `AGENTS.md` and durable architectural decisions in ADRs.
+- System-wide ADRs live in `docs/adr/`; context-specific ADRs live with their owning module.
+- See [`docs/agents/domain.md`](docs/agents/domain.md).
 
-### Testing
+## Issue Tracker
 
-Before writing, changing, reviewing, or running tests, read and follow [`docs/test/testing-guide.md`](docs/test/testing-guide.md). All tests belong under the owning module's `src/test`; do not use `src/intg-test`.
+- Issues and PRDs are tracked in GitHub Issues through `gh`. See [`docs/agents/issue-tracker.md`](docs/agents/issue-tracker.md).
+- Use the canonical triage labels documented in [`docs/agents/triage-labels.md`](docs/agents/triage-labels.md).
 
-Run fast Surefire tests (`*Test` and `*ControllerTest`) with:
+## Testing
 
-```bash
-mvn -f apps/server/pom.xml test
-```
+- Before writing, changing, reviewing, or running tests, read [`docs/test/testing-guide.md`](docs/test/testing-guide.md).
+- Keep tests under the owning module's `src/test`; do not use `src/intg-test`.
+- Run fast backend tests with `mvn -f apps/server/pom.xml test`.
+- Run the complete backend suite with `mvn -f apps/server/pom.xml verify`. It requires Docker for Testcontainers MySQL 8 and Redis 8; do not substitute H2, local services, or shared services.
 
-Run the complete Surefire and Failsafe suite (`*IT`, `*MapperIT`, `*CacheIT`, and `*ApiIT`) with:
+## Git And Delivery
 
-```bash
-mvn -f apps/server/pom.xml verify
-```
-
-`mvn -f apps/server/pom.xml verify` requires Docker for Testcontainers MySQL 8 and Redis 8. Do not replace containers with H2, local services, or shared services.
-
-### Git commits
-
-Leave completed changes uncommitted by default so a human can review the working-tree diff. Create a commit only when the user explicitly requests one.
-
-When a commit is explicitly requested, all agents and automated tools must use `pnpm run commit`, which uses the repository's `"commit": "czg"` script. Do not invoke `git commit` directly.
-
-### Pull requests
-
-Do not push changes or create or update a pull request unless the user explicitly requests remote delivery.
-
-When remote delivery is explicitly requested, all agents and automated tools must deliver changes through a pull request. Never push directly to `main` or another target branch. Push the working branch to `origin`, then create or update a pull request; use `main` as the default base unless the user specifies another target branch.
-
-### Domain docs
-
-This repo uses a single-context domain docs layout: root `CONTEXT.md` plus root `docs/adr/`. See `docs/agents/domain.md`.
-
-### Coding style
-
-Before modifying code, inspect the neighboring implementation and preserve the project's established style wherever possible. In MyBatis-Plus service implementations, prefer service-level APIs such as `lambdaQuery()`, `lambdaUpdate()`, `save()`, and `updateById()` instead of accessing `baseMapper` directly.
-
-Frontend API modules should define cohesive resource types and derive operation-specific inputs inline with TypeScript utility types such as `Pick` and `Omit`. Do not create one interface for every API behavior. Follow the organization used by [Vben Admin's system API modules](https://github.com/vbenjs/vue-vben-admin/tree/main/playground/src/api/system).
+- Leave changes uncommitted unless the user explicitly requests a commit.
+- When a commit is requested, use `pnpm run commit`; never invoke `git commit` directly.
+- Do not push or create or update a pull request unless the user explicitly requests remote delivery.
+- Remote delivery must use a pull request. Never push directly to `main` or another target branch; default the PR base to `main` unless the user specifies otherwise.

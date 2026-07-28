@@ -1,35 +1,38 @@
-# Domain Docs
+# Domain Documentation
 
-How the engineering skills should consume this repo's domain documentation when exploring the codebase.
+This repository uses multiple domain contexts. The root `CONTEXT.md` is their index; module `CONTEXT.md` files own their respective vocabularies. File location alone does not make any of them automatic agent input.
 
-## Before exploring, read these
+## Reading Order
 
-- **`CONTEXT.md`** at the repo root.
-- **`docs/adr/`** — read ADRs that touch the area you're about to work in.
+Before exploring or changing domain behavior:
 
-If any of these files don't exist, **proceed silently**. Don't flag their absence; don't suggest creating them upfront. The producer skill (`/grill-with-docs`) creates them lazily when terms or decisions actually get resolved.
+1. Apply instructions from the root and relevant nested `AGENTS.md` files.
+2. Read the root [`CONTEXT.md`](../../CONTEXT.md).
+3. Read every module `CONTEXT.md` mapped to the behavior being changed.
+4. Read relevant system ADRs in [`docs/adr/`](../adr/) and context ADRs linked by the map.
 
-## File structure
+When a task crosses contexts, read each context instead of treating one glossary as a global override.
 
-Single-context repo:
+## Layout
 
-```
+```text
 /
-├── CONTEXT.md
-├── docs/adr/
-│   ├── 0001-example-decision.md
-│   └── 0002-example-decision.md
-└── src/
+├── CONTEXT.md                 # context index and relationships
+├── docs/adr/                 # system-wide decisions
+├── apps/admin/
+│   ├── CONTEXT.md            # Admin System language
+│   └── docs/adr/             # Admin System decisions
+└── apps/server/
+    └── CONTEXT.md            # Server authentication and authorization language
 ```
 
-## Use the glossary's vocabulary
+## Content Boundaries
 
-When your output names a domain concept (in an issue title, a refactor proposal, a hypothesis, a test name), use the term as defined in `CONTEXT.md`. Don't drift to synonyms the glossary explicitly avoids.
+- `CONTEXT.md` defines stable domain terms in one or two sentences. It contains no package layout, class responsibilities, framework rules, API contracts, or implementation recipes.
+- `AGENTS.md` records verifiable implementation and workflow instructions for agents.
+- ADRs record durable, costly-to-reverse decisions and their rationale. Put cross-context decisions at the root and context-specific decisions with the owning context.
+- Do not copy the same rule or definition into multiple files. Link to its canonical owner.
 
-If the concept you need isn't in the glossary yet, that's a signal — either you're inventing language the project doesn't use (reconsider) or there's a real gap (note it for `/grill-with-docs`).
+## Vocabulary And Conflicts
 
-## Flag ADR conflicts
-
-If your output contradicts an existing ADR, surface it explicitly rather than silently overriding:
-
-> _Contradicts ADR-0007 (event-sourced orders) — but worth reopening because…_
+Use the canonical term from the relevant context in code, tests, issues, and design notes. If a requested change conflicts with an ADR or uses a term differently from its glossary definition, surface the conflict before silently changing the model.

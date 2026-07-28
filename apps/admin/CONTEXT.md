@@ -1,0 +1,57 @@
+# Admin System
+
+The Admin System provides authenticated administration of administrator accounts, RBAC resources, navigation, and dynamic internationalization messages.
+
+## Administrators
+
+**Admin User**: A person identity that can sign in to the administration system and owns mutable profile data. Each Admin User has a corresponding RBAC subject. _Avoid_: User, backend user
+
+**Current Admin User**: The Admin User represented by the active administrator session. Self-service operations always derive their target from this identity.
+
+**Admin Credentials**: The username and password used to prove an Admin User's identity. Credentials are not the session or tokens issued after authentication.
+
+**Admin Session**: The authenticated login state of an Admin User. It can be refreshed or revoked independently of the user's profile.
+
+**Current Admin Self-Service**: The ability of the Current Admin User to read or update their own profile and password without selecting another Admin User.
+
+**Admin User Administration**: Management of a selected Admin User's account data and role assignments. It is distinct from Current Admin Self-Service and cannot disable or delete the current operator.
+
+**Default Admin Baseline**: The recoverable bootstrap Admin User, RBAC subject, baseline role, and mandatory binding required after system initialization. Recovery preserves operator-managed profile and credential data.
+
+## Roles And Resources
+
+**Admin Access Baseline Role**: The mandatory built-in `admin` role retained by every Admin User. It provides self-service and basic administration-shell access; specialized roles add management capabilities.
+
+**Built-in Role**: A role whose identity, permissions, and menus are maintained by the system. It may be assigned according to its rules but cannot be redefined or deleted through administration.
+
+**Built-in RBAC Resource**: A role, permission, or menu whose built-in status is intrinsic and system-maintained. Assignment does not make an ordinary resource built in.
+
+**RBAC Manager**: The built-in `rbac:manager` role that may administer Admin Users, roles, permissions, menus, and their assignments.
+
+**I18n Manager**: The built-in `i18n:manager` role that may query and maintain dynamic internationalization messages across categories.
+
+## Navigation
+
+**Current Admin Navigation Route Tree**: The enabled, reachable navigation hierarchy available to the Current Admin User. It excludes orphaned nodes and directories without a usable navigation descendant.
+
+**Menu Hierarchy**: An acyclic tree of root menus and non-root menus with exactly one parent. Parent and child types constrain which relationships are valid.
+
+**Menu Type**: The immutable classification that defines a menu's hierarchy and runtime behavior. Changing type creates a new menu identity rather than mutating the existing one.
+
+**Menu Authorization Closure**: A role's valid menu grants plus every ancestor required to connect those menus to the root. Disabled menus may remain granted even while absent from navigation.
+
+**Menu Disablement**: Temporary exclusion of a menu and its descendants from navigation without removing existing grants.
+
+**Menu Subtree Removal**: Removal of a menu, all descendants, and their role-menu grants as one operation.
+
+**Button Menu**: A leaf menu representing a frontend action. Its access code controls action visibility but is never a substitute for backend permission enforcement.
+
+## Dynamic Internationalization
+
+**I18n Message Administration**: Cross-category management of dynamic internationalization messages. Messages provide display text and do not own resources that reference them.
+
+**Message Key**: The immutable, globally unique identity of one dynamic message across locales and categories.
+
+**I18n Message Category**: A required, mutable grouping that controls administration filters and runtime bundle scope. Category is not part of message identity.
+
+**I18n Fallback Locale**: The locale used when the active locale has no message text. The fallback is `en-US`, whose value is required for every dynamic message.

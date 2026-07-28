@@ -41,4 +41,4 @@ See [apps/server/README.md](apps/server/README.md) for the server architecture a
 
 ## Repository guidance
 
-Agent configuration and domain documentation live at the repository root in `AGENTS.md`, `CLAUDE.md`, `CONTEXT.md`, `docs/agents/`, and `docs/adr/`.
+Shared agent instructions live in `AGENTS.md`. Start domain discovery from the root `CONTEXT.md`, which links module-owned contexts and ADRs. See [docs/agents/instruction-files.md](docs/agents/instruction-files.md).

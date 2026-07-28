@@ -6,7 +6,9 @@
   "words": [
     "Batis",
     "FLUSHDB",
+    "Inno",
     "Liquibase",
+    "Mybatis",
     "Seata",
     "acmr",
     "antd",
@@ -18,6 +20,7 @@
     "cascader",
     "chatcmpl",
     "clsx",
+    "customizer",
     "dedup",
     "defu",
     "demi",
