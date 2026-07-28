@@ -3,7 +3,7 @@
 ## Domain
 
 - Read [`CONTEXT.md`](CONTEXT.md) before changing authentication or authorization concepts.
-- For administrator, RBAC-management, menu, or dynamic-internationalization behavior, also read [`../admin/CONTEXT.md`](../admin/CONTEXT.md) and its relevant ADRs.
+- For administrator, RBAC-management, menu, or dynamic-internationalization behavior, also read [`../admin/CONTEXT.md`](../admin/CONTEXT.md) and the relevant ADRs in the root [`docs/adr/`](../../docs/adr/).
 - Authentication establishes identity; authorization decides whether that identity may access a target. Do not merge those responsibilities.
 
 ## Authorization Boundaries
@@ -23,7 +23,7 @@
 ## Persistence And Services
 
 - In MyBatis-Plus service implementations, prefer service-level APIs such as `lambdaQuery()`, `lambdaUpdate()`, `save()`, and `updateById()` over direct `baseMapper` access.
-- Preserve UTC instant handling and shared infrastructure composition defined by the system ADRs.
+- Preserve UTC instant handling and shared infrastructure composition defined by the relevant ADRs.
 
 ## API Contracts
 

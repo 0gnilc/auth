@@ -36,7 +36,7 @@ The repository-defined order is:
 1. Applicable root and nested `AGENTS.md` instructions.
 2. Root [`CONTEXT.md`](../../CONTEXT.md) index.
 3. Relevant module `CONTEXT.md` files.
-4. Relevant system and module ADRs.
+4. Relevant ADRs from the root [`docs/adr/`](../adr/).
 5. Task-specific guides such as the testing guide.
 
 Context files describe different bounded vocabularies; a nearer context does not override an unrelated parent context. Read all contexts involved in a cross-context change.

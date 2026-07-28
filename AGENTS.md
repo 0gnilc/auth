@@ -13,7 +13,7 @@
 
 - Before changing domain behavior or terminology, read the root [`CONTEXT.md`](CONTEXT.md), then the relevant module `CONTEXT.md` and ADRs.
 - `CONTEXT.md` files are glossaries only. Put implementation constraints in `AGENTS.md` and durable architectural decisions in ADRs.
-- System-wide ADRs live in `docs/adr/`; context-specific ADRs live with their owning module.
+- All ADRs live in the root [`docs/adr/`](docs/adr/), including decisions scoped to a single module.
 - See [`docs/agents/domain.md`](docs/agents/domain.md).
 
 ## Issue Tracker
