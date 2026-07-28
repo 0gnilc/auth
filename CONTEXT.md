@@ -22,5 +22,4 @@ Gnilc Auth contains two related domain contexts. Read only the context relevant 
 
 ## Decisions
 
-- System-wide decisions live in [`docs/adr/`](docs/adr/).
-- Admin System decisions live in [`apps/admin/docs/adr/`](apps/admin/docs/adr/).
+- All architectural decisions live in the root [`docs/adr/`](docs/adr/), including decisions scoped to one context.

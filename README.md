@@ -41,4 +41,4 @@ See [apps/server/README.md](apps/server/README.md) for the server architecture a
 
 ## Repository guidance
 
-Shared agent instructions live in `AGENTS.md`. Start domain discovery from the root `CONTEXT.md`, which links module-owned contexts and ADRs. See [docs/agents/instruction-files.md](docs/agents/instruction-files.md).
+Shared agent instructions live in `AGENTS.md`. Start domain discovery from the root `CONTEXT.md`, which links module-owned contexts and the centralized ADR collection. See [docs/agents/instruction-files.md](docs/agents/instruction-files.md).

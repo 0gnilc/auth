@@ -9,7 +9,7 @@ Before exploring or changing domain behavior:
 1. Apply instructions from the root and relevant nested `AGENTS.md` files.
 2. Read the root [`CONTEXT.md`](../../CONTEXT.md).
 3. Read every module `CONTEXT.md` mapped to the behavior being changed.
-4. Read relevant system ADRs in [`docs/adr/`](../adr/) and context ADRs linked by the map.
+4. Read the relevant ADRs in the root [`docs/adr/`](../adr/).
 
 When a task crosses contexts, read each context instead of treating one glossary as a global override.
 
@@ -18,10 +18,9 @@ When a task crosses contexts, read each context instead of treating one glossary
 ```text
 /
 ├── CONTEXT.md                 # context index and relationships
-├── docs/adr/                 # system-wide decisions
+├── docs/adr/                 # all architectural decisions
 ├── apps/admin/
-│   ├── CONTEXT.md            # Admin System language
-│   └── docs/adr/             # Admin System decisions
+│   └── CONTEXT.md            # Admin System language
 └── apps/server/
     └── CONTEXT.md            # Server authentication and authorization language
 ```
@@ -30,7 +29,7 @@ When a task crosses contexts, read each context instead of treating one glossary
 
 - `CONTEXT.md` defines stable domain terms in one or two sentences. It contains no package layout, class responsibilities, framework rules, API contracts, or implementation recipes.
 - `AGENTS.md` records verifiable implementation and workflow instructions for agents.
-- ADRs record durable, costly-to-reverse decisions and their rationale. Put cross-context decisions at the root and context-specific decisions with the owning context.
+- ADRs record durable, costly-to-reverse decisions and their rationale. Keep every ADR in the root `docs/adr/`, including decisions scoped to one context.
 - Do not copy the same rule or definition into multiple files. Link to its canonical owner.
 
 ## Vocabulary And Conflicts
