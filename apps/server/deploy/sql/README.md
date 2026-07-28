@@ -53,7 +53,19 @@
 
 ### `06_i18n.sql`
 
-创建 `sys_i18n` 动态国际化消息记录表，迁移默认菜单标题 key，初始化中英文菜单翻译、`System` / `I18nMessage` 两级菜单、内置 `i18n-manager` 角色和 5 项国际化消息接口权限。bundle 权限绑定内置 `admin` 基线角色，查询与维护权限只绑定 `i18n-manager`，默认 `admin` 账号额外获得该角色。重复执行不会覆盖已存在的翻译值。
+创建 `sys_i18n` 动态国际化消息记录表，以全局 Message Key 标识消息并使用 `default`、`admin` 分类限定语言包范围；迁移默认菜单标题 key，初始化中英文菜单翻译、`System` / `I18nMessage` 两级菜单、内置 `i18n:manager` 角色和国际化消息接口权限。bundle 权限绑定内置 `admin` 基线角色，查询与维护权限只绑定 `i18n:manager`，默认 `admin` 账号额外获得该角色。重复执行不会覆盖已存在的翻译值。
+
+### `07_rbac_admin.sql`
+
+初始化后台管理员、角色、权限和菜单管理能力：
+
+- 为权限和菜单补齐固有的 `built_in` 属性；
+- 创建内置 `rbac:manager` 角色，并将 RBAC 与后台管理员管理接口统一收紧为非公开；
+- 初始化四个管理页面、15 个按钮菜单及中英文动态菜单标题；
+- 将管理权限和菜单绑定 `rbac:manager`，并为默认 `admin` 账号授予该角色；
+- 将框架、后台管理员、RBAC、国际化端点权限及系统基础菜单标记为内置资源。
+
+该脚本依赖 `01_rbac.sql` 至 `06_i18n.sql`。它可以在当前空库结构上重复执行，也可以幂等补齐上一版 `az_permission` 和 `az_menu` 缺少的 `built_in` 字段；它不是通用迁移框架，不处理其他历史结构差异。重复执行不会覆盖已有动态翻译值。
 
 ## 首次部署
 
@@ -72,6 +84,8 @@ mysql --host=<host> --user=<user> --password --database=<database> \
   < deploy/sql/05_admin_permissions.sql
 mysql --host=<host> --user=<user> --password --database=<database> \
   < deploy/sql/06_i18n.sql
+mysql --host=<host> --user=<user> --password --database=<database> \
+  < deploy/sql/07_rbac_admin.sql
 ```
 
 执行前确认目标数据库：
@@ -90,7 +104,7 @@ SELECT id, code, built_in FROM az_role WHERE code = 'admin' AND del = 0;
 
 ## 已有数据库升级
 
-本目录只维护当前版本的空库初始化脚本，不维护历史版本之间的增量迁移。已有数据库升级时，不要把重复执行 `01_rbac.sql` 当作升级方案；应根据实际版本差异编写并审核迁移脚本，通过项目采用的迁移系统单独执行。
+本目录主要维护当前版本的空库初始化脚本，不提供通用的历史版本迁移链。`07_rbac_admin.sql` 仅显式支持从上一版当前结构补齐权限和菜单的 `built_in` 字段；其他已有数据库升级仍不能把重复执行 `01_rbac.sql` 当作升级方案，应根据实际版本差异编写并审核迁移脚本，通过项目采用的迁移系统单独执行。
 
 ## 幂等性边界
 
@@ -101,6 +115,7 @@ SELECT id, code, built_in FROM az_role WHERE code = 'admin' AND del = 0;
 - `03_framework_permissions.sql` 和 `04_rbac_permissions.sql` 不会覆盖已有权限记录；
 - `05_admin_permissions.sql` 会规范化 6 项当前用户权限的公开状态并补齐有效 `admin` 角色绑定，其他已有权限字段保持不变；
 - `06_i18n.sql` 会恢复国际化内置角色、菜单和默认关系，但不会覆盖已有翻译值；
+- `07_rbac_admin.sql` 会补齐 `built_in` 字段、恢复 RBAC 管理内置资源与关系、收紧管理接口公开状态，但不会覆盖已有动态翻译值；
 - 脚本不会删除额外的业务数据；
 - 历史版本升级、字段变更和索引变更仍需专门的迁移脚本。
 
@@ -115,8 +130,8 @@ deploy/sql/<script>.sql -> sql/schema/<script>.sql
 当前测试加载方式如下：
 
 - `gnilc-auth-rbac` 的 `RbacSchemaIT` 验证 `01_rbac.sql`、`03_framework_permissions.sql` 和 `04_rbac_permissions.sql`，其他模块集成测试只加载 `01_rbac.sql`；
-- `gnilc-system` 的 Schema 集成测试验证 `02_admin.sql`、`05_admin_permissions.sql` 和 `06_i18n.sql`，其他模块集成测试依次加载 `01_rbac.sql`、`02_admin.sql`；
-- `gnilc-system` 的 Admin API 测试恢复基线数据时会重新执行 `02_admin.sql` 和 `05_admin_permissions.sql`；
+- `gnilc-system` 的 Schema 集成测试验证 `02_admin.sql`、`05_admin_permissions.sql`、`06_i18n.sql` 和 `07_rbac_admin.sql`，包括上一版结构补列与重复执行；其他模块集成测试依次加载 `01_rbac.sql`、`02_admin.sql`；
+- `gnilc-system` 的 Admin API 测试恢复基线数据时会重新执行 `02_admin.sql` 至 `07_rbac_admin.sql`，确保全库清理后框架、RBAC、后台管理员和国际化权限均恢复到真实部署基线；
 - `gnilc-bootstrap` 只验证最终应用组合和启动，不再复制或执行部署 SQL。
 
 测试数据库固定为 Testcontainers 创建的 `gnilc_auth_test`，测试不会使用 H2、本机 MySQL、开发数据库或共享数据库。
@@ -132,7 +147,7 @@ mvn verify
 ## 安全要求
 
 - 不要把数据库密码写入 SQL、文档、脚本参数或提交记录；使用客户端交互式密码输入或安全的凭据管理方式。
-- 当前用户相关的 6 项权限默认要求 `admin` 角色；登录、刷新、退出及现有后台管理员管理权限仍按当前策略公开，部署到公网前必须复核公开边界。
+- 当前用户相关的 6 项权限默认要求 `admin` 角色；后台管理员、角色、权限和菜单管理接口要求 `rbac:manager` 角色；只有登录、刷新和退出等会话端点保持公开访问。
 - 不要在共享数据库或未备份的现有数据库上试运行初始化脚本。
 - 自动化测试只能连接由 Testcontainers 管理的临时数据库。
 - 本目录只处理 MySQL 结构和基础数据，不负责 Redis 初始化。

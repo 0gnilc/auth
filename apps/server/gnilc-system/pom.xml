@@ -90,6 +90,7 @@
                     <include>04_rbac_permissions.sql</include>
                     <include>05_admin_permissions.sql</include>
                     <include>06_i18n.sql</include>
+                    <include>07_rbac_admin.sql</include>
                 </includes>
             </testResource>
         </testResources>

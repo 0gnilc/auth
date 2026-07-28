@@ -2,11 +2,13 @@
 -- 依赖先执行 01_rbac.sql。
 -- 包含 sys_admin 表结构、默认管理员账号和 RBAC 绑定数据。
 
+SET NAMES utf8mb4;
+
 CREATE TABLE IF NOT EXISTS sys_admin (
     id bigint NOT NULL AUTO_INCREMENT COMMENT '主键 ID',
     del tinyint NOT NULL DEFAULT '0' COMMENT '删除标记',
-    create_time datetime NOT NULL COMMENT '创建时间',
-    update_time datetime DEFAULT NULL COMMENT '更新时间',
+    create_time datetime(6) NOT NULL COMMENT '创建时间（UTC）',
+    update_time datetime(6) DEFAULT NULL COMMENT '更新时间（UTC）',
     user_id bigint NOT NULL COMMENT 'RBAC 全局用户 ID',
     username varchar(255) NOT NULL COMMENT '登录用户名',
     password varchar(100) NOT NULL COMMENT 'BCrypt 密码哈希',
@@ -30,7 +32,7 @@ WHERE code = 'admin'
   AND (del <> 0 OR built_in <> 1);
 
 INSERT INTO az_role (del, create_time, update_time, code, name, remark, built_in)
-SELECT 0, NOW(), NULL, 'admin', '管理员', '系统管理员', 1
+SELECT 0, UTC_TIMESTAMP(6), NULL, 'admin', '管理员', '系统管理员', 1
 WHERE NOT EXISTS (
     SELECT 1
     FROM az_role
@@ -45,7 +47,7 @@ SET @default_admin_existing_user_id := (
 );
 
 INSERT INTO az_user (id, del, create_time, update_time)
-SELECT @default_admin_existing_user_id, 0, NOW(), NULL
+SELECT @default_admin_existing_user_id, 0, UTC_TIMESTAMP(6), NULL
 WHERE @default_admin_existing_user_id IS NOT NULL
   AND NOT EXISTS (
       SELECT 1
@@ -54,7 +56,7 @@ WHERE @default_admin_existing_user_id IS NOT NULL
   );
 
 INSERT INTO az_user (del, create_time, update_time)
-SELECT 0, NOW(), NULL
+SELECT 0, UTC_TIMESTAMP(6), NULL
 WHERE @default_admin_existing_user_id IS NULL;
 
 SET @default_admin_user_id := COALESCE(@default_admin_existing_user_id, LAST_INSERT_ID());
@@ -79,7 +81,7 @@ INSERT INTO sys_admin (
 )
 SELECT
     0,
-    NOW(),
+    UTC_TIMESTAMP(6),
     NULL,
     @default_admin_user_id,
     'admin',
@@ -110,7 +112,7 @@ INSERT INTO az_menu (
     affix_tab, hide_in_menu, icon, `order`, title
 )
 SELECT
-    0, NOW(), NULL, 0, 'menu', 1, 'Dashboard', '/dashboard', '/dashboard/index',
+    0, UTC_TIMESTAMP(6), NULL, 0, 'menu', 1, 'Dashboard', '/dashboard', '/dashboard/index',
     1, 0, 'lucide:layout-dashboard', -1, 'page.dashboard.title'
 WHERE NOT EXISTS (
     SELECT 1 FROM az_menu WHERE name = 'Dashboard'
@@ -121,14 +123,14 @@ INSERT INTO az_menu (
     affix_tab, hide_in_menu, icon, `order`, title
 )
 SELECT
-    0, NOW(), NULL, 0, 'menu', 1, 'Profile', '/profile', '/_core/profile/index',
+    0, UTC_TIMESTAMP(6), NULL, 0, 'menu', 1, 'Profile', '/profile', '/_core/profile/index',
     0, 1, 'lucide:user', 999, 'page.auth.profile'
 WHERE NOT EXISTS (
     SELECT 1 FROM az_menu WHERE name = 'Profile'
 );
 
 INSERT INTO az_role_menu (del, create_time, update_time, role_id, menu_id)
-SELECT 0, NOW(), NULL, @default_admin_role_id, m.id
+SELECT 0, UTC_TIMESTAMP(6), NULL, @default_admin_role_id, m.id
 FROM az_menu m
 WHERE m.name IN ('Dashboard', 'Profile')
   AND m.del = 0
@@ -143,7 +145,7 @@ WHERE m.name IN ('Dashboard', 'Profile')
 
 UPDATE az_user_role
 SET del = 0,
-    update_time = NOW()
+    update_time = UTC_TIMESTAMP(6)
 WHERE user_id = @default_admin_user_id
   AND role_id = @default_admin_role_id
   AND del <> 0
@@ -151,7 +153,7 @@ ORDER BY id
 LIMIT 1;
 
 INSERT INTO az_user_role (del, create_time, update_time, user_id, role_id)
-SELECT 0, NOW(), NULL, @default_admin_user_id, @default_admin_role_id
+SELECT 0, UTC_TIMESTAMP(6), NULL, @default_admin_user_id, @default_admin_role_id
 WHERE @default_admin_user_id IS NOT NULL
   AND @default_admin_role_id IS NOT NULL
   AND NOT EXISTS (
@@ -164,7 +166,7 @@ WHERE @default_admin_user_id IS NOT NULL
 
 -- Every active admin user retains the built-in admin access baseline role.
 INSERT INTO az_user_role (del, create_time, update_time, user_id, role_id)
-SELECT 0, NOW(), NULL, a.user_id, @default_admin_role_id
+SELECT 0, UTC_TIMESTAMP(6), NULL, a.user_id, @default_admin_role_id
 FROM sys_admin a
 WHERE a.del = 0
   AND @default_admin_role_id IS NOT NULL
