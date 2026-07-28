@@ -3,6 +3,7 @@ package com.gnilc.auth.authz.rbac.service.impl;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.gnilc.common.base.Preconditions;
 import com.gnilc.common.i18n.I18nMessageService;
+import com.gnilc.common.utils.BeanPropertyUtils;
 import com.gnilc.auth.authz.rbac.dao.PermissionDao;
 import com.gnilc.auth.authz.rbac.entity.bo.PermissionBo;
 import com.gnilc.auth.authz.rbac.entity.dto.PermissionDto;
@@ -43,6 +44,7 @@ public class PermissionServiceImpl extends ServiceImpl<PermissionDao, Permission
     @Override
     public void createPermission(PermissionDto dto) {
         Preconditions.checkArgument(dto != null, messages.get("rbac.permission.information.required"));
+        BeanPropertyUtils.trimToNull(dto);
         String name = dto.getName();
         String code = dto.getCode();
         String targetIdentifier = dto.getTargetIdentifier();
@@ -62,6 +64,7 @@ public class PermissionServiceImpl extends ServiceImpl<PermissionDao, Permission
         bo.setTargetQualifier(targetQualifier);
         bo.setRemark(remark);
         bo.setPublicAccess(publicAccess);
+        bo.setBuiltIn(Boolean.FALSE);
         save(bo);
 
         eventPublisher.publishEvent(RbacAuthzEvent.of(
@@ -75,6 +78,7 @@ public class PermissionServiceImpl extends ServiceImpl<PermissionDao, Permission
     @Override
     public void updatePermission(PermissionDto dto) {
         Preconditions.checkArgument(dto != null, messages.get("rbac.permission.information.required"));
+        BeanPropertyUtils.trimToNull(dto);
         Long permissionId = dto.getId();
         String name = dto.getName();
         String code = dto.getCode();
@@ -85,6 +89,8 @@ public class PermissionServiceImpl extends ServiceImpl<PermissionDao, Permission
         Preconditions.checkArgument(permissionId != null, messages.get("rbac.permission.selection.required"));
         PermissionBo bo = getById(permissionId);
         Preconditions.checkCondition(bo != null, messages.get("rbac.permission.notFound"));
+        Preconditions.checkCondition(!Boolean.TRUE.equals(bo.getBuiltIn()),
+                messages.get("rbac.permission.builtIn.modify"));
         if (StringUtils.isNotBlank(code) && !code.equals(bo.getCode())) {
             PermissionBo sameBo = getPermissionByCode(code);
             Preconditions.checkArgument(sameBo == null, messages.get("rbac.permission.code.exists"));
@@ -112,8 +118,11 @@ public class PermissionServiceImpl extends ServiceImpl<PermissionDao, Permission
         Preconditions.checkArgument(id != null, messages.get("rbac.permission.selection.required"));
         PermissionBo bo = getById(id);
         Preconditions.checkCondition(bo != null, messages.get("rbac.permission.notFound"));
+        Preconditions.checkCondition(!Boolean.TRUE.equals(bo.getBuiltIn()),
+                messages.get("rbac.permission.builtIn.delete"));
         bo.setCode(bo.getCode() + "_del_" + id);
         updateById(bo);
+        rolePermissionService.removeByPermissionId(id);
         removeById(id);
 
         eventPublisher.publishEvent(RbacAuthzEvent.of(

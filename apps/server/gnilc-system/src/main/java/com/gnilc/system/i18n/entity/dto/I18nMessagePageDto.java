@@ -12,6 +12,6 @@ import lombok.EqualsAndHashCode;
 public class I18nMessagePageDto extends PageParams {
     private String key;
     private String value;
-    private String client;
+    private String category;
     private String locale;
 }

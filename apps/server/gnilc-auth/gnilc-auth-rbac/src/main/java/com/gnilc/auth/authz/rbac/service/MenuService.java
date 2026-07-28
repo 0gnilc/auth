@@ -15,6 +15,9 @@ public interface MenuService extends IService<MenuBo> {
 
     void createMenu(MenuDto dto);
 
+    /**
+     * 完整更新菜单。调用方必须提交完整菜单数据，省略字段不表示保留原值。
+     */
     void updateMenu(MenuDto dto);
 
     MenuBo getMenuByPath(String path);

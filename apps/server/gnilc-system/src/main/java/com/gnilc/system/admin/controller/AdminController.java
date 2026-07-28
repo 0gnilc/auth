@@ -67,11 +67,11 @@ public class AdminController {
     }
 
     /**
-     * 替换管理员角色。
+     * 保存管理员角色。
      */
-    @PostMapping("/update-roles")
-    public R<?> updateAdminRoles(@RequestBody AdminRoleDto dto) {
-        adminService.updateAdminRoles(dto);
+    @PostMapping("/roles/save")
+    public R<?> saveAdminRoles(@RequestBody AdminRoleDto dto) {
+        adminService.saveAdminRoles(dto);
         return R.success();
     }
 

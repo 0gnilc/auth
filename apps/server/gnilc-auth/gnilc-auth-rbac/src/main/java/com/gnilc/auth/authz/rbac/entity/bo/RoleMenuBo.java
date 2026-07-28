@@ -5,7 +5,7 @@ import lombok.Data;
 
 import java.io.Serial;
 import java.io.Serializable;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /**
  * 角色关联菜单(多对多)
@@ -31,12 +31,12 @@ public class RoleMenuBo implements Serializable {
 	 * 创建时间
 	 */
 	@TableField(fill = FieldFill.INSERT)
-	private LocalDateTime createTime;
+	private Instant createTime;
 	/**
 	 * 修改时间
 	 */
 	@TableField(fill = FieldFill.UPDATE)
-	private LocalDateTime updateTime;
+	private Instant updateTime;
 	/**
 	 * 角色id
 	 */

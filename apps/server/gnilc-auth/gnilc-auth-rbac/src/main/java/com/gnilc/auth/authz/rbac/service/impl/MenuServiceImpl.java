@@ -16,7 +16,8 @@ import com.gnilc.auth.authz.rbac.service.RoleMenuService;
 import com.gnilc.common.base.Preconditions;
 import com.gnilc.common.exception.InvalidArgumentException;
 import com.gnilc.common.i18n.I18nMessageService;
-import com.gnilc.common.utils.BeanCopyUtils;
+import com.gnilc.common.utils.BeanPropertyUtils;
+import com.gnilc.common.utils.HttpUrlUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
@@ -26,6 +27,7 @@ import org.springframework.util.CollectionUtils;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -87,22 +89,31 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
         Preconditions.checkArgument(dto != null, messages.get("rbac.menu.information.required"));
         MenuBo bo = new MenuBo();
         BeanUtils.copyProperties(dto, bo);
+        BeanPropertyUtils.trimToNull(bo);
+        bo.setBuiltIn(Boolean.FALSE);
         validateMenu(bo);
         save(bo);
     }
 
+    /**
+     * 使用同一个菜单对象完成完整请求的规范化、校验和持久化，确保校验值与落库值一致。
+     */
     @Override
     public void updateMenu(MenuDto dto) {
         Preconditions.checkArgument(dto != null, messages.get("rbac.menu.information.required"));
         Long menuId = dto.getId();
         Preconditions.checkArgument(menuId != null, messages.get("rbac.menu.selection.required"));
-        MenuBo existing = getById(menuId);
-        Preconditions.checkArgument(existing != null, messages.get("rbac.menu.notFound"));
-        MenuBo bo = new MenuBo();
-        BeanUtils.copyProperties(existing, bo);
-        BeanCopyUtils.copyNonNullProperties(dto, bo);
-        validateMenu(bo);
-        updateById(bo);
+        MenuBo menu = getById(menuId);
+        Preconditions.checkArgument(menu != null, messages.get("rbac.menu.notFound"));
+        Preconditions.checkCondition(!Boolean.TRUE.equals(menu.getBuiltIn()),
+                messages.get("rbac.menu.builtIn.modify"));
+        Preconditions.checkArgument(dto.getType() != null, messages.get("rbac.menu.type.required"));
+        Preconditions.checkCondition(Objects.equals(dto.getType(), menu.getType()),
+                messages.get("rbac.menu.type.immutable"));
+        BeanUtils.copyProperties(dto, menu);
+        BeanPropertyUtils.trimToNull(menu);
+        validateMenu(menu);
+        updateById(menu);
     }
 
     @Transactional
@@ -111,7 +122,12 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
         Preconditions.checkArgument(id != null, messages.get("rbac.menu.selection.required"));
         MenuBo bo = getById(id);
         Preconditions.checkArgument(bo != null, messages.get("rbac.menu.notFound"));
+        Preconditions.checkCondition(!Boolean.TRUE.equals(bo.getBuiltIn()),
+                messages.get("rbac.menu.builtIn.delete"));
         List<Long> menuIds = getSubtreeIds(id);
+        Preconditions.checkCondition(getMenus(menuIds).stream()
+                        .noneMatch(menu -> Boolean.TRUE.equals(menu.getBuiltIn())),
+                messages.get("rbac.menu.builtIn.delete"));
         roleMenuService.removeByMenuIds(menuIds);
         removeByIds(menuIds);
     }
@@ -184,6 +200,8 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
                 .toList();
         Map<Long, MenuRouteVo> routeMap = menus.stream()
                 .collect(Collectors.toMap(MenuBo::getId, this::toMenuRouteVo));
+        Map<MenuRouteVo, MenuType> routeTypes = new IdentityHashMap<>();
+        menus.forEach(menu -> routeTypes.put(routeMap.get(menu.getId()), menu.getType()));
         List<MenuRouteVo> roots = new ArrayList<>();
         for (MenuBo menu : menus) {
             MenuRouteVo route = routeMap.get(menu.getId());
@@ -196,6 +214,7 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
                 parent.getChildren().add(route);
             }
         }
+        roots.removeIf(route -> !hasNavigableRoute(route, routeTypes));
         sortMenuRoutes(roots);
         return roots;
     }
@@ -240,9 +259,9 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
         String accessCode = bo.getAccessCode();
         String iframeSrc = bo.getIframeSrc();
         String link = bo.getLink();
-        Preconditions.checkArgument(pid != null, messages.get("rbac.menu.parent.selection.required"));
-        validateParent(menuId, pid);
         Preconditions.checkArgument(type != null, messages.get("rbac.menu.type.required"));
+        Preconditions.checkArgument(pid != null, messages.get("rbac.menu.parent.selection.required"));
+        validateParent(menuId, pid, type);
         Preconditions.checkArgument(StringUtils.isNotBlank(name), messages.get("rbac.menu.name.required"));
         Preconditions.checkArgument(StringUtils.isNotBlank(title), messages.get("rbac.menu.title.required"));
         switch (type) {
@@ -253,17 +272,24 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
                 Preconditions.checkArgument(StringUtils.isNotBlank(component),
                         messages.get("rbac.menu.component.required"));
             }
-            case BUTTON ->
-                    Preconditions.checkArgument(StringUtils.isNotBlank(accessCode),
-                            messages.get("rbac.menu.accessCode.required"));
+            case BUTTON -> Preconditions.checkArgument(StringUtils.isNotBlank(accessCode),
+                    messages.get("rbac.menu.accessCode.required"));
             case EMBEDDED -> {
                 Preconditions.checkArgument(StringUtils.isNotBlank(path), messages.get("rbac.menu.path.required"));
                 Preconditions.checkArgument(StringUtils.isNotBlank(iframeSrc),
                         messages.get("rbac.menu.iframeSrc.required"));
+                Preconditions.checkArgument(iframeSrc.length() <= 500,
+                        messages.get("rbac.menu.url.tooLong"));
+                Preconditions.checkArgument(HttpUrlUtils.isValid(iframeSrc),
+                        messages.get("rbac.menu.url.invalid"));
             }
             case LINK -> {
                 Preconditions.checkArgument(StringUtils.isNotBlank(path), messages.get("rbac.menu.path.required"));
                 Preconditions.checkArgument(StringUtils.isNotBlank(link), messages.get("rbac.menu.link.required"));
+                Preconditions.checkArgument(link.length() <= 500,
+                        messages.get("rbac.menu.url.tooLong"));
+                Preconditions.checkArgument(HttpUrlUtils.isValid(link),
+                        messages.get("rbac.menu.url.invalid"));
             }
         }
         MenuBo nameBo = getMenuByName(name);
@@ -280,13 +306,17 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
     /**
      * 校验候选父节点存在、层级完整，并确保调整父级后不会形成循环。
      */
-    private void validateParent(Long menuId, Long pid) {
+    private void validateParent(Long menuId, Long pid, MenuType childType) {
         if (Objects.equals(pid, MenuConstant.ROOT_PARENT_ID)) {
+            Preconditions.checkArgument(childType != MenuType.BUTTON,
+                    messages.get("rbac.menu.root.button.unsupported"));
             return;
         }
         MenuBo parent = getById(pid);
         Preconditions.checkArgument(parent != null,
                 messages.get("rbac.menu.parent.notFound"));
+        Preconditions.checkArgument(allowsChild(parent.getType(), childType),
+                messages.get("rbac.menu.parent.type.invalid"));
         Set<Long> visited = new HashSet<>();
         // 从候选父节点回溯到根节点；途中遇到当前菜单即表示会形成父子环。
         while (true) {
@@ -301,6 +331,20 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
             Preconditions.checkArgument(parent != null,
                     messages.get("rbac.menu.parentHierarchy.incomplete"));
         }
+    }
+
+    private boolean allowsChild(MenuType parentType, MenuType childType) {
+        if (parentType == MenuType.CATALOG) {
+            return true;
+        }
+        return parentType == MenuType.MENU && childType == MenuType.BUTTON;
+    }
+
+    private boolean hasNavigableRoute(
+            MenuRouteVo route,
+            Map<MenuRouteVo, MenuType> routeTypes) {
+        route.getChildren().removeIf(child -> !hasNavigableRoute(child, routeTypes));
+        return routeTypes.get(route) != MenuType.CATALOG || !route.getChildren().isEmpty();
     }
 
     private List<Long> getSubtreeIds(Long rootId) {

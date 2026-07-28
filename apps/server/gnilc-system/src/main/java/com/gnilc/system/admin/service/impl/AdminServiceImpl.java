@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.gnilc.common.base.Preconditions;
 import com.gnilc.common.i18n.I18nMessageService;
-import com.gnilc.common.utils.BeanCopyUtils;
+import com.gnilc.common.utils.BeanPropertyUtils;
 import com.gnilc.common.utils.PageResult;
 import com.gnilc.auth.authz.rbac.entity.bo.MenuBo;
 import com.gnilc.auth.authz.rbac.entity.bo.RoleBo;
@@ -35,6 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 
@@ -55,7 +56,6 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
     private final RoleMenuService roleMenuService;
     private final UserService userService;
     private final UserRoleService userRoleService;
-    private final AccessPrincipalUtils accessPrincipalUtils;
     private final I18nMessageService messages;
 
     public AdminServiceImpl(AdminSessionManager sessionManager,
@@ -64,7 +64,6 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
                             RoleMenuService roleMenuService,
                             UserService userService,
                             UserRoleService userRoleService,
-                            AccessPrincipalUtils accessPrincipalUtils,
                             I18nMessageService messages) {
         this.sessionManager = sessionManager;
         this.roleService = roleService;
@@ -72,7 +71,6 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
         this.roleMenuService = roleMenuService;
         this.userService = userService;
         this.userRoleService = userRoleService;
-        this.accessPrincipalUtils = accessPrincipalUtils;
         this.messages = messages;
     }
 
@@ -126,7 +124,7 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
      */
     @Override
     public AdminVo getUserInfo() {
-        Long userId = accessPrincipalUtils.getUserId();
+        Long userId = AccessPrincipalUtils.getUserId();
         AdminBo bo = getAdminByUserId(userId);
         if (bo == null) {
             return null;
@@ -149,7 +147,7 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
         Preconditions.checkArgument(description == null || description.length() <= PROFILE_TEXT_MAX_LENGTH,
                 messages.get("system.admin.description.tooLong", PROFILE_TEXT_MAX_LENGTH));
 
-        AdminBo bo = getAdminByUserId(accessPrincipalUtils.getUserId());
+        AdminBo bo = getAdminByUserId(AccessPrincipalUtils.getUserId());
         Preconditions.checkCondition(bo != null,
                 messages.get("system.admin.notFound.signIn"));
         lambdaUpdate()
@@ -167,7 +165,7 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
                 messages.get("system.admin.password.current.required"));
         validateStrongPassword(newPassword);
 
-        Long userId = accessPrincipalUtils.getUserId();
+        Long userId = AccessPrincipalUtils.getUserId();
         AdminBo bo = getAdminByUserId(userId);
         Preconditions.checkCondition(bo != null,
                 messages.get("system.admin.notFound.signIn"));
@@ -186,7 +184,7 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
      */
     @Override
     public List<String> getRoleCodes() {
-        return getRoleCodes(accessPrincipalUtils.getUserId());
+        return getRoleCodes(AccessPrincipalUtils.getUserId());
     }
 
     /**
@@ -194,7 +192,7 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
      */
     @Override
     public List<String> getMenuAccessCodes() {
-        return getMenuAccessCodes(accessPrincipalUtils.getUserId());
+        return getMenuAccessCodes(AccessPrincipalUtils.getUserId());
     }
 
     /**
@@ -237,7 +235,7 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
 
     @Override
     public List<MenuRouteVo> getMenuRoutes() {
-        Long userId = accessPrincipalUtils.getUserId();
+        Long userId = AccessPrincipalUtils.getUserId();
         List<Long> roleIds = userRoleService.getRoleIds(userId);
         List<Long> menuIds = roleMenuService.getMenuIds(roleIds);
         return menuService.getMenuRoutes(menuIds);
@@ -249,10 +247,14 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
     @Override
     @Transactional
     public void createAdmin(AdminDto dto) {
+        Preconditions.checkArgument(dto != null, messages.get("system.admin.information.required"));
+        BeanPropertyUtils.trimToNull(dto, "password");
         String username = dto.getUsername();
         String password = dto.getPassword();
         Preconditions.checkArgument(StringUtils.isNotBlank(username), messages.get("system.admin.username.required"));
         Preconditions.checkArgument(StringUtils.isNotBlank(password), messages.get("system.admin.password.required"));
+        Preconditions.checkArgument(StringUtils.isNotBlank(dto.getNickname()),
+                messages.get("system.admin.nickname.required"));
         validateStrongPassword(password);
         Preconditions.checkArgument(getAdminByUsername(username) == null,
                 messages.get("system.admin.username.exists"));
@@ -276,15 +278,33 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
     @Override
     @Transactional
     public void updateAdmin(AdminDto dto) {
+        Preconditions.checkArgument(dto != null, messages.get("system.admin.information.required"));
+        boolean usernameSpecified = dto.getUsername() != null;
+        boolean nicknameSpecified = dto.getNickname() != null;
+        BeanPropertyUtils.trimToNull(dto, "password");
         AdminBo bo = getAdmin(dto.getId());
         Preconditions.checkCondition(bo != null, messages.get("system.admin.notFound"));
         String username = dto.getUsername();
+        Preconditions.checkArgument(!usernameSpecified || StringUtils.isNotBlank(username),
+                messages.get("system.admin.username.required"));
+        Preconditions.checkArgument(!nicknameSpecified || StringUtils.isNotBlank(dto.getNickname()),
+                messages.get("system.admin.nickname.required"));
         if (username != null && !username.equals(bo.getUsername())) {
             Preconditions.checkArgument(getAdminByUsername(username) == null,
                     messages.get("system.admin.username.exists"));
         }
-        boolean wasEnabled = Boolean.TRUE.equals(bo.getStatus());
-        BeanCopyUtils.copyNonNullProperties(dto, bo);
+        boolean wasEnabled = Boolean.TRUE.equals(bo.getStatus())
+                && Boolean.FALSE.equals(dto.getStatus());
+        Preconditions.checkCondition(
+                !(wasEnabled && Objects.equals(bo.getUserId(), AccessPrincipalUtils.getUserId())),
+                messages.get("system.admin.current.disable"));
+        BeanPropertyUtils.copyNonNullProperties(dto, bo);
+        if (dto.isAvatarSpecified()) {
+            bo.setAvatar(dto.getAvatar());
+        }
+        if (dto.isDescSpecified()) {
+            bo.setDescription(dto.getDesc());
+        }
 
         // 单独处理密码。
         String password = dto.getPassword();
@@ -296,20 +316,19 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
         }
 
         updateById(bo);
-        updateRolesIfProvided(bo.getUserId(), dto.getRoleCodes());
+        saveRolesIfProvided(bo.getUserId(), dto.getRoleCodes());
 
-        boolean disabling = wasEnabled && Boolean.FALSE.equals(dto.getStatus());
-        if (disabling) {
+        if (wasEnabled) {
             sessionManager.cleanupUserSessions(bo.getUserId());
         }
     }
 
     /**
-     * 替换管理员角色。
+     * 保存管理员角色。
      */
     @Override
     @Transactional
-    public void updateAdminRoles(AdminRoleDto dto) {
+    public void saveAdminRoles(AdminRoleDto dto) {
         AdminBo bo = getById(dto.getId());
         Preconditions.checkCondition(bo != null, messages.get("system.admin.notFound"));
         replaceAdminRoles(bo.getUserId(), dto.getRoleCodes());
@@ -324,6 +343,8 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
         Preconditions.checkArgument(id != null, messages.get("system.admin.selection.required"));
         AdminBo bo = getById(id);
         Preconditions.checkCondition(bo != null, messages.get("system.admin.notFound"));
+        Preconditions.checkCondition(!Objects.equals(bo.getUserId(), AccessPrincipalUtils.getUserId()),
+                messages.get("system.admin.current.delete"));
         sessionManager.cleanupUserSessions(bo.getUserId());
         bo.setUsername(bo.getUsername() + "_del_" + id);
         updateById(bo);
@@ -388,7 +409,7 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
     /**
      * 替换用户角色。
      */
-    private void updateRolesIfProvided(Long userId, List<String> roleCodes) {
+    private void saveRolesIfProvided(Long userId, List<String> roleCodes) {
         if (roleCodes == null) {
             return;
         }

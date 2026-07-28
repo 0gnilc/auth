@@ -6,7 +6,7 @@ import lombok.Data;
 
 import java.io.Serial;
 import java.io.Serializable;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 
 /**
@@ -32,12 +32,12 @@ public class MenuBo implements Serializable {
      * 创建时间
      */
     @TableField(fill = FieldFill.INSERT)
-    private LocalDateTime createTime;
+    private Instant createTime;
     /**
      * 修改时间
      */
     @TableField(fill = FieldFill.UPDATE)
-    private LocalDateTime updateTime;
+    private Instant updateTime;
 
     /**
      * 父级ID
@@ -55,8 +55,14 @@ public class MenuBo implements Serializable {
     private Boolean status;
 
     /**
+     * 是否系统内置,0否、1是
+     */
+    private Boolean builtIn;
+
+    /**
      * 后端权限标识
      */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String accessCode;
 
     /**
@@ -67,21 +73,25 @@ public class MenuBo implements Serializable {
     /**
      * 路由路径
      */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String path;
 
     /**
      * 组件
      */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String component;
 
     /**
      * 重定向
      */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String redirect;
 
     /**
      * 指定当前激活的菜单
      */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String activePath;
 
     /**
@@ -92,21 +102,25 @@ public class MenuBo implements Serializable {
     /**
      * 固定标签页排序
      */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private Integer affixTabOrder;
 
     /**
      * 徽标
      */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String badge;
 
     /**
      * 徽标类型
      */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String badgeType;
 
     /**
      * 徽标样式
      */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String badgeVariants;
 
     /**
@@ -137,17 +151,14 @@ public class MenuBo implements Serializable {
     /**
      * 图标
      */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String icon;
 
     /**
      * 内嵌 iframe 地址
      */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String iframeSrc;
-
-    /**
-     * 忽略权限访问控制
-     */
-    private Boolean ignoreAccess;
 
     /**
      * 是否缓存页面
@@ -157,22 +168,14 @@ public class MenuBo implements Serializable {
     /**
      * 外链地址
      */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String link;
-
-    /**
-     * 是否已加载
-     */
-    private Boolean loaded;
 
     /**
      * 同名标签页最大打开数量
      */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private Integer maxNumOfOpenTab;
-
-    /**
-     * 菜单可见但访问时跳转 403
-     */
-    private Boolean menuVisibleWithForbidden;
 
     /**
      * 不使用基础布局
@@ -193,6 +196,7 @@ public class MenuBo implements Serializable {
     /**
      * 路由查询参数
      */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String query;
 
     /**

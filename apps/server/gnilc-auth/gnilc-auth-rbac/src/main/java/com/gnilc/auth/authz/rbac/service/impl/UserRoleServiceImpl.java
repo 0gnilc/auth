@@ -143,6 +143,22 @@ public class UserRoleServiceImpl extends ServiceImpl<UserRoleDao, UserRoleBo> im
         return getUserIds(List.of(roleId));
     }
 
+    @Transactional
+    @Override
+    public void removeByRoleId(Long roleId) {
+        if (roleId == null) {
+            return;
+        }
+        List<Long> userIds = getUserIds(roleId);
+        lambdaUpdate()
+                .eq(UserRoleBo::getRoleId, roleId)
+                .remove();
+        userIds.forEach(userId -> eventPublisher.publishEvent(RbacAuthzEvent.of(
+                RbacAuthzEvent.Type.USER_ROLE,
+                RbacAuthzEvent.Action.REPLACE,
+                userId)));
+    }
+
     @Override
     public UserRoleBo getUserRole(Long userId, Long roleId) {
         if (userId == null || roleId == null) {

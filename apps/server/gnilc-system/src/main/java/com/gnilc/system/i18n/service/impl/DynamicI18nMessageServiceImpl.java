@@ -49,10 +49,10 @@ public class DynamicI18nMessageServiceImpl extends ServiceImpl<I18nMessageDao, I
     }
 
     @Override
-    public Map<String, Object> getMessageBundle(String client) {
-        String targetClient = requireClient(client);
+    public Map<String, Object> getMessageBundle(String category) {
+        String targetCategory = requireCategory(category);
         List<I18nMessageBo> rows = lambdaQuery()
-                .eq(I18nMessageBo::getClient, targetClient)
+                .eq(I18nMessageBo::getCategory, targetCategory)
                 .orderByAsc(I18nMessageBo::getMessageKey)
                 .list();
         Map<String, Object> bundle = new LinkedHashMap<>();
@@ -67,76 +67,70 @@ public class DynamicI18nMessageServiceImpl extends ServiceImpl<I18nMessageDao, I
     }
 
     @Override
-    public PageResult<I18nMessageItemVo> getMessagePage(String client, I18nMessagePageDto dto) {
-        String targetClient = requireClient(client);
+    public List<String> getSupportedCategories() {
+        return I18nMessageConstants.SUPPORTED_CATEGORIES;
+    }
+
+    @Override
+    public PageResult<I18nMessageItemVo> getMessagePage(I18nMessagePageDto dto) {
         I18nMessagePageDto query = dto == null ? new I18nMessagePageDto() : dto;
-        if (StringUtils.isNotBlank(query.getClient())) {
-            Preconditions.checkArgument(targetClient.equals(query.getClient()),
-                    messages.get("system.i18n.client.mismatch"));
-        }
+        String targetCategory = StringUtils.isBlank(query.getCategory())
+                ? null
+                : requireCategory(query.getCategory());
         if (StringUtils.isNotBlank(query.getLocale())) {
             requireLocale(query.getLocale());
         }
 
         IPage<I18nMessageBo> keyPage = lambdaQuery()
-                .select(I18nMessageBo::getClient, I18nMessageBo::getMessageKey)
-                .eq(I18nMessageBo::getClient, targetClient)
+                .select(I18nMessageBo::getCategory, I18nMessageBo::getMessageKey)
+                .eq(targetCategory != null, I18nMessageBo::getCategory, targetCategory)
+                .in(targetCategory == null,
+                        I18nMessageBo::getCategory,
+                        I18nMessageConstants.SUPPORTED_CATEGORIES)
                 .like(StringUtils.isNotBlank(query.getKey()), I18nMessageBo::getMessageKey, query.getKey())
                 .like(StringUtils.isNotBlank(query.getValue()), I18nMessageBo::getI18nValue, query.getValue())
                 .eq(StringUtils.isNotBlank(query.getLocale()), I18nMessageBo::getLocale, query.getLocale())
-                .groupBy(I18nMessageBo::getClient, I18nMessageBo::getMessageKey)
-                .orderByAsc(I18nMessageBo::getMessageKey)
+                .groupBy(I18nMessageBo::getCategory, I18nMessageBo::getMessageKey)
+                .orderByAsc(I18nMessageBo::getCategory, I18nMessageBo::getMessageKey)
                 .page(query.getPage());
-        List<String> keys = keyPage.getRecords().stream().map(I18nMessageBo::getMessageKey).toList();
-        if (keys.isEmpty()) {
+        List<I18nMessageBo> identities = keyPage.getRecords();
+        if (identities.isEmpty()) {
             return PageResult.of(keyPage, List.of());
         }
 
+        List<String> keys = identities.stream().map(I18nMessageBo::getMessageKey).distinct().toList();
         Map<String, List<I18nMessageBo>> rowsByKey = lambdaQuery()
-                .eq(I18nMessageBo::getClient, targetClient)
                 .in(I18nMessageBo::getMessageKey, keys)
                 .list()
                 .stream()
                 .collect(Collectors.groupingBy(I18nMessageBo::getMessageKey));
-        List<I18nMessageItemVo> items = keys.stream()
-                .map(key -> new I18nMessageItemVo(
-                        targetClient,
-                        key,
-                        toValues(rowsByKey.getOrDefault(key, List.of()))))
+        List<I18nMessageItemVo> items = identities.stream()
+                .map(row -> new I18nMessageItemVo(
+                        row.getCategory(),
+                        row.getMessageKey(),
+                        toValues(rowsByKey.getOrDefault(row.getMessageKey(), List.of()))))
                 .toList();
         return PageResult.of(keyPage, items);
     }
 
     @Override
-    public I18nMessageVo getMessageValues(String client, String messageKey) {
-        String targetClient = requireClient(client);
+    public I18nMessageVo getMessageValues(String messageKey) {
         String targetKey = requireKey(messageKey);
-        List<I18nMessageBo> rows = findRows(targetClient, targetKey);
-        return rows.isEmpty() ? null : new I18nMessageVo(targetKey, toValues(rows));
+        List<I18nMessageBo> rows = findRows(targetKey);
+        return rows.isEmpty()
+                ? null
+                : new I18nMessageVo(rows.get(0).getCategory(), targetKey, toValues(rows));
     }
 
     @Transactional
     @Override
-    public I18nMessageVo saveMessage(String client, I18nMessageDto dto) {
-        String targetClient = requireClient(client);
+    public I18nMessageVo saveMessage(I18nMessageDto dto) {
         Preconditions.checkArgument(dto != null, messages.get("system.i18n.message.required"));
+        String targetCategory = requireCategory(dto.getCategory());
         String targetKey = requireKey(dto.getMessageKey());
-        String previousKey = StringUtils.trimToNull(dto.getPreviousKey());
-        if (previousKey != null) {
-            previousKey = requireKey(previousKey);
-        }
         List<I18nMessageValueDto> submittedValues = validateValues(dto.getValues());
-        boolean migrating = previousKey != null && !previousKey.equals(targetKey);
-
-        List<I18nMessageBo> sourceRows = findRows(targetClient, migrating ? previousKey : targetKey);
-        if (migrating) {
-            Preconditions.checkCondition(!sourceRows.isEmpty(),
-                    messages.get("system.i18n.previousKey.notFound", previousKey));
-            Preconditions.checkCondition(findRows(targetClient, targetKey).isEmpty(),
-                    messages.get("system.i18n.targetKey.exists", targetKey));
-        }
-
-        validatePathConflict(targetClient, targetKey, migrating ? previousKey : null);
+        validatePathConflict(targetKey);
+        List<I18nMessageBo> sourceRows = findRows(targetKey);
         Map<String, String> mergedValues = sourceRows.stream().collect(Collectors.toMap(
                 I18nMessageBo::getLocale,
                 I18nMessageBo::getI18nValue,
@@ -148,35 +142,25 @@ public class DynamicI18nMessageServiceImpl extends ServiceImpl<I18nMessageDao, I
             Preconditions.checkArgument(false, messages.get("system.i18n.save.empty"));
         }
 
-        if (migrating) {
-            lambdaUpdate()
-                    .eq(I18nMessageBo::getClient, targetClient)
-                    .eq(I18nMessageBo::getMessageKey, previousKey)
-                    .remove();
-            saveNewRows(targetClient, targetKey, mergedValues);
-        } else {
-            persistRows(targetClient, targetKey, sourceRows, mergedValues);
-        }
-        return new I18nMessageVo(targetKey, toValues(mergedValues));
+        persistRows(targetCategory, targetKey, sourceRows, mergedValues);
+        return new I18nMessageVo(targetCategory, targetKey, toValues(mergedValues));
     }
 
     @Transactional
     @Override
-    public void removeMessage(String client, String messageKey) {
-        String targetClient = requireClient(client);
+    public void removeMessage(String messageKey) {
         String targetKey = requireKey(messageKey);
         lambdaUpdate()
-                .eq(I18nMessageBo::getClient, targetClient)
                 .eq(I18nMessageBo::getMessageKey, targetKey)
                 .remove();
     }
 
-    private String requireClient(String client) {
-        String targetClient = StringUtils.trimToNull(client);
-        Preconditions.checkArgument(targetClient != null, messages.get("system.i18n.client.required"));
-        Preconditions.checkArgument(I18nMessageConstants.ADMIN_CLIENT.equals(targetClient),
-                messages.get("system.i18n.client.unsupported", targetClient));
-        return targetClient;
+    private String requireCategory(String category) {
+        String targetCategory = StringUtils.trimToNull(category);
+        Preconditions.checkArgument(targetCategory != null, messages.get("system.i18n.category.required"));
+        Preconditions.checkArgument(I18nMessageConstants.SUPPORTED_CATEGORIES.contains(targetCategory),
+                messages.get("system.i18n.category.unsupported", targetCategory));
+        return targetCategory;
     }
 
     private String requireKey(String messageKey) {
@@ -199,26 +183,30 @@ public class DynamicI18nMessageServiceImpl extends ServiceImpl<I18nMessageDao, I
     }
 
     private List<I18nMessageValueDto> validateValues(List<I18nMessageValueDto> values) {
-        if (values == null) {
-            return List.of();
-        }
+        Preconditions.checkArgument(values != null, messages.get("system.i18n.value.required"));
         Set<String> locales = new HashSet<>();
         for (I18nMessageValueDto value : values) {
             Preconditions.checkArgument(value != null, messages.get("system.i18n.value.required"));
             String locale = requireLocale(value.getLocale());
+            value.setValue(StringUtils.trimToNull(value.getValue()));
             Preconditions.checkArgument(locales.add(locale),
                     messages.get("system.i18n.locale.duplicate", locale));
             Preconditions.checkArgument(value.getValue() == null
                             || value.getValue().length() <= MAX_VALUE_LENGTH,
                     messages.get("system.i18n.value.tooLong", MAX_VALUE_LENGTH));
         }
+        boolean hasFallback = values.stream().anyMatch(value ->
+                "en-US".equals(value.getLocale()) && StringUtils.isNotBlank(value.getValue()));
+        Preconditions.checkArgument(hasFallback, messages.get("system.i18n.fallback.required"));
         return values;
     }
 
-    private void validatePathConflict(String client, String targetKey, String ignoredKey) {
+    private void validatePathConflict(String targetKey) {
+        // A full locking read serializes namespace validation and inserts under
+        // MySQL InnoDB next-key locking, including the empty-table gap.
         List<String> existingKeys = lambdaQuery()
                 .select(I18nMessageBo::getMessageKey)
-                .eq(I18nMessageBo::getClient, client)
+                .last("FOR UPDATE")
                 .list()
                 .stream()
                 .map(I18nMessageBo::getMessageKey)
@@ -226,7 +214,6 @@ public class DynamicI18nMessageServiceImpl extends ServiceImpl<I18nMessageDao, I
                 .toList();
         String conflict = existingKeys.stream()
                 .filter(key -> !key.equals(targetKey))
-                .filter(key -> !key.equals(ignoredKey))
                 .filter(key -> key.startsWith(targetKey + ".") || targetKey.startsWith(key + "."))
                 .findFirst()
                 .orElse(null);
@@ -234,9 +221,8 @@ public class DynamicI18nMessageServiceImpl extends ServiceImpl<I18nMessageDao, I
                 messages.get("system.i18n.key.pathConflict", targetKey, conflict));
     }
 
-    private List<I18nMessageBo> findRows(String client, String messageKey) {
+    private List<I18nMessageBo> findRows(String messageKey) {
         return lambdaQuery()
-                .eq(I18nMessageBo::getClient, client)
                 .eq(I18nMessageBo::getMessageKey, messageKey)
                 .list();
     }
@@ -252,7 +238,7 @@ public class DynamicI18nMessageServiceImpl extends ServiceImpl<I18nMessageDao, I
     }
 
     private void persistRows(
-            String client,
+            String category,
             String messageKey,
             List<I18nMessageBo> existingRows,
             Map<String, String> values) {
@@ -263,29 +249,22 @@ public class DynamicI18nMessageServiceImpl extends ServiceImpl<I18nMessageDao, I
             String value = values.get(existing.getLocale());
             if (value == null) {
                 removeById(existing.getId());
-            } else if (!Objects.equals(value, existing.getI18nValue())) {
+            } else if (!Objects.equals(category, existing.getCategory())
+                    || !Objects.equals(value, existing.getI18nValue())) {
+                existing.setCategory(category);
                 existing.setI18nValue(value);
                 updateById(existing);
             }
         }
         values.entrySet().stream()
                 .filter(entry -> !existingByLocale.containsKey(entry.getKey()))
-                .map(entry -> newRow(client, messageKey, entry.getKey(), entry.getValue()))
+                .map(entry -> newRow(category, messageKey, entry.getKey(), entry.getValue()))
                 .forEach(this::save);
     }
 
-    private void saveNewRows(String client, String messageKey, Map<String, String> values) {
-        List<I18nMessageBo> rows = values.entrySet().stream()
-                .map(entry -> newRow(client, messageKey, entry.getKey(), entry.getValue()))
-                .toList();
-        if (!rows.isEmpty()) {
-            saveBatch(rows);
-        }
-    }
-
-    private I18nMessageBo newRow(String client, String messageKey, String locale, String value) {
+    private I18nMessageBo newRow(String category, String messageKey, String locale, String value) {
         I18nMessageBo row = new I18nMessageBo();
-        row.setClient(client);
+        row.setCategory(category);
         row.setMessageKey(messageKey);
         row.setLocale(locale);
         row.setI18nValue(value);

@@ -92,9 +92,9 @@ public interface AdminService extends IService<AdminBo> {
     void updateAdmin(AdminDto dto);
 
     /**
-     * 替换管理员角色。
+     * 保存管理员角色。
      */
-    void updateAdminRoles(AdminRoleDto dto);
+    void saveAdminRoles(AdminRoleDto dto);
 
     /**
      * 删除管理员。

@@ -9,12 +9,12 @@ import lombok.Data;
 
 import java.io.Serial;
 import java.io.Serializable;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /**
- * 客户端动态国际化消息表映射。
+ * 动态国际化消息表映射。
  *
- * <p>每条记录表示一个客户端下某个消息 key 的单语言翻译。</p>
+ * <p>每条记录表示某个消息 key 的单语言翻译。</p>
  */
 @Data
 @TableName("sys_i18n")
@@ -29,9 +29,9 @@ public class I18nMessageBo implements Serializable {
     private Long id;
 
     /**
-     * 客户端标识，用于隔离不同前端应用的国际化消息。
+     * 消息分类，用于组织消息并限定运行时语言包范围。
      */
-    private String client;
+    private String category;
 
     /**
      * 国际化消息 key，使用点分路径表示消息层级。
@@ -44,7 +44,7 @@ public class I18nMessageBo implements Serializable {
     private String locale;
 
     /**
-     * 当前客户端、消息 key 和语言对应的翻译值。
+     * 当前消息 key 和语言对应的翻译值。
      */
     private String i18nValue;
 
@@ -52,11 +52,11 @@ public class I18nMessageBo implements Serializable {
      * 创建时间。
      */
     @TableField(fill = FieldFill.INSERT)
-    private LocalDateTime createTime;
+    private Instant createTime;
 
     /**
      * 更新时间。
      */
     @TableField(fill = FieldFill.UPDATE)
-    private LocalDateTime updateTime;
+    private Instant updateTime;
 }

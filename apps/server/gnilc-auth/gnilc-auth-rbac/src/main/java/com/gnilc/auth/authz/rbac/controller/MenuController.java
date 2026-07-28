@@ -39,6 +39,9 @@ public class MenuController {
         return R.success();
     }
 
+    /**
+     * 完整更新菜单，未提交的可空菜单属性会被清空。
+     */
     @PostMapping("/update")
     public R<?> updateMenu(@RequestBody MenuDto dto) {
         menuService.updateMenu(dto);

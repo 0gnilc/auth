@@ -13,12 +13,12 @@ import java.util.List;
 @Data
 public class I18nMessageDto {
 
+    @NotBlank(message = "{system.i18n.category.required}")
+    private String category;
+
     @NotBlank(message = "{system.i18n.key.required}")
     @Size(max = 191, message = "{system.i18n.validation.key.tooLong}")
     private String messageKey;
-
-    @Size(max = 191, message = "{system.i18n.validation.key.tooLong}")
-    private String previousKey;
 
     @Valid
     private List<I18nMessageValueDto> values;

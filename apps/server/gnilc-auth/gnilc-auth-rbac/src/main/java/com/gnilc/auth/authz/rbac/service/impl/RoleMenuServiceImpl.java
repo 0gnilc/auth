@@ -3,10 +3,12 @@ package com.gnilc.auth.authz.rbac.service.impl;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.gnilc.auth.authz.rbac.dao.RoleMenusDao;
 import com.gnilc.auth.authz.rbac.entity.bo.MenuBo;
+import com.gnilc.auth.authz.rbac.entity.bo.RoleBo;
 import com.gnilc.auth.authz.rbac.entity.bo.RoleMenuBo;
 import com.gnilc.auth.authz.rbac.entity.dto.RoleMenuDto;
 import com.gnilc.auth.authz.rbac.service.MenuService;
 import com.gnilc.auth.authz.rbac.service.RoleMenuService;
+import com.gnilc.auth.authz.rbac.service.RoleService;
 import com.gnilc.common.base.Preconditions;
 import com.gnilc.common.i18n.I18nMessageService;
 import com.google.common.collect.Sets;
@@ -24,10 +26,14 @@ import java.util.stream.Collectors;
 @Service("roleMenuServiceImpl")
 public class RoleMenuServiceImpl extends ServiceImpl<RoleMenusDao, RoleMenuBo> implements RoleMenuService {
     private final MenuService menuService;
+    private final RoleService roleService;
     private final I18nMessageService messages;
 
-    public RoleMenuServiceImpl(@Lazy MenuService menuService, I18nMessageService messages) {
+    public RoleMenuServiceImpl(@Lazy MenuService menuService,
+                               RoleService roleService,
+                               I18nMessageService messages) {
         this.menuService = menuService;
+        this.roleService = roleService;
         this.messages = messages;
     }
 
@@ -60,11 +66,15 @@ public class RoleMenuServiceImpl extends ServiceImpl<RoleMenusDao, RoleMenuBo> i
 
     @Transactional
     @Override
-    public void updateRoleMenu(RoleMenuDto dto) {
+    public void saveRoleMenus(RoleMenuDto dto) {
         Preconditions.checkArgument(dto != null, messages.get("rbac.assignment.roleMenu.required"));
         Long roleId = dto.getRoleId();
         List<Long> menuIds = dto.getMenuIds();
         Preconditions.checkArgument(roleId != null, messages.get("rbac.role.selection.required"));
+        RoleBo role = roleService.getById(roleId);
+        Preconditions.checkCondition(role != null, messages.get("rbac.role.notFound"));
+        Preconditions.checkCondition(!Boolean.TRUE.equals(role.getBuiltIn()),
+                messages.get("rbac.role.builtIn.assignments"));
 
         Set<Long> oldSet = lambdaQuery()
                 .select(RoleMenuBo::getMenuId)
@@ -100,6 +110,17 @@ public class RoleMenuServiceImpl extends ServiceImpl<RoleMenusDao, RoleMenuBo> i
         if (!bos.isEmpty()) {
             saveBatch(bos);
         }
+    }
+
+    @Transactional
+    @Override
+    public void removeByRoleId(Long roleId) {
+        if (roleId == null) {
+            return;
+        }
+        lambdaUpdate()
+                .eq(RoleMenuBo::getRoleId, roleId)
+                .remove();
     }
 
     @Transactional
