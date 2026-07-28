@@ -169,11 +169,11 @@ class PreferenceManager {
     Object.assign(this.state, this.initialPreferences);
     this.replaceCustomPreferences(this.initialCustomPreferences);
 
+    // 在异步持久化前同步 DOM，避免响应式消费者读取到旧主题变量
+    this.handleUpdates(this.state);
+
     // 保存偏好设置至缓存
     await this.saveToCache();
-
-    // 直接触发 UI 更新
-    this.handleUpdates(this.state);
   };
 
   /**
