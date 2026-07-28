@@ -25,5 +25,7 @@ public interface UserRoleService extends IService<UserRoleBo> {
 
     List<Long> getUserIds(Long roleId);
 
+    void removeByRoleId(Long roleId);
+
     UserRoleBo getUserRole(Long userId, Long roleId);
 }

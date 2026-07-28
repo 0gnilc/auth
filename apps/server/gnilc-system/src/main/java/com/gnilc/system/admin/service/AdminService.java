@@ -8,6 +8,7 @@ import com.gnilc.system.admin.entity.dto.AdminPageDto;
 import com.gnilc.system.admin.entity.dto.AdminRoleDto;
 import com.gnilc.system.admin.entity.vo.AdminTokenVo;
 import com.gnilc.system.admin.entity.vo.AdminVo;
+import com.gnilc.auth.authz.rbac.entity.vo.MenuRouteVo;
 
 import java.util.List;
 
@@ -36,6 +37,16 @@ public interface AdminService extends IService<AdminBo> {
     AdminVo getUserInfo();
 
     /**
+     * 更新当前管理员的基本资料。
+     */
+    void updateProfile(AdminDto dto);
+
+    /**
+     * 更新当前管理员密码并撤销其全部会话。
+     */
+    void updatePassword(String oldPassword, String newPassword);
+
+    /**
      * 查询当前管理员角色标识。
      */
     List<String> getRoleCodes();
@@ -44,6 +55,11 @@ public interface AdminService extends IService<AdminBo> {
      * 查询当前管理员按钮访问标识。
      */
     List<String> getMenuAccessCodes();
+
+    /**
+     * 查询当前管理员导航路由树。
+     */
+    List<MenuRouteVo> getMenuRoutes();
 
     /**
      * 根据用户名查询管理员。
@@ -76,9 +92,9 @@ public interface AdminService extends IService<AdminBo> {
     void updateAdmin(AdminDto dto);
 
     /**
-     * 替换管理员角色。
+     * 保存管理员角色。
      */
-    void updateAdminRoles(AdminRoleDto dto);
+    void saveAdminRoles(AdminRoleDto dto);
 
     /**
      * 删除管理员。

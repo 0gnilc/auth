@@ -1,6 +1,7 @@
 package com.gnilc.system.admin.entity.bo;
 
 import com.baomidou.mybatisplus.annotation.FieldFill;
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
@@ -9,7 +10,7 @@ import lombok.Data;
 
 import java.io.Serial;
 import java.io.Serializable;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /**
  * 后台管理员表映射。
@@ -35,13 +36,13 @@ public class AdminBo implements Serializable {
      * 创建时间。
      */
     @TableField(fill = FieldFill.INSERT)
-    private LocalDateTime createTime;
+    private Instant createTime;
 
     /**
      * 更新时间。
      */
     @TableField(fill = FieldFill.UPDATE)
-    private LocalDateTime updateTime;
+    private Instant updateTime;
 
     /**
      * RBAC 全局用户 ID。
@@ -66,11 +67,13 @@ public class AdminBo implements Serializable {
     /**
      * 头像地址。
      */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String avatar;
 
     /**
      * 管理员描述。
      */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String description;
 
     /**

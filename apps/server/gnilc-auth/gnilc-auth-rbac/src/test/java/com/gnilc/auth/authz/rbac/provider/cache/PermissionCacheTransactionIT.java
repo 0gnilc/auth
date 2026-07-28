@@ -2,17 +2,22 @@ package com.gnilc.auth.authz.rbac.provider.cache;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.test.autoconfigure.MybatisPlusTest;
-import com.gnilc.auth.authz.rbac.config.MyMetaObjectHandler;
-import com.gnilc.auth.authz.rbac.config.MybatisPlusConfiguration;
 import com.gnilc.auth.authz.rbac.dao.RolePermissionDao;
 import com.gnilc.auth.authz.rbac.dao.UserRoleDao;
+import com.gnilc.auth.authz.rbac.entity.bo.RoleBo;
+import com.gnilc.auth.authz.rbac.entity.bo.PermissionBo;
 import com.gnilc.auth.authz.rbac.entity.bo.RolePermissionBo;
 import com.gnilc.auth.authz.rbac.entity.bo.UserRoleBo;
 import com.gnilc.auth.authz.rbac.entity.dto.RolePermissionDto;
 import com.gnilc.auth.authz.rbac.provider.cache.redis.PermissionCacheRedisResetTransport;
+import com.gnilc.auth.authz.rbac.service.RoleService;
+import com.gnilc.auth.authz.rbac.service.PermissionService;
 import com.gnilc.auth.authz.rbac.service.impl.RolePermissionServiceImpl;
 import com.gnilc.auth.authz.rbac.service.impl.UserRoleServiceImpl;
 import com.gnilc.auth.authz.rbac.support.RbacContainerContextInitializer;
+import com.gnilc.common.config.MyMetaObjectHandler;
+import com.gnilc.common.config.MybatisPlusConfiguration;
+import com.gnilc.common.i18n.I18nMessageService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,6 +42,8 @@ import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.anyList;
 
 @MybatisPlusTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
@@ -47,6 +54,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class PermissionCacheTransactionIT {
     @Autowired private RolePermissionServiceImpl rolePermissionService;
+    @Autowired private UserRoleServiceImpl userRoleService;
     @Autowired private RolePermissionDao rolePermissionDao;
     @Autowired private UserRoleDao userRoleDao;
     @Autowired private PlatformTransactionManager transactionManager;
@@ -77,7 +85,7 @@ class PermissionCacheTransactionIT {
         seedRolePermission(roleId, 7301L);
 
         transactions.executeWithoutResult(status -> {
-            rolePermissionService.updateRolePermission(replacement(roleId, 7302L, 7303L, 7303L));
+            rolePermissionService.saveRolePermissions(replacement(roleId, 7302L, 7303L, 7303L));
 
             assertThat(permissionIds(roleId)).containsExactlyInAnyOrder(7302L, 7303L);
             verifyNoInteractions(permissionCache, redisResetTransport);
@@ -96,7 +104,7 @@ class PermissionCacheTransactionIT {
         seedRolePermission(roleId, 7304L);
 
         transactions.executeWithoutResult(status -> {
-            rolePermissionService.updateRolePermission(replacement(roleId, 7305L));
+            rolePermissionService.saveRolePermissions(replacement(roleId, 7305L));
             assertThat(permissionIds(roleId)).containsExactly(7305L);
             verifyNoInteractions(permissionCache, redisResetTransport);
             status.setRollbackOnly();
@@ -104,6 +112,44 @@ class PermissionCacheTransactionIT {
 
         assertThat(permissionIds(roleId)).containsExactly(7304L);
         verifyNoInteractions(permissionCache, redisResetTransport);
+    }
+
+    @Test
+    void committedPermissionRemovalInvalidatesAffectedUserAfterCommit() {
+        long roleId = 7101L;
+        long userId = 7201L;
+        seedUserRole(userId, roleId);
+        seedRolePermission(roleId, 7306L);
+
+        transactions.executeWithoutResult(status -> {
+            rolePermissionService.removeByPermissionId(7306L);
+
+            assertThat(permissionIds(roleId)).isEmpty();
+            verifyNoInteractions(permissionCache, redisResetTransport);
+        });
+
+        PermissionCacheResetCommand expected = PermissionCacheResetCommand.userPermissions(userId);
+        verify(permissionCache).resetUserPermissions(userId);
+        verify(redisResetTransport).publish(expected);
+    }
+
+    @Test
+    void committedRoleRemovalInvalidatesAffectedUserAfterCommit() {
+        long roleId = 7101L;
+        long userId = 7201L;
+        seedUserRole(userId, roleId);
+
+        transactions.executeWithoutResult(status -> {
+            userRoleService.removeByRoleId(roleId);
+
+            assertThat(userRoleDao.selectList(new LambdaQueryWrapper<UserRoleBo>()
+                    .eq(UserRoleBo::getRoleId, roleId))).isEmpty();
+            verifyNoInteractions(permissionCache, redisResetTransport);
+        });
+
+        PermissionCacheResetCommand expected = PermissionCacheResetCommand.userPermissions(userId);
+        verify(permissionCache).resetUserPermissions(userId);
+        verify(redisResetTransport).publish(expected);
     }
 
     private void seedUserRole(long userId, long roleId) {
@@ -160,6 +206,35 @@ class PermissionCacheTransactionIT {
         @Bean
         PermissionCacheRedisResetTransport redisResetTransport() {
             return mock(PermissionCacheRedisResetTransport.class);
+        }
+
+        @Bean
+        RoleService roleService() {
+            RoleService roleService = mock(RoleService.class);
+            RoleBo role = new RoleBo();
+            role.setBuiltIn(Boolean.FALSE);
+            when(roleService.getById(7101L)).thenReturn(role);
+            when(roleService.getById(7102L)).thenReturn(role);
+            return roleService;
+        }
+
+        @Bean
+        PermissionService permissionService() {
+            PermissionService permissionService = mock(PermissionService.class);
+            when(permissionService.getPermissions(anyList())).thenAnswer(invocation -> {
+                List<Long> ids = invocation.getArgument(0);
+                return ids.stream().map(id -> {
+                    PermissionBo permission = new PermissionBo();
+                    permission.setId(id);
+                    return permission;
+                }).toList();
+            });
+            return permissionService;
+        }
+
+        @Bean
+        I18nMessageService i18nMessageService() {
+            return mock(I18nMessageService.class);
         }
     }
 }

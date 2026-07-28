@@ -5,6 +5,7 @@ import { preferences } from '@vben/preferences';
 import { useAccessStore, useUserStore } from '@vben/stores';
 import { startProgress, stopProgress } from '@vben/utils';
 
+import { loadDynamicMessages } from '#/locales/dynamic';
 import { accessRoutes, coreRouteNames } from '#/router/routes';
 import { useAuthStore } from '#/store';
 
@@ -94,6 +95,8 @@ function setupAccessGuard(router: Router) {
     // 当前登录用户拥有的角色标识列表
     const userInfo = userStore.userInfo || (await authStore.getUserInfo());
     const userRoles = userInfo.roleCodes ?? [];
+
+    await loadDynamicMessages();
 
     // 生成菜单和路由
     const { accessibleMenus, accessibleRoutes } = await generateAccess({

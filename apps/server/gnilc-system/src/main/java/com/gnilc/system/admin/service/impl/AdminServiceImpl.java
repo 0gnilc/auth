@@ -2,16 +2,17 @@ package com.gnilc.system.admin.service.impl;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.gnilc.auth.authn.context.AccessPrincipal;
-import com.gnilc.auth.authn.servlet.context.DefaultAccessPrincipalHolder;
 import com.gnilc.common.base.Preconditions;
-import com.gnilc.common.utils.BeanCopyUtils;
+import com.gnilc.common.i18n.I18nMessageService;
+import com.gnilc.common.utils.BeanPropertyUtils;
 import com.gnilc.common.utils.PageResult;
 import com.gnilc.auth.authz.rbac.entity.bo.MenuBo;
 import com.gnilc.auth.authz.rbac.entity.bo.RoleBo;
 import com.gnilc.auth.authz.rbac.entity.dto.UserRoleDto;
 import com.gnilc.auth.authz.rbac.entity.enums.MenuType;
+import com.gnilc.auth.authz.rbac.entity.vo.MenuRouteVo;
 import com.gnilc.auth.authz.rbac.service.MenuService;
+import com.gnilc.auth.authz.rbac.service.RoleMenuService;
 import com.gnilc.auth.authz.rbac.service.RoleService;
 import com.gnilc.auth.authz.rbac.service.UserRoleService;
 import com.gnilc.auth.authz.rbac.service.UserService;
@@ -25,13 +26,16 @@ import com.gnilc.system.admin.entity.dto.AdminRoleDto;
 import com.gnilc.system.admin.entity.vo.AdminTokenVo;
 import com.gnilc.system.admin.entity.vo.AdminVo;
 import com.gnilc.system.admin.service.AdminService;
+import com.gnilc.system.auth.AccessPrincipalUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 
@@ -40,24 +44,34 @@ import java.util.Optional;
  */
 @Service
 public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements AdminService {
+    private static final String ADMIN_DEFAULT_ROLE_CODE = "admin";
+    private static final String DEFAULT_HOME_PATH = "/dashboard";
+    private static final int NICKNAME_MAX_LENGTH = 255;
+    private static final int PROFILE_TEXT_MAX_LENGTH = 500;
     private static final BCryptPasswordEncoder PASSWORD_ENCODER = new BCryptPasswordEncoder();
 
     private final AdminSessionManager sessionManager;
     private final RoleService roleService;
     private final MenuService menuService;
+    private final RoleMenuService roleMenuService;
     private final UserService userService;
     private final UserRoleService userRoleService;
+    private final I18nMessageService messages;
 
     public AdminServiceImpl(AdminSessionManager sessionManager,
                             RoleService roleService,
                             MenuService menuService,
+                            RoleMenuService roleMenuService,
                             UserService userService,
-                            UserRoleService userRoleService) {
+                            UserRoleService userRoleService,
+                            I18nMessageService messages) {
         this.sessionManager = sessionManager;
         this.roleService = roleService;
         this.menuService = menuService;
+        this.roleMenuService = roleMenuService;
         this.userService = userService;
         this.userRoleService = userRoleService;
+        this.messages = messages;
     }
 
     /**
@@ -110,7 +124,7 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
      */
     @Override
     public AdminVo getUserInfo() {
-        Long userId = authenticatedUserId();
+        Long userId = AccessPrincipalUtils.getUserId();
         AdminBo bo = getAdminByUserId(userId);
         if (bo == null) {
             return null;
@@ -118,12 +132,59 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
         return toAdminVo(bo, false, true);
     }
 
+    @Override
+    @Transactional
+    public void updateProfile(AdminDto dto) {
+        Preconditions.checkArgument(dto != null, messages.get("system.admin.profile.required"));
+        String nickname = StringUtils.trimToNull(dto.getNickname());
+        Preconditions.checkArgument(nickname != null, messages.get("system.admin.nickname.required"));
+        Preconditions.checkArgument(nickname.length() <= NICKNAME_MAX_LENGTH,
+                messages.get("system.admin.nickname.tooLong", NICKNAME_MAX_LENGTH));
+        String avatar = StringUtils.trimToNull(dto.getAvatar());
+        Preconditions.checkArgument(avatar == null || avatar.length() <= PROFILE_TEXT_MAX_LENGTH,
+                messages.get("system.admin.avatar.tooLong", PROFILE_TEXT_MAX_LENGTH));
+        String description = StringUtils.trimToNull(dto.getDesc());
+        Preconditions.checkArgument(description == null || description.length() <= PROFILE_TEXT_MAX_LENGTH,
+                messages.get("system.admin.description.tooLong", PROFILE_TEXT_MAX_LENGTH));
+
+        AdminBo bo = getAdminByUserId(AccessPrincipalUtils.getUserId());
+        Preconditions.checkCondition(bo != null,
+                messages.get("system.admin.notFound.signIn"));
+        lambdaUpdate()
+                .set(AdminBo::getNickname, nickname)
+                .set(AdminBo::getAvatar, avatar)
+                .set(AdminBo::getDescription, description)
+                .eq(AdminBo::getId, bo.getId())
+                .update();
+    }
+
+    @Override
+    @Transactional
+    public void updatePassword(String oldPassword, String newPassword) {
+        Preconditions.checkArgument(StringUtils.isNotBlank(oldPassword),
+                messages.get("system.admin.password.current.required"));
+        validateStrongPassword(newPassword);
+
+        Long userId = AccessPrincipalUtils.getUserId();
+        AdminBo bo = getAdminByUserId(userId);
+        Preconditions.checkCondition(bo != null,
+                messages.get("system.admin.notFound.signIn"));
+        Preconditions.checkArgument(PASSWORD_ENCODER.matches(oldPassword, bo.getPassword()),
+                messages.get("system.admin.password.current.incorrect"));
+
+        lambdaUpdate()
+                .set(AdminBo::getPassword, PASSWORD_ENCODER.encode(newPassword))
+                .eq(AdminBo::getId, bo.getId())
+                .update();
+        sessionManager.cleanupUserSessions(userId);
+    }
+
     /**
      * 查询当前管理员角色标识。
      */
     @Override
     public List<String> getRoleCodes() {
-        return getRoleCodes(authenticatedUserId());
+        return getRoleCodes(AccessPrincipalUtils.getUserId());
     }
 
     /**
@@ -131,7 +192,7 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
      */
     @Override
     public List<String> getMenuAccessCodes() {
-        return getMenuAccessCodes(authenticatedUserId());
+        return getMenuAccessCodes(AccessPrincipalUtils.getUserId());
     }
 
     /**
@@ -162,7 +223,7 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
      */
     @Override
     public List<String> getMenuAccessCodes(Long userId) {
-        return Optional.ofNullable(menuService.getMenus(userId)).orElse(List.of()).stream()
+        return Optional.ofNullable(userService.getMenus(userId)).orElse(List.of()).stream()
                 .filter(menu -> menu.getType() == MenuType.BUTTON)
                 .filter(MenuBo::getStatus)
                 .map(MenuBo::getAccessCode)
@@ -172,19 +233,31 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
                 .toList();
     }
 
+    @Override
+    public List<MenuRouteVo> getMenuRoutes() {
+        Long userId = AccessPrincipalUtils.getUserId();
+        List<Long> roleIds = userRoleService.getRoleIds(userId);
+        List<Long> menuIds = roleMenuService.getMenuIds(roleIds);
+        return menuService.getMenuRoutes(menuIds);
+    }
+
     /**
      * 创建管理员。
      */
     @Override
     @Transactional
     public void createAdmin(AdminDto dto) {
+        Preconditions.checkArgument(dto != null, messages.get("system.admin.information.required"));
+        BeanPropertyUtils.trimToNull(dto, "password");
         String username = dto.getUsername();
         String password = dto.getPassword();
-        Preconditions.checkArgument(StringUtils.isNotBlank(username), "Username is required.");
-        Preconditions.checkArgument(StringUtils.isNotBlank(password), "Password is required.");
+        Preconditions.checkArgument(StringUtils.isNotBlank(username), messages.get("system.admin.username.required"));
+        Preconditions.checkArgument(StringUtils.isNotBlank(password), messages.get("system.admin.password.required"));
+        Preconditions.checkArgument(StringUtils.isNotBlank(dto.getNickname()),
+                messages.get("system.admin.nickname.required"));
         validateStrongPassword(password);
         Preconditions.checkArgument(getAdminByUsername(username) == null,
-                "An administrator with this username already exists.");
+                messages.get("system.admin.username.exists"));
         Long userId = userService.createUser();
         AdminBo bo = new AdminBo();
         bo.setUserId(userId);
@@ -193,10 +266,10 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
         bo.setNickname(dto.getNickname());
         bo.setAvatar(dto.getAvatar());
         bo.setDescription(dto.getDesc());
-        bo.setHomePath(dto.getHomePath());
+        bo.setHomePath(StringUtils.defaultIfBlank(dto.getHomePath(), DEFAULT_HOME_PATH));
         bo.setStatus(dto.getStatus());
         save(bo);
-        updateRolesIfProvided(userId, dto.getRoleCodes());
+        replaceAdminRoles(userId, dto.getRoleCodes());
     }
 
     /**
@@ -205,15 +278,33 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
     @Override
     @Transactional
     public void updateAdmin(AdminDto dto) {
+        Preconditions.checkArgument(dto != null, messages.get("system.admin.information.required"));
+        boolean usernameSpecified = dto.getUsername() != null;
+        boolean nicknameSpecified = dto.getNickname() != null;
+        BeanPropertyUtils.trimToNull(dto, "password");
         AdminBo bo = getAdmin(dto.getId());
-        Preconditions.checkCondition(bo != null, "The administrator no longer exists. Refresh and try again.");
+        Preconditions.checkCondition(bo != null, messages.get("system.admin.notFound"));
         String username = dto.getUsername();
+        Preconditions.checkArgument(!usernameSpecified || StringUtils.isNotBlank(username),
+                messages.get("system.admin.username.required"));
+        Preconditions.checkArgument(!nicknameSpecified || StringUtils.isNotBlank(dto.getNickname()),
+                messages.get("system.admin.nickname.required"));
         if (username != null && !username.equals(bo.getUsername())) {
             Preconditions.checkArgument(getAdminByUsername(username) == null,
-                    "An administrator with this username already exists.");
+                    messages.get("system.admin.username.exists"));
         }
-        boolean wasEnabled = Boolean.TRUE.equals(bo.getStatus());
-        BeanCopyUtils.copyNonNullProperties(dto, bo);
+        boolean wasEnabled = Boolean.TRUE.equals(bo.getStatus())
+                && Boolean.FALSE.equals(dto.getStatus());
+        Preconditions.checkCondition(
+                !(wasEnabled && Objects.equals(bo.getUserId(), AccessPrincipalUtils.getUserId())),
+                messages.get("system.admin.current.disable"));
+        BeanPropertyUtils.copyNonNullProperties(dto, bo);
+        if (dto.isAvatarSpecified()) {
+            bo.setAvatar(dto.getAvatar());
+        }
+        if (dto.isDescSpecified()) {
+            bo.setDescription(dto.getDesc());
+        }
 
         // 单独处理密码。
         String password = dto.getPassword();
@@ -225,23 +316,22 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
         }
 
         updateById(bo);
-        updateRolesIfProvided(bo.getUserId(), dto.getRoleCodes());
+        saveRolesIfProvided(bo.getUserId(), dto.getRoleCodes());
 
-        boolean disabling = wasEnabled && Boolean.FALSE.equals(dto.getStatus());
-        if (disabling) {
+        if (wasEnabled) {
             sessionManager.cleanupUserSessions(bo.getUserId());
         }
     }
 
     /**
-     * 替换管理员角色。
+     * 保存管理员角色。
      */
     @Override
     @Transactional
-    public void updateAdminRoles(AdminRoleDto dto) {
+    public void saveAdminRoles(AdminRoleDto dto) {
         AdminBo bo = getById(dto.getId());
-        Preconditions.checkCondition(bo != null, "The administrator no longer exists. Refresh and try again.");
-        replaceRoles(bo.getUserId(), dto.getRoleCodes());
+        Preconditions.checkCondition(bo != null, messages.get("system.admin.notFound"));
+        replaceAdminRoles(bo.getUserId(), dto.getRoleCodes());
     }
 
     /**
@@ -250,9 +340,11 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
     @Override
     @Transactional
     public void removeAdmin(Long id) {
-        Preconditions.checkArgument(id != null, "An administrator must be selected.");
+        Preconditions.checkArgument(id != null, messages.get("system.admin.selection.required"));
         AdminBo bo = getById(id);
-        Preconditions.checkCondition(bo != null, "The administrator no longer exists. Refresh and try again.");
+        Preconditions.checkCondition(bo != null, messages.get("system.admin.notFound"));
+        Preconditions.checkCondition(!Objects.equals(bo.getUserId(), AccessPrincipalUtils.getUserId()),
+                messages.get("system.admin.current.delete"));
         sessionManager.cleanupUserSessions(bo.getUserId());
         bo.setUsername(bo.getUsername() + "_del_" + id);
         updateById(bo);
@@ -279,24 +371,14 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
         return PageResult.of(page, vos);
     }
 
-    /**
-     * 解析当前会话 user_id。
-     */
-    private Long authenticatedUserId() {
-        AccessPrincipal principal = DefaultAccessPrincipalHolder.getPrincipal();
-        Preconditions.checkArgument(principal != null, "Your session is no longer valid. Sign in again.");
-        String identifier = principal.getIdentifier();
-        Preconditions.checkArgument(StringUtils.isNotBlank(identifier),
-                "Your session is no longer valid. Sign in again.");
-        return Long.valueOf(identifier);
-    }
-
     @Override
     public AdminBo getAdminByUserId(Long userId) {
         if (userId == null) {
             return null;
         }
-        return lambdaQuery().eq(AdminBo::getUserId, userId).one();
+        return lambdaQuery()
+                .eq(AdminBo::getUserId, userId)
+                .one();
     }
 
     @Override
@@ -321,28 +403,36 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
                 && password.chars().anyMatch(Character::isDigit)
                 && password.chars().anyMatch(ch -> !Character.isLetterOrDigit(ch));
         Preconditions.checkArgument(valid,
-                "Password must be 8 to 32 characters and include uppercase and lowercase letters, "
-                        + "a number, and a special character, with no whitespace.");
+                messages.get("system.admin.password.weak"));
     }
 
     /**
      * 替换用户角色。
      */
-    private void updateRolesIfProvided(Long userId, List<String> roleCodes) {
+    private void saveRolesIfProvided(Long userId, List<String> roleCodes) {
         if (roleCodes == null) {
             return;
         }
-        replaceRoles(userId, roleCodes);
+        replaceAdminRoles(userId, roleCodes);
+    }
+
+    private void replaceAdminRoles(Long userId, List<String> roleCodes) {
+        LinkedHashSet<String> codes = new LinkedHashSet<>();
+        codes.add(ADMIN_DEFAULT_ROLE_CODE);
+        if (roleCodes != null) {
+            codes.addAll(roleCodes);
+        }
+        replaceRoles(userId, codes.stream().toList());
     }
 
     private void replaceRoles(Long userId, List<String> roleCodes) {
         List<String> codes = roleCodes == null ? List.of() : roleCodes;
         List<Long> roleIds = codes.stream()
                 .map(code -> {
-                    Preconditions.checkArgument(StringUtils.isNotBlank(code), "Role code is required.");
+                    Preconditions.checkArgument(StringUtils.isNotBlank(code), messages.get("rbac.role.code.required"));
                     RoleBo bo = roleService.getRoleByCode(code);
                     Preconditions.checkCondition(bo != null,
-                            "The role no longer exists. Refresh and try again.");
+                            messages.get("rbac.role.notFound"));
                     return bo.getId();
                 })
                 .toList();

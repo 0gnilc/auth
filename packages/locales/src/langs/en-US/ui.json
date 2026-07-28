@@ -50,6 +50,28 @@
     "placeholder": "Select an icon",
     "search": "Search icon..."
   },
+  "i18nMessageInput": {
+    "cancel": "Cancel",
+    "confirmCancel": "Discard changes",
+    "keepEditing": "Keep editing",
+    "key": "Message Key",
+    "keyInvalid": "Message Key must be a valid dot-separated path",
+    "keyPlaceholder": "Enter a dot-separated Message Key",
+    "keyReserved": "Message Key contains a reserved path segment",
+    "keyTooLong": "Message Key must not exceed 191 characters",
+    "fallbackRequired": "The en-US translation is required",
+    "loadError": "Failed to load translations",
+    "loading": "Loading",
+    "placeholder": "Select an internationalization message",
+    "reset": "Reset message inputs",
+    "retry": "Retry",
+    "search": "Look up Message Key",
+    "save": "Save",
+    "unsavedDescription": "Your changes will be lost if you cancel.",
+    "unsavedTitle": "Changes are not saved. Cancel anyway?",
+    "valuePlaceholder": "Enter the translation",
+    "valueTooLong": "A translation must not exceed 4000 characters"
+  },
   "jsonViewer": {
     "copy": "Copy",
     "copied": "Copied"

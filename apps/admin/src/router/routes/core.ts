@@ -5,6 +5,8 @@ import { preferences } from '@vben/preferences';
 
 import { $t } from '#/locales';
 
+import { workspaceRedirectRoute } from './modules/dashboard';
+
 const BasicLayout = () => import('#/layouts/basic.vue');
 const AuthPageLayout = () => import('#/layouts/auth.vue');
 /** 全局404页面 */
@@ -38,6 +40,7 @@ const coreRoutes: RouteRecordRaw[] = [
     redirect: preferences.app.defaultHomePath,
     children: [],
   },
+  workspaceRedirectRoute,
   {
     component: AuthPageLayout,
     meta: {

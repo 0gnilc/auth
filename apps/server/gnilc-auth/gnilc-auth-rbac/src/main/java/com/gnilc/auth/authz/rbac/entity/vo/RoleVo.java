@@ -2,7 +2,7 @@ package com.gnilc.auth.authz.rbac.entity.vo;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /**
  * 角色
@@ -18,8 +18,8 @@ public class RoleVo  {
     /**
      * 创建时间
      */
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private LocalDateTime createTime;
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
+    private Instant createTime;
     /**
      * 角色标识
      */

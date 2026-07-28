@@ -18,6 +18,11 @@
         </dependency>
 
         <dependency>
+            <groupId>com.gnilc.auth</groupId>
+            <artifactId>gnilc-common-config</artifactId>
+        </dependency>
+
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
@@ -45,6 +50,11 @@
         <dependency>
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-crypto</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
 
         <dependency>
@@ -79,6 +89,8 @@
                     <include>03_framework_permissions.sql</include>
                     <include>04_rbac_permissions.sql</include>
                     <include>05_admin_permissions.sql</include>
+                    <include>06_i18n.sql</include>
+                    <include>07_rbac_admin.sql</include>
                 </includes>
             </testResource>
         </testResources>

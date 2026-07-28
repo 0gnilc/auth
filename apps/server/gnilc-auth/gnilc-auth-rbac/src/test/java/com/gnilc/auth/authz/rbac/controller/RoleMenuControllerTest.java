@@ -22,7 +22,7 @@ class RoleMenuControllerTest {
         when(roleMenus.getMenuIds(2L)).thenReturn(List.of(4L));
 
         mvc.perform(post("/authz/role-menu/list/2")).andExpect(jsonPath("$.data[0]").value(4));
-        mvc.perform(jsonPost("/authz/role-menu/update", "{\"roleId\":2,\"menuIds\":[4]}"))
+        mvc.perform(jsonPost("/authz/role-menu/save", "{\"roleId\":2,\"menuIds\":[4]}"))
                 .andExpect(status().isOk());
     }
 }

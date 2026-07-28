@@ -123,11 +123,6 @@ public class MenuDto {
     private String iframeSrc;
 
     /**
-     * 忽略权限访问控制
-     */
-    private Boolean ignoreAccess;
-
-    /**
      * 是否缓存页面
      */
     private Boolean keepAlive;
@@ -138,19 +133,9 @@ public class MenuDto {
     private String link;
 
     /**
-     * 是否已加载
-     */
-    private Boolean loaded;
-
-    /**
      * 同名标签页最大打开数量
      */
     private Integer maxNumOfOpenTab;
-
-    /**
-     * 菜单可见但访问时跳转 403
-     */
-    private Boolean menuVisibleWithForbidden;
 
     /**
      * 不使用基础布局

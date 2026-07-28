@@ -49,16 +49,10 @@ export const useAuthStore = defineStore('auth', () => {
         accessStore.setAccessToken(accessToken);
         accessStore.setRefreshToken(refreshToken);
 
-        // 获取用户信息并存储到 accessStore 中
-        const [userInfoResult, accessCodes] = await Promise.all([
-          getUserInfo(),
-          getMenuAccessCodes(),
-        ]);
+        userInfo = await getUserInfo();
 
-        userInfo = userInfoResult;
-
-        userStore.setUserInfo(userInfo);
-        accessStore.setAccessCodes(accessCodes);
+        const { loadDynamicMessages } = await import('#/locales/dynamic');
+        await loadDynamicMessages();
 
         if (accessStore.loginExpired) {
           accessStore.setLoginExpired(false);
@@ -95,8 +89,7 @@ export const useAuthStore = defineStore('auth', () => {
     } catch {
       // 不做任何处理
     }
-    resetAllStores();
-    accessStore.setLoginExpired(false);
+    await resetSessionState();
 
     // 回登录页带上当前路由地址
     await router.replace({
@@ -110,9 +103,25 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function getUserInfo() {
-    const userInfo = await getAdminUserInfo();
+    const [userInfo, accessCodes] = await Promise.all([
+      getAdminUserInfo(),
+      getMenuAccessCodes(),
+    ]);
     userStore.setUserInfo(userInfo);
+    accessStore.setAccessCodes(accessCodes);
     return userInfo;
+  }
+
+  async function resetSessionToLogin() {
+    await resetSessionState();
+    await router.replace(LOGIN_PATH);
+  }
+
+  async function resetSessionState() {
+    resetAllStores();
+    accessStore.setLoginExpired(false);
+    const { clearDynamicMessages } = await import('#/locales/dynamic');
+    await clearDynamicMessages();
   }
 
   function $reset() {
@@ -125,5 +134,6 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     loginLoading,
     logout,
+    resetSessionToLogin,
   };
 });

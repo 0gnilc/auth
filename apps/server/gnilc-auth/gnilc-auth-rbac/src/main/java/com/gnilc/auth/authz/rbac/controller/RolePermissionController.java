@@ -31,9 +31,9 @@ public class RolePermissionController {
         return R.success(rolePermissionService.getPermissionIds(roleId));
     }
 
-    @PostMapping("/update")
-    public R<?> updateRolePermission(@RequestBody RolePermissionDto dto) {
-        rolePermissionService.updateRolePermission(dto);
+    @PostMapping("/save")
+    public R<?> saveRolePermissions(@RequestBody RolePermissionDto dto) {
+        rolePermissionService.saveRolePermissions(dto);
 
         return R.success();
     }

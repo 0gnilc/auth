@@ -22,7 +22,7 @@ class RolePermissionControllerTest {
         when(rolePermissions.getPermissionIds(2L)).thenReturn(List.of(5L));
 
         mvc.perform(post("/authz/role-permission/list/2")).andExpect(jsonPath("$.data[0]").value(5));
-        mvc.perform(jsonPost("/authz/role-permission/update",
+        mvc.perform(jsonPost("/authz/role-permission/save",
                 "{\"roleId\":2,\"permissionIds\":[5]}"))
                 .andExpect(status().isOk());
     }

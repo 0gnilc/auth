@@ -1,18 +1,17 @@
 {
   "name": "@app/admin",
   "version": "5.7.0",
-  "homepage": "https://vben.pro",
-  "bugs": "https://github.com/vbenjs/vue-vben-admin/issues",
+  "homepage": "https://github.com/gnil0416/auth",
+  "bugs": "https://github.com/gnil0416/auth/issues",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vbenjs/vue-vben-admin.git",
+    "url": "git+https://github.com/gnil0416/auth.git",
     "directory": "apps/admin"
   },
   "license": "MIT",
   "author": {
-    "name": "vben",
-    "email": "ann.vben@gmail.com",
-    "url": "https://github.com/anncwb"
+    "name": "gnil",
+    "url": "https://github.com/gnil0416"
   },
   "type": "module",
   "scripts": {
@@ -48,6 +47,7 @@
     "vue-router": "catalog:"
   },
   "devDependencies": {
+    "@vue/test-utils": "catalog:",
     "unplugin-element-plus": "catalog:"
   }
 }

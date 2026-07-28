@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { BasicOption } from '@vben/types';
+import type { Recordable } from '@vben/types';
 
 import type { VbenFormSchema } from '#/adapter/form';
 
@@ -7,53 +7,63 @@ import { computed, onMounted, ref } from 'vue';
 
 import { ProfileBaseSetting } from '@vben/common-ui';
 
-import { getAdminUserInfo } from '#/api';
+import { ElMessage } from 'element-plus';
+
+import { z } from '#/adapter/form';
+import { getAdminUserInfo, updateProfile } from '#/api';
+import { $t } from '#/locales';
+import { useAuthStore } from '#/store';
 
 const profileBaseSettingRef = ref();
-
-const MOCK_ROLES_OPTIONS: BasicOption[] = [
-  {
-    label: '管理员',
-    value: 'super',
-  },
-  {
-    label: '用户',
-    value: 'user',
-  },
-  {
-    label: '测试',
-    value: 'test',
-  },
-];
+const authStore = useAuthStore();
 
 const formSchema = computed((): VbenFormSchema[] => {
   return [
     {
       fieldName: 'nickname',
       component: 'Input',
-      label: '姓名',
-    },
-    {
-      fieldName: 'username',
-      component: 'Input',
-      label: '用户名',
-    },
-    {
-      fieldName: 'roleCodes',
-      component: 'Select',
       componentProps: {
-        mode: 'tags',
-        options: MOCK_ROLES_OPTIONS,
+        maxlength: 255,
+        placeholder: $t('page.profile.form.nicknamePlaceholder'),
       },
-      label: '角色',
+      label: $t('page.profile.form.nickname'),
+      rules: z
+        .string()
+        .trim()
+        .min(1, { message: $t('page.profile.form.nicknamePlaceholder') }),
+    },
+    {
+      fieldName: 'avatar',
+      component: 'Input',
+      componentProps: {
+        maxlength: 500,
+        placeholder: $t('page.profile.form.avatarPlaceholder'),
+      },
+      label: $t('page.profile.form.avatarUrl'),
     },
     {
       fieldName: 'desc',
-      component: 'Textarea',
-      label: '个人简介',
+      component: 'Input',
+      componentProps: {
+        maxlength: 500,
+        rows: 4,
+        type: 'textarea',
+      },
+      label: $t('page.profile.form.description'),
     },
   ];
 });
+
+async function handleSubmit(values: Recordable<any>) {
+  await updateProfile({
+    avatar: values.avatar,
+    desc: values.desc,
+    nickname: values.nickname,
+  });
+  const userInfo = await authStore.getUserInfo();
+  profileBaseSettingRef.value?.getFormApi().setValues(userInfo);
+  ElMessage.success($t('page.profile.messages.basicUpdated'));
+}
 
 onMounted(async () => {
   const data = await getAdminUserInfo();
@@ -61,5 +71,10 @@ onMounted(async () => {
 });
 </script>
 <template>
-  <ProfileBaseSetting ref="profileBaseSettingRef" :form-schema="formSchema" />
+  <ProfileBaseSetting
+    class="w-full"
+    ref="profileBaseSettingRef"
+    :form-schema="formSchema"
+    @submit="handleSubmit"
+  />
 </template>

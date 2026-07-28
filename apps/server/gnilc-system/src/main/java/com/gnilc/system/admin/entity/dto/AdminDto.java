@@ -1,5 +1,7 @@
 package com.gnilc.system.admin.entity.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonSetter;
 import lombok.Data;
 
 import java.util.List;
@@ -34,10 +36,16 @@ public class AdminDto {
      */
     private String avatar;
 
+    @JsonIgnore
+    private boolean avatarSpecified;
+
     /**
      * 管理员描述。
      */
     private String desc;
+
+    @JsonIgnore
+    private boolean descSpecified;
 
     /**
      * 默认首页路径。
@@ -53,4 +61,16 @@ public class AdminDto {
      * 角色标识；null 不变，空列表清空。
      */
     private List<String> roleCodes;
+
+    @JsonSetter
+    public void setAvatar(String avatar) {
+        this.avatar = avatar;
+        this.avatarSpecified = true;
+    }
+
+    @JsonSetter
+    public void setDesc(String desc) {
+        this.desc = desc;
+        this.descSpecified = true;
+    }
 }

@@ -31,9 +31,9 @@ public class RoleMenuController {
         return R.success(roleMenuService.getMenuIds(roleId));
     }
 
-    @PostMapping("/update")
-    public R<?> updateRoleMenu(@RequestBody RoleMenuDto dto) {
-        roleMenuService.updateRoleMenu(dto);
+    @PostMapping("/save")
+    public R<?> saveRoleMenus(@RequestBody RoleMenuDto dto) {
+        roleMenuService.saveRoleMenus(dto);
 
         return R.success();
     }

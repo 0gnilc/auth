@@ -2,6 +2,16 @@
   --el-card-border-radius: var(--radius) !important;
 }
 
+/* Element Plus 的 outline 会被相邻 RadioButton 覆盖，改用真实边框显示分组边界。 */
+.el-radio-button .el-radio-button__inner {
+  outline: none;
+  border: var(--el-border);
+}
+
+.el-radio-button:not(:first-child) .el-radio-button__inner {
+  border-left: none;
+}
+
 .form-valid-error {
   /** select 选择器的样式 */
   .el-select .el-select__wrapper {

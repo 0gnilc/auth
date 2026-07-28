@@ -37,4 +37,4 @@ pnpm verify:server
 
 服务端说明见 [apps/server/README.zh-CN.md](apps/server/README.zh-CN.md)，强制测试规范见 [docs/test/testing-guide.md](docs/test/testing-guide.md)。
 
-AI Agent 配置和领域文档保留在仓库根目录：`AGENTS.md`、`CLAUDE.md`、`CONTEXT.md`、`docs/agents/` 和 `docs/adr/`。
+共享 Agent 指令位于根目录 `AGENTS.md`。领域文档从根目录 `CONTEXT.md` 开始，并按链接读取模块自有的上下文和 ADR；加载规则见 [docs/agents/instruction-files.md](docs/agents/instruction-files.md)。

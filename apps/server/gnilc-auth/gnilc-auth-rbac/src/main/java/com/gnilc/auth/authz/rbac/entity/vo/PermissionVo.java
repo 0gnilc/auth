@@ -2,7 +2,7 @@ package com.gnilc.auth.authz.rbac.entity.vo;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /**
  * 权限
@@ -18,8 +18,8 @@ public class PermissionVo {
     /**
      * 创建时间
      */
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private LocalDateTime createTime;
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
+    private Instant createTime;
     /**
      * 权限标识
      */
@@ -44,4 +44,8 @@ public class PermissionVo {
      * 是否公开访问,0否、1是
      */
     private Boolean publicAccess;
+    /**
+     * 是否系统内置,0否、1是
+     */
+    private Boolean builtIn;
 }

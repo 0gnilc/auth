@@ -1,12 +1,17 @@
 package com.gnilc.auth.authz.rbac.config;
 
+import com.baomidou.mybatisplus.autoconfigure.MybatisPlusAutoConfiguration;
 import com.gnilc.auth.authz.config.AuthorizationAutoConfiguration;
 import com.gnilc.auth.authz.rbac.provider.cache.LocalPermissionCache;
 import com.gnilc.auth.authz.rbac.provider.cache.PermissionCache;
 import com.gnilc.auth.authz.rbac.provider.cache.PermissionCacheLoader;
 import com.gnilc.auth.authz.rbac.provider.cache.redis.PermissionCacheRedisConfiguration;
 import com.gnilc.auth.authz.servlet.config.ServletAuthorizationAutoConfiguration;
-import com.baomidou.mybatisplus.autoconfigure.MybatisPlusAutoConfiguration;
+import com.gnilc.common.config.LongNumberJacksonConfiguration;
+import com.gnilc.common.config.MyMetaObjectHandler;
+import com.gnilc.common.config.MybatisPlusConfiguration;
+import com.gnilc.common.config.ServletCorsConfiguration;
+import com.gnilc.common.i18n.I18nMessageService;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -27,10 +32,12 @@ import org.springframework.context.annotation.Import;
         excludeFilters = @ComponentScan.Filter(type = FilterType.ANNOTATION, classes = Configuration.class))
 @MapperScan("com.gnilc.auth.authz.rbac.dao")
 @Import({
-        RbacJacksonConfiguration.class,
+        LongNumberJacksonConfiguration.class,
+        MyMetaObjectHandler.class,
         MybatisPlusConfiguration.class,
-        RbacServletMvcConfigurer.class,
-        PermissionCacheRedisConfiguration.class
+        ServletCorsConfiguration.class,
+        PermissionCacheRedisConfiguration.class,
+        I18nMessageService.class
 })
 public class ServletRbacAuthorizationAutoConfiguration {
 

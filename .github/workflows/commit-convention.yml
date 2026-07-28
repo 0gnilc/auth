@@ -24,7 +24,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          pattern='^(revert: .+|((feat|fix|docs|style|refactor|perf|test|workflow|build|ci|chore|types|wip)(\([a-z0-9][a-z0-9._-]*\))?: [a-z][^.]?.{0,87}[^.]))$'
+          pattern='^(revert: .+|((feat|fix|docs|style|refactor|perf|test|workflow|build|ci|chore|types|wip)(\(@?[a-z0-9][a-z0-9._/-]*\))?: [a-z][^.]?.{0,87}[^.]))$'
 
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             base_sha="${{ github.event.pull_request.base.sha }}"

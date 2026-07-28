@@ -116,6 +116,11 @@ async function setupI18n(app: App, options: LocaleSetupOptions = {}) {
   });
 }
 
+async function loadCoreLocaleMessages(lang: SupportedLanguagesType) {
+  const message = await localesMap[lang]?.();
+  return message?.default ?? {};
+}
+
 /**
  * Load locale messages
  * @param lang
@@ -126,10 +131,10 @@ async function loadLocaleMessages(lang: SupportedLanguagesType) {
   }
   setSimpleLocale(lang);
 
-  const message = await localesMap[lang]?.();
+  const message = await loadCoreLocaleMessages(lang);
 
-  if (message?.default) {
-    i18n.global.setLocaleMessage(lang, message.default);
+  if (Object.keys(message).length > 0) {
+    i18n.global.setLocaleMessage(lang, message);
   }
 
   const mergeMessage = await loadMessages(lang);
@@ -140,6 +145,7 @@ async function loadLocaleMessages(lang: SupportedLanguagesType) {
 
 export {
   i18n,
+  loadCoreLocaleMessages,
   loadLocaleMessages,
   loadLocalesMap,
   loadLocalesMapFromDir,

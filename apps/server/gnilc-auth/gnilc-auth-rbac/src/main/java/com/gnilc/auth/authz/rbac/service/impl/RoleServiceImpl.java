@@ -3,6 +3,8 @@ package com.gnilc.auth.authz.rbac.service.impl;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.gnilc.common.base.Preconditions;
+import com.gnilc.common.i18n.I18nMessageService;
+import com.gnilc.common.utils.BeanPropertyUtils;
 import com.gnilc.common.utils.PageResult;
 import com.gnilc.auth.authz.rbac.dao.RoleDao;
 import com.gnilc.auth.authz.rbac.entity.bo.RoleBo;
@@ -11,11 +13,14 @@ import com.gnilc.auth.authz.rbac.entity.dto.RolePageDto;
 import com.gnilc.auth.authz.rbac.entity.dto.RoleQueryDto;
 import com.gnilc.auth.authz.rbac.entity.vo.RoleVo;
 import com.gnilc.auth.authz.rbac.event.RbacAuthzEvent;
+import com.gnilc.auth.authz.rbac.service.RoleMenuService;
+import com.gnilc.auth.authz.rbac.service.RolePermissionService;
 import com.gnilc.auth.authz.rbac.service.RoleService;
 import com.gnilc.auth.authz.rbac.service.UserRoleService;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
@@ -28,10 +33,20 @@ public class RoleServiceImpl extends ServiceImpl<RoleDao, RoleBo> implements Rol
 
     private final ApplicationEventPublisher eventPublisher;
     private final UserRoleService userRoleService;
+    private final RolePermissionService rolePermissionService;
+    private final RoleMenuService roleMenuService;
+    private final I18nMessageService messages;
 
-    public RoleServiceImpl(ApplicationEventPublisher eventPublisher, UserRoleService userRoleService) {
+    public RoleServiceImpl(ApplicationEventPublisher eventPublisher,
+                           UserRoleService userRoleService,
+                           @Lazy RolePermissionService rolePermissionService,
+                           @Lazy RoleMenuService roleMenuService,
+                           I18nMessageService messages) {
         this.eventPublisher = eventPublisher;
         this.userRoleService = userRoleService;
+        this.rolePermissionService = rolePermissionService;
+        this.roleMenuService = roleMenuService;
+        this.messages = messages;
     }
 
     @Override
@@ -65,12 +80,14 @@ public class RoleServiceImpl extends ServiceImpl<RoleDao, RoleBo> implements Rol
     @Transactional
     @Override
     public void createRole(RoleDto dto) {
-        Preconditions.checkArgument(dto != null, "Role information is required.");
+        Preconditions.checkArgument(dto != null, messages.get("rbac.role.information.required"));
+        BeanPropertyUtils.trimToNull(dto);
         String name = dto.getName();
         String code = dto.getCode();
         String remark = dto.getRemark();
-        Preconditions.checkArgument(StringUtils.isNotBlank(code), "Role code is required.");
-        Preconditions.checkArgument(getRoleByCode(code) == null, "A role with this code already exists.");
+        Preconditions.checkArgument(StringUtils.isNotBlank(code), messages.get("rbac.role.code.required"));
+        Preconditions.checkArgument(StringUtils.isNotBlank(name), messages.get("rbac.role.name.required"));
+        Preconditions.checkArgument(getRoleByCode(code) == null, messages.get("rbac.role.code.exists"));
         RoleBo bo = new RoleBo();
         bo.setName(name);
         bo.setCode(code);
@@ -97,18 +114,21 @@ public class RoleServiceImpl extends ServiceImpl<RoleDao, RoleBo> implements Rol
     @Transactional
     @Override
     public void updateRole(RoleDto dto) {
-        Preconditions.checkArgument(dto != null, "Role information is required.");
+        Preconditions.checkArgument(dto != null, messages.get("rbac.role.information.required"));
+        BeanPropertyUtils.trimToNull(dto);
         Long roleId = dto.getId();
         String name = dto.getName();
         String code = dto.getCode();
         String remark = dto.getRemark();
-        Preconditions.checkArgument(roleId != null, "A role must be selected.");
+        Preconditions.checkArgument(roleId != null, messages.get("rbac.role.selection.required"));
         RoleBo bo = getById(roleId);
-        Preconditions.checkCondition(bo != null, "The role no longer exists. Refresh and try again.");
-        Preconditions.checkCondition(!Boolean.TRUE.equals(bo.getBuiltIn()), "Built-in roles cannot be modified.");
+        Preconditions.checkCondition(bo != null, messages.get("rbac.role.notFound"));
+        Preconditions.checkCondition(!Boolean.TRUE.equals(bo.getBuiltIn()), messages.get("rbac.role.builtIn.modify"));
+        Preconditions.checkArgument(StringUtils.isNotBlank(code), messages.get("rbac.role.code.required"));
+        Preconditions.checkArgument(StringUtils.isNotBlank(name), messages.get("rbac.role.name.required"));
         if (StringUtils.isNotBlank(code) && !code.equals(bo.getCode())) {
             RoleBo sameBo = getRoleByCode(code);
-            Preconditions.checkArgument(sameBo == null, "A role with this code already exists.");
+            Preconditions.checkArgument(sameBo == null, messages.get("rbac.role.code.exists"));
         }
         bo.setName(name);
         bo.setCode(code);
@@ -124,12 +144,15 @@ public class RoleServiceImpl extends ServiceImpl<RoleDao, RoleBo> implements Rol
     @Transactional
     @Override
     public void removeRole(Long id) {
-        Preconditions.checkArgument(id != null, "A role must be selected.");
+        Preconditions.checkArgument(id != null, messages.get("rbac.role.selection.required"));
         RoleBo bo = getById(id);
-        Preconditions.checkCondition(bo != null, "The role no longer exists. Refresh and try again.");
-        Preconditions.checkCondition(!Boolean.TRUE.equals(bo.getBuiltIn()), "Built-in roles cannot be deleted.");
+        Preconditions.checkCondition(bo != null, messages.get("rbac.role.notFound"));
+        Preconditions.checkCondition(!Boolean.TRUE.equals(bo.getBuiltIn()), messages.get("rbac.role.builtIn.delete"));
         bo.setCode(deletedCode(bo.getCode(), id));
         updateById(bo);
+        rolePermissionService.removeByRoleId(id);
+        roleMenuService.removeByRoleId(id);
+        userRoleService.removeByRoleId(id);
         removeById(id);
 
         eventPublisher.publishEvent(RbacAuthzEvent.of(

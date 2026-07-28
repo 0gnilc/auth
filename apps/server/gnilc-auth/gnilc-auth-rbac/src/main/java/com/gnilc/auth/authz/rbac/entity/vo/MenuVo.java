@@ -7,7 +7,7 @@ import lombok.Data;
 
 import java.io.Serial;
 import java.io.Serializable;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 
@@ -27,13 +27,13 @@ public class MenuVo implements Serializable {
     /**
      * 创建时间
      */
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private LocalDateTime createTime;
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
+    private Instant createTime;
     /**
      * 修改时间
      */
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private LocalDateTime updateTime;
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
+    private Instant updateTime;
 
     /**
      * 父级ID
@@ -47,6 +47,10 @@ public class MenuVo implements Serializable {
      * 菜单状态,0已禁用、1已启用
      */
     private Boolean status;
+    /**
+     * 是否系统内置,0否、1是
+     */
+    private Boolean builtIn;
     /**
      * 后端权限标识
      */
@@ -120,10 +124,6 @@ public class MenuVo implements Serializable {
      */
     private String iframeSrc;
     /**
-     * 忽略权限访问控制
-     */
-    private Boolean ignoreAccess;
-    /**
      * 是否缓存页面
      */
     private Boolean keepAlive;
@@ -132,17 +132,9 @@ public class MenuVo implements Serializable {
      */
     private String link;
     /**
-     * 是否已加载
-     */
-    private Boolean loaded;
-    /**
      * 同名标签页最大打开数量
      */
     private Integer maxNumOfOpenTab;
-    /**
-     * 菜单可见但访问时跳转 403
-     */
-    private Boolean menuVisibleWithForbidden;
     /**
      * 不使用基础布局
      */

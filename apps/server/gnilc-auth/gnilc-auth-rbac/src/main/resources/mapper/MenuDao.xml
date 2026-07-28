@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.gnilc.auth.authz.rbac.dao.MenuDao">
+
+    <select id="getSubtreeIds" resultType="java.lang.Long">
+        WITH RECURSIVE menu_subtree (id) AS (
+            SELECT menu.id
+            FROM az_menu AS menu
+            WHERE menu.id = #{rootId}
+            <if test="deleted == false">
+                AND menu.del = 0
+            </if>
+            UNION DISTINCT
+            SELECT menu.id
+            FROM az_menu AS menu
+            JOIN menu_subtree AS subtree ON menu.pid = subtree.id
+            <if test="deleted == false">
+                WHERE menu.del = 0
+            </if>
+        )
+        SELECT id
+        FROM menu_subtree
+    </select>
+
+</mapper>

@@ -2,6 +2,7 @@ package com.gnilc.system.admin.controller;
 
 import com.alibaba.fastjson2.JSONObject;
 import com.gnilc.common.constant.ResponseCode;
+import com.gnilc.common.i18n.I18nMessageService;
 import com.gnilc.common.utils.PageResult;
 import com.gnilc.common.utils.R;
 import com.gnilc.system.admin.entity.dto.AdminDto;
@@ -9,6 +10,7 @@ import com.gnilc.system.admin.entity.dto.AdminPageDto;
 import com.gnilc.system.admin.entity.dto.AdminRoleDto;
 import com.gnilc.system.admin.entity.vo.AdminTokenVo;
 import com.gnilc.system.admin.entity.vo.AdminVo;
+import com.gnilc.auth.authz.rbac.entity.vo.MenuRouteVo;
 import com.gnilc.system.admin.service.AdminService;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.HttpStatus;
@@ -31,9 +33,11 @@ import java.util.List;
 public class AdminController {
     private static final String REFRESH_TOKEN_HEADER = "X-Refresh-Token";
     private final AdminService adminService;
+    private final I18nMessageService messages;
 
-    public AdminController(AdminService adminService) {
+    public AdminController(AdminService adminService, I18nMessageService messages) {
         this.adminService = adminService;
+        this.messages = messages;
     }
 
     /**
@@ -63,11 +67,11 @@ public class AdminController {
     }
 
     /**
-     * 替换管理员角色。
+     * 保存管理员角色。
      */
-    @PostMapping("/update-roles")
-    public R<?> updateAdminRoles(@RequestBody AdminRoleDto dto) {
-        adminService.updateAdminRoles(dto);
+    @PostMapping("/roles/save")
+    public R<?> saveAdminRoles(@RequestBody AdminRoleDto dto) {
+        adminService.saveAdminRoles(dto);
         return R.success();
     }
 
@@ -89,7 +93,8 @@ public class AdminController {
         String password = body == null ? null : body.getString("password");
         AdminTokenVo vo = adminService.login(username, password);
         if (vo == null) {
-            return R.error(ResponseCode.AUTHENTICATION_FAILED, "Incorrect username or password.");
+            return R.error(ResponseCode.AUTHENTICATION_FAILED,
+                    messages.get("system.admin.login.invalidCredentials"));
         }
         return R.success(vo);
     }
@@ -134,6 +139,26 @@ public class AdminController {
     }
 
     /**
+     * 更新当前管理员资料。
+     */
+    @PostMapping("/user-info/update")
+    public R<?> updateProfile(@RequestBody AdminDto dto) {
+        adminService.updateProfile(dto);
+        return R.success();
+    }
+
+    /**
+     * 更新当前管理员密码。
+     */
+    @PostMapping("/password/update")
+    public R<?> updatePassword(@RequestBody(required = false) JSONObject body) {
+        String oldPassword = body == null ? null : body.getString("oldPassword");
+        String newPassword = body == null ? null : body.getString("newPassword");
+        adminService.updatePassword(oldPassword, newPassword);
+        return R.success();
+    }
+
+    /**
      * 查询当前管理员角色标识。
      */
     @GetMapping("/role-codes")
@@ -149,7 +174,16 @@ public class AdminController {
         return R.success(adminService.getMenuAccessCodes());
     }
 
-    private static ResponseEntity<R<?>> unauthorized() {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(R.error(ResponseCode.UNAUTHORIZED, "unauthorized"));
+    /**
+     * 查询当前管理员导航路由树。
+     */
+    @GetMapping("/menu/routes")
+    public R<List<MenuRouteVo>> getMenuRoutes() {
+        return R.success(adminService.getMenuRoutes());
+    }
+
+    private ResponseEntity<R<?>> unauthorized() {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(R.error(ResponseCode.UNAUTHORIZED, messages.get("system.auth.unauthorized")));
     }
 }

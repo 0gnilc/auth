@@ -587,7 +587,7 @@ order-module
 ### 4.6 最佳存放决策表
 
 | 类型 | 是否有业务依赖 | 使用范围 | 推荐位置 |
-|---|---:|---|---|
+| --- | --: | --- | --- |
 | `CleanupMode` / `CleanTestData` | 否 | 全项目 | `project-test-support` |
 | `DatabaseCleaner` / `RedisCleaner` | 否 | 全项目 | `project-test-support` |
 | `TestDataResetManager` | 否 | 全项目 | `project-test-support` |

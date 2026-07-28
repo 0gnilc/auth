@@ -4,9 +4,11 @@ import com.gnilc.auth.authn.servlet.context.ServletAuthenticationContext;
 import com.gnilc.auth.authn.context.DefaultAccessPrincipal;
 import com.gnilc.auth.authn.servlet.handler.ServletAuthenticationHandler;
 import com.gnilc.auth.authn.handler.AuthenticationResult;
+import com.gnilc.common.i18n.I18nMessageService;
 import com.gnilc.system.session.AdminSessionManager;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Component;
+import org.springframework.web.servlet.LocaleResolver;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -16,14 +18,22 @@ import java.util.regex.Pattern;
  */
 @Component
 public class AdminSessionAuthenticationHandler implements ServletAuthenticationHandler {
+    private static final String INVALID_ACCESS_TOKEN_MESSAGE = "system.auth.accessToken.invalid";
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final Pattern BEARER_VALUE_PATTERN = Pattern.compile("^Bearer\\s+(.+)$", Pattern.CASE_INSENSITIVE);
     private static final Pattern BEARER_TOKEN_PATTERN = Pattern.compile("^Bearer\\s+(\\S+)$", Pattern.CASE_INSENSITIVE);
 
     private final AdminSessionManager sessionManager;
+    private final I18nMessageService messages;
+    private final LocaleResolver localeResolver;
 
-    public AdminSessionAuthenticationHandler(AdminSessionManager sessionManager) {
+    public AdminSessionAuthenticationHandler(
+            AdminSessionManager sessionManager,
+            I18nMessageService messages,
+            LocaleResolver localeResolver) {
         this.sessionManager = sessionManager;
+        this.messages = messages;
+        this.localeResolver = localeResolver;
     }
 
     /**
@@ -42,13 +52,19 @@ public class AdminSessionAuthenticationHandler implements ServletAuthenticationH
     public AuthenticationResult authenticate(ServletAuthenticationContext context) {
         String accessToken = resolveBearerToken(context.getRequest());
         if (accessToken == null) {
-            return AuthenticationResult.failed("invalid access token");
+            return invalidAccessToken(context);
         }
         Long userId = sessionManager.validateAccessToken(accessToken);
         if (userId == null) {
-            return AuthenticationResult.failed("invalid access token");
+            return invalidAccessToken(context);
         }
         return AuthenticationResult.authenticated(DefaultAccessPrincipal.of(userId));
+    }
+
+    private AuthenticationResult invalidAccessToken(ServletAuthenticationContext context) {
+        return AuthenticationResult.failed(messages.get(
+                INVALID_ACCESS_TOKEN_MESSAGE,
+                localeResolver.resolveLocale(context.getRequest())));
     }
 
     /**
