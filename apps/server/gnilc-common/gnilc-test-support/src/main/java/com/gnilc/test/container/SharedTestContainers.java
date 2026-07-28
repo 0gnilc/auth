@@ -28,7 +28,8 @@ public final class SharedTestContainers {
             DockerImageName.parse(System.getProperty("app.test.mysql.image", "mysql:8.4.0")))
             .withDatabaseName(DATABASE_NAME)
             .withUsername("test")
-            .withPassword("test");
+            .withPassword("test")
+            .withEnv("TZ", "Asia/Shanghai");
 
     private static final GenericContainer<?> REDIS = new GenericContainer<>(
             DockerImageName.parse(System.getProperty("app.test.redis.image", "redis:8-alpine")))
@@ -47,7 +48,7 @@ public final class SharedTestContainers {
     public static synchronized MySqlConnectionDetails mysqlConnectionDetails() {
         ensureMySqlRunning();
         return new MySqlConnectionDetails(
-                MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword(), MYSQL.getDriverClassName());
+                utcJdbcUrl(MYSQL.getJdbcUrl()), MYSQL.getUsername(), MYSQL.getPassword(), MYSQL.getDriverClassName());
     }
 
     /**
@@ -96,6 +97,12 @@ public final class SharedTestContainers {
         if (!REDIS.isRunning()) {
             REDIS.start();
         }
+    }
+
+    private static String utcJdbcUrl(String jdbcUrl) {
+        String separator = jdbcUrl.contains("?") ? "&" : "?";
+        return jdbcUrl + separator
+                + "connectionTimeZone=%2B00:00&forceConnectionTimeZoneToSession=true&preserveInstants=true";
     }
 
     /**

@@ -59,7 +59,7 @@ class AdminManagementApiIT extends AdminApiTestSupport {
                 .contentType(ContentType.JSON)
                 .body("{\"id\":" + adminId + ",\"roleCodes\":[]}")
                 .when()
-                .post("/api/sys/admin/update-roles")
+                .post("/api/sys/admin/roles/save")
                 .then()
                 .statusCode(200)
                 .body("code", equalTo(0));
@@ -71,7 +71,7 @@ class AdminManagementApiIT extends AdminApiTestSupport {
                 .contentType(ContentType.JSON)
                 .body("{\"id\":" + adminId + ",\"roleCodes\":[\"admin\"]}")
                 .when()
-                .post("/api/sys/admin/update-roles")
+                .post("/api/sys/admin/roles/save")
                 .then()
                 .statusCode(200)
                 .body("code", equalTo(0));

@@ -37,8 +37,7 @@ class I18nMessageApiIT extends AdminApiTestSupport {
 
         given()
                 .header("Authorization", auth)
-                .header("X-Client", "admin")
-                .post("/api/sys/i18n-message/bundle")
+                .post("/api/sys/i18n-message/bundle/admin")
                 .then()
                 .statusCode(200)
                 .body("code", equalTo(0))
@@ -46,10 +45,20 @@ class I18nMessageApiIT extends AdminApiTestSupport {
 
         given()
                 .header("Authorization", auth)
-                .header("X-Client", "admin")
+                .post("/api/sys/i18n-message/categories")
+                .then()
+                .statusCode(200)
+                .body("code", equalTo(0))
+                .body("data", hasSize(2))
+                .body("data[0]", equalTo("default"))
+                .body("data[1]", equalTo("admin"));
+
+        given()
+                .header("Authorization", auth)
                 .contentType(ContentType.JSON)
                 .body("""
                         {
+                          "category":"default",
                           "messageKey":"api.message.title",
                           "values":[
                             {"locale":"zh-CN","value":"接口消息"},
@@ -61,45 +70,49 @@ class I18nMessageApiIT extends AdminApiTestSupport {
                 .then()
                 .statusCode(200)
                 .body("code", equalTo(0))
+                .body("data.category", equalTo("default"))
                 .body("data.values", hasSize(2));
 
         given()
                 .header("Authorization", auth)
-                .header("X-Client", "admin")
                 .contentType(ContentType.JSON)
                 .body("""
                         {
-                          "previousKey":"api.message.title",
-                          "messageKey":"api.message.heading",
-                          "values":[{"locale":"zh-CN","value":"接口标题"}]
+                          "category":"admin",
+                          "messageKey":"api.message.title",
+                          "values":[
+                            {"locale":"zh-CN","value":""},
+                            {"locale":"en-US","value":"API heading"}
+                          ]
                         }
                         """)
                 .post("/api/sys/i18n-message/save")
                 .then()
                 .statusCode(200)
-                .body("data.messageKey", equalTo("api.message.heading"))
-                .body("data.values", hasSize(2));
+                .body("data.category", equalTo("admin"))
+                .body("data.messageKey", equalTo("api.message.title"))
+                .body("data.values", hasSize(1));
 
         given()
                 .header("Authorization", auth)
-                .header("X-Client", "admin")
-                .post("/api/sys/i18n-message/values/api.message.heading")
+                .post("/api/sys/i18n-message/values/api.message.title")
                 .then()
                 .statusCode(200)
                 .body("code", equalTo(0))
-                .body("data.messageKey", equalTo("api.message.heading"));
+                .body("data.category", equalTo("admin"))
+                .body("data.messageKey", equalTo("api.message.title"))
+                .body("data.values[0].locale", equalTo("en-US"));
 
         given()
                 .header("Authorization", auth)
-                .header("X-Client", "admin")
-                .post("/api/sys/i18n-message/remove/api.message.heading")
+                .post("/api/sys/i18n-message/remove/api.message.title")
                 .then()
                 .statusCode(200)
                 .body("code", equalTo(0));
 
         assertThat(jdbc.queryForObject("""
                 SELECT COUNT(*) FROM sys_i18n
-                 WHERE client = 'admin' AND message_key LIKE 'api.message.%'
+                 WHERE category = 'admin' AND message_key LIKE 'api.message.%'
                 """, Integer.class)).isZero();
     }
 
@@ -120,14 +133,12 @@ class I18nMessageApiIT extends AdminApiTestSupport {
         TokenPair limited = loginAsLimitedAdmin();
         given()
                 .header("Authorization", bearer(limited.accessToken()))
-                .header("X-Client", "admin")
-                .post("/api/sys/i18n-message/bundle")
+                .post("/api/sys/i18n-message/bundle/admin")
                 .then()
                 .statusCode(200)
                 .body("code", equalTo(0));
         given()
                 .header("Authorization", bearer(limited.accessToken()))
-                .header("X-Client", "admin")
                 .contentType(ContentType.JSON)
                 .body("{\"currentPage\":1,\"pageSize\":10}")
                 .post("/api/sys/i18n-message/page")
@@ -137,23 +148,16 @@ class I18nMessageApiIT extends AdminApiTestSupport {
     }
 
     @Test
-    void i18nMessageApisRequireAValidClientHeader() {
+    void runtimeBundleRequiresASupportedCategoryPath() {
         TokenPair admin = loginAsDefaultAdmin();
         given()
                 .header("Authorization", bearer(admin.accessToken()))
-                .post("/api/sys/i18n-message/bundle")
-                .then()
-                .statusCode(200)
-                .body("code", equalTo(10001));
-        given()
-                .header("Authorization", bearer(admin.accessToken()))
                 .header("Accept-Language", "en-US")
-                .header("X-Client", "unknown")
-                .post("/api/sys/i18n-message/bundle")
+                .post("/api/sys/i18n-message/bundle/unknown")
                 .then()
                 .statusCode(200)
                 .body("code", equalTo(10001))
-                .body("error", equalTo("Client unknown is not supported."));
+                .body("error", equalTo("Category unknown is not supported."));
     }
 
     @Test
@@ -162,7 +166,6 @@ class I18nMessageApiIT extends AdminApiTestSupport {
 
         given()
                 .header("Authorization", auth)
-                .header("X-Client", "admin")
                 .post("/api/sys/i18n-message/values/menu..title")
                 .then()
                 .statusCode(200)
@@ -171,7 +174,6 @@ class I18nMessageApiIT extends AdminApiTestSupport {
 
         given()
                 .header("Authorization", auth)
-                .header("X-Client", "admin")
                 .post("/api/sys/i18n-message/remove/{messageKey}", "a".repeat(192))
                 .then()
                 .statusCode(200)

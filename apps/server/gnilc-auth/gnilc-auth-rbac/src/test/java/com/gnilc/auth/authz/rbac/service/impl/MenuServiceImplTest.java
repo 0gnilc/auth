@@ -3,9 +3,11 @@ package com.gnilc.auth.authz.rbac.service.impl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gnilc.auth.authz.rbac.dao.MenuDao;
 import com.gnilc.auth.authz.rbac.entity.bo.MenuBo;
+import com.gnilc.auth.authz.rbac.entity.dto.MenuDto;
 import com.gnilc.auth.authz.rbac.entity.enums.MenuType;
 import com.gnilc.auth.authz.rbac.entity.vo.MenuRouteVo;
 import com.gnilc.auth.authz.rbac.service.RoleMenuService;
+import com.gnilc.common.exception.IllegalConditionException;
 import com.gnilc.common.exception.InvalidArgumentException;
 import com.gnilc.common.i18n.I18nMessageService;
 import org.junit.jupiter.api.AfterEach;
@@ -23,7 +25,10 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -76,6 +81,7 @@ class MenuServiceImplTest {
 
         assertThat(routes).extracting(MenuRouteVo::getName)
                 .containsExactly("Tools", "Docs", "Repository");
+        assertThat(routes.get(0).getComponent()).isNull();
         assertThat(routes.get(0).getChildren()).singleElement().satisfies(route -> {
             assertThat(route.getName()).isEqualTo("Audit");
             assertThat(route.getComponent()).isEqualTo("/tools/audit/index");
@@ -86,6 +92,72 @@ class MenuServiceImplTest {
         assertThat(routes.get(2).getComponent()).isEqualTo("IFrameView");
         assertThat(routes.get(2).getMeta().getLink()).isEqualTo("https://example.test/repository");
         verify(menus).list();
+    }
+
+    @Test
+    void getMenuRoutesPrunesCatalogsWithoutNavigableDescendants() {
+        MenuBo emptyCatalog = menu(1L, 0L, MenuType.CATALOG, "Empty", "/empty", 1);
+        doReturn(List.of(emptyCatalog)).when(menus).list();
+
+        assertThat(menus.getMenuRoutes(List.of(1L))).isEmpty();
+    }
+
+    @Test
+    void updateMenuRejectsChangingTheCreationTimeType() {
+        MenuBo existing = menu(1L, 0L, MenuType.CATALOG, "Tools", "/tools", 1);
+        doReturn(existing).when(menus).getById(1L);
+        MenuDto update = completeMenu(MenuType.MENU, 0L);
+        update.setId(1L);
+        update.setComponent("/tools/index");
+
+        assertThatThrownBy(() -> menus.updateMenu(update))
+                .isInstanceOf(IllegalConditionException.class);
+    }
+
+    @Test
+    void updateMenuRejectsAnIncompleteFullUpdate() {
+        MenuBo existing = menu(1L, 0L, MenuType.MENU, "Reports", "/reports", 1);
+        existing.setComponent("/reports/index");
+        doReturn(existing).when(menus).getById(1L);
+        MenuDto update = completeMenu(MenuType.MENU, 0L);
+        update.setId(1L);
+
+        assertThatThrownBy(() -> menus.updateMenu(update))
+                .isInstanceOf(InvalidArgumentException.class)
+                .hasMessage("Page component is required.");
+        verify(menus, never()).updateById(any(MenuBo.class));
+    }
+
+    @Test
+    void createMenuRejectsIllegalRootAndParentCombinations() {
+        MenuDto rootButton = completeMenu(MenuType.BUTTON, 0L);
+        rootButton.setAccessCode("shared:read");
+
+        assertThatThrownBy(() -> menus.createMenu(rootButton))
+                .isInstanceOf(InvalidArgumentException.class);
+
+        MenuBo page = menu(1L, 0L, MenuType.MENU, "Page", "/page", 1);
+        page.setComponent("/page/index");
+        doReturn(page).when(menus).getById(1L);
+        MenuDto nestedCatalog = completeMenu(MenuType.CATALOG, 1L);
+
+        assertThatThrownBy(() -> menus.createMenu(nestedCatalog))
+                .isInstanceOf(InvalidArgumentException.class);
+    }
+
+    @Test
+    void createMenuRejectsNonHttpEmbeddedAndExternalUrls() {
+        MenuDto embedded = completeMenu(MenuType.EMBEDDED, 0L);
+        embedded.setIframeSrc("/relative/docs");
+
+        assertThatThrownBy(() -> menus.createMenu(embedded))
+                .isInstanceOf(InvalidArgumentException.class);
+
+        MenuDto link = completeMenu(MenuType.LINK, 0L);
+        link.setLink("javascript:alert(1)");
+
+        assertThatThrownBy(() -> menus.createMenu(link))
+                .isInstanceOf(InvalidArgumentException.class);
     }
 
     @Test
@@ -116,6 +188,7 @@ class MenuServiceImplTest {
         List<Long> subtreeIds = List.of(1L, 2L, 3L);
         doReturn(root).when(menus).getById(1L);
         when(menuDao.getSubtreeIds(1L, true)).thenReturn(subtreeIds);
+        doReturn(List.of(root)).when(menus).getMenus(subtreeIds);
         doReturn(true).when(menus).removeByIds(subtreeIds);
 
         menus.removeMenu(1L);
@@ -123,6 +196,39 @@ class MenuServiceImplTest {
         verify(menuDao).getSubtreeIds(1L, true);
         verify(roleMenuService).removeByMenuIds(subtreeIds);
         verify(menus).removeByIds(subtreeIds);
+    }
+
+    @Test
+    void removeMenuRejectsAMutableRootContainingABuiltInDescendant() {
+        MenuBo root = menu(1L, 0L, MenuType.CATALOG, "Root", "/root", 1);
+        MenuBo builtInChild = menu(2L, 1L, MenuType.MENU, "Protected", "/protected", 1);
+        builtInChild.setBuiltIn(true);
+        List<Long> subtreeIds = List.of(1L, 2L);
+        doReturn(root).when(menus).getById(1L);
+        when(menuDao.getSubtreeIds(1L, true)).thenReturn(subtreeIds);
+        doReturn(List.of(root, builtInChild)).when(menus).getMenus(subtreeIds);
+
+        assertThatThrownBy(() -> menus.removeMenu(1L))
+                .isInstanceOf(IllegalConditionException.class)
+                .hasMessage("Built-in menus cannot be deleted.");
+        verify(roleMenuService, never()).removeByMenuIds(anyList());
+        verify(menus, never()).removeByIds(anyList());
+    }
+
+    @Test
+    void updateAndRemoveRejectBuiltInMenus() {
+        MenuBo builtIn = menu(1L, 0L, MenuType.CATALOG, "System", "/system", 1);
+        builtIn.setBuiltIn(true);
+        doReturn(builtIn).when(menus).getById(1L);
+        MenuDto update = new MenuDto();
+        update.setId(1L);
+
+        assertThatThrownBy(() -> menus.updateMenu(update))
+                .isInstanceOf(IllegalConditionException.class)
+                .hasMessage("Built-in menus cannot be modified.");
+        assertThatThrownBy(() -> menus.removeMenu(1L))
+                .isInstanceOf(IllegalConditionException.class)
+                .hasMessage("Built-in menus cannot be deleted.");
     }
 
     private MenuBo menu(Long id, Long pid, MenuType type, String name, String path, int order) {
@@ -135,6 +241,18 @@ class MenuServiceImplTest {
         menu.setPath(path);
         menu.setOrder(order);
         menu.setTitle(name);
+        return menu;
+    }
+
+    private MenuDto completeMenu(MenuType type, Long pid) {
+        MenuDto menu = new MenuDto();
+        menu.setPid(pid);
+        menu.setType(type);
+        menu.setStatus(true);
+        menu.setName("Candidate" + type);
+        menu.setPath(type == MenuType.BUTTON ? null : "/candidate");
+        menu.setTitle("menu.candidate.title");
+        menu.setOrder(1);
         return menu;
     }
 }

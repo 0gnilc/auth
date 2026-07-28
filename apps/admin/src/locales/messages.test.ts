@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { collectLeafKeys, mergeMessages } from './messages';
+import { mergeMessages } from './messages';
 
 describe('internationalization message composition', () => {
   it('lets local static messages override database messages at leaf level', () => {
@@ -41,23 +41,5 @@ describe('internationalization message composition', () => {
       common: { confirm: 'Shared confirm' },
       page: { title: 'App page' },
     });
-  });
-
-  it('collects only leaf paths as reserved local keys', () => {
-    const keys = new Set<string>();
-
-    collectLeafKeys(
-      {
-        page: {
-          i18nMessage: {
-            title: 'I18n Messages',
-          },
-        },
-      },
-      '',
-      keys,
-    );
-
-    expect([...keys]).toEqual(['page.i18nMessage.title']);
   });
 });

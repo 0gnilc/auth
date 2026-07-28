@@ -170,14 +170,33 @@ class AdminControllerTest {
                 .andExpect(status().isOk());
         mvc.perform(jsonPost("/sys/admin/update", "{\"id\":2}"))
                 .andExpect(status().isOk());
-        mvc.perform(jsonPost("/sys/admin/update-roles", "{\"id\":2,\"roleCodes\":[]}"))
+        mvc.perform(jsonPost("/sys/admin/roles/save", "{\"id\":2,\"roleCodes\":[]}"))
                 .andExpect(status().isOk());
         mvc.perform(post("/sys/admin/remove/2")).andExpect(status().isOk());
 
         verify(service).createAdmin(any());
         verify(service).updateAdmin(any());
-        verify(service).updateAdminRoles(any());
+        verify(service).saveAdminRoles(any());
         verify(service).removeAdmin(2L);
+    }
+
+    @Test
+    void adminUpdateDistinguishesOmittedAndExplicitNullProperties() throws Exception {
+        mvc.perform(jsonPost("/sys/admin/update", "{\"id\":2}"))
+                .andExpect(status().isOk());
+        mvc.perform(jsonPost("/sys/admin/update", "{\"id\":2,\"avatar\":null,\"desc\":null}"))
+                .andExpect(status().isOk());
+
+        var captor = org.mockito.ArgumentCaptor.forClass(AdminDto.class);
+        verify(service, org.mockito.Mockito.times(2)).updateAdmin(captor.capture());
+        AdminDto omitted = captor.getAllValues().get(0);
+        assertThat(omitted.isAvatarSpecified()).isFalse();
+        assertThat(omitted.isDescSpecified()).isFalse();
+        AdminDto explicitNull = captor.getAllValues().get(1);
+        assertThat(explicitNull.isAvatarSpecified()).isTrue();
+        assertThat(explicitNull.getAvatar()).isNull();
+        assertThat(explicitNull.isDescSpecified()).isTrue();
+        assertThat(explicitNull.getDesc()).isNull();
     }
 
     private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder jsonPost(

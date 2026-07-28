@@ -14,11 +14,15 @@ import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.support.ResourceBundleMessageSource;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -59,8 +63,9 @@ class DynamicI18nMessageServiceImplTest {
                 row("en-US", "Home"),
                 row("zh-CN", "首页")));
 
-        var message = service.getMessageValues("admin", "menu.home.title");
+        var message = service.getMessageValues("menu.home.title");
 
+        assertThat(message.getCategory()).isEqualTo("admin");
         assertThat(message.getMessageKey()).isEqualTo("menu.home.title");
         assertThat(message.getValues())
                 .extracting(value -> value.getLocale() + ":" + value.getValue())
@@ -73,18 +78,34 @@ class DynamicI18nMessageServiceImplTest {
         I18nMessageDto duplicateLocales = save("menu.home.title",
                 value("zh-CN", "首页"), value("zh-CN", "主页"));
 
-        assertThatThrownBy(() -> service.saveMessage("admin", duplicateLocales))
+        assertThatThrownBy(() -> service.saveMessage(duplicateLocales))
                 .isInstanceOf(InvalidArgumentException.class);
-        assertThatThrownBy(() -> service.saveMessage("admin", save("menu.__proto__.title")))
+        assertThatThrownBy(() -> service.saveMessage(save("menu.__proto__.title",
+                value("en-US", "Home"))))
                 .isInstanceOf(InvalidArgumentException.class);
-        assertThatThrownBy(() -> service.saveMessage("unknown", save("menu.home.title")))
+        I18nMessageDto unknownCategory = save("menu.home.title", value("en-US", "Home"));
+        unknownCategory.setCategory("unknown");
+        assertThatThrownBy(() -> service.saveMessage(unknownCategory))
+                .isInstanceOf(InvalidArgumentException.class);
+        assertThatThrownBy(() -> service.saveMessage(save("menu.home.title",
+                value("zh-CN", "首页"))))
+                .isInstanceOf(InvalidArgumentException.class);
+        verifyNoInteractions(dao);
+    }
+
+    @ParameterizedTest(name = "rejects key: {0}")
+    @MethodSource("invalidMessageKeys")
+    void getValuesRejectsEveryInvalidMessageKeyBoundaryBeforeDatabaseAccess(
+            String caseName,
+            String messageKey) {
+        assertThatThrownBy(() -> service.getMessageValues(messageKey))
                 .isInstanceOf(InvalidArgumentException.class);
         verifyNoInteractions(dao);
     }
 
     private I18nMessageBo row(String locale, String value) {
         I18nMessageBo row = new I18nMessageBo();
-        row.setClient("admin");
+        row.setCategory("admin");
         row.setMessageKey("menu.home.title");
         row.setLocale(locale);
         row.setI18nValue(value);
@@ -93,6 +114,7 @@ class DynamicI18nMessageServiceImplTest {
 
     private I18nMessageDto save(String key, I18nMessageValueDto... values) {
         I18nMessageDto dto = new I18nMessageDto();
+        dto.setCategory("admin");
         dto.setMessageKey(key);
         dto.setValues(List.of(values));
         return dto;
@@ -103,5 +125,21 @@ class DynamicI18nMessageServiceImplTest {
         dto.setLocale(locale);
         dto.setValue(value);
         return dto;
+    }
+
+    private static Stream<Arguments> invalidMessageKeys() {
+        return Stream.of(
+                Arguments.of("null", (Object) null),
+                Arguments.of("blank", "   "),
+                Arguments.of("leading digit", "1menu.title"),
+                Arguments.of("empty segment", "menu..title"),
+                Arguments.of("trailing separator", "menu.title."),
+                Arguments.of("hyphen", "menu-item.title"),
+                Arguments.of("newline", "menu.\ntitle"),
+                Arguments.of("emoji", "menu.😀.title"),
+                Arguments.of("prototype segment", "menu.prototype.title"),
+                Arguments.of("constructor segment", "constructor.title"),
+                Arguments.of("proto segment", "menu.__proto__"),
+                Arguments.of("length 192", "a".repeat(192)));
     }
 }

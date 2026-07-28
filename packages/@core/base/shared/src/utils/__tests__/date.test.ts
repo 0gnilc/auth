@@ -76,6 +76,14 @@ describe('dateUtils', () => {
       const result = formatDateTime(sampleISO);
       expect(result).toMatch(/2024-10-30 \d{2}:\d{2}:\d{2}/);
     });
+
+    it('should display the same UTC instant in the selected timezone', () => {
+      setCurrentTimezone('Asia/Shanghai');
+      expect(formatDateTime(sampleISO)).toBe('2024-10-30 20:34:56');
+
+      setCurrentTimezone('America/New_York');
+      expect(formatDateTime(sampleISO)).toBe('2024-10-30 08:34:56');
+    });
   });
 
   // ===============================

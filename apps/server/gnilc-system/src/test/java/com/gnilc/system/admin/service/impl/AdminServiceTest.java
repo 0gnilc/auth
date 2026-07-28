@@ -14,18 +14,21 @@ import com.gnilc.auth.authz.rbac.service.RoleMenuService;
 import com.gnilc.auth.authz.rbac.service.RoleService;
 import com.gnilc.auth.authz.rbac.service.UserRoleService;
 import com.gnilc.auth.authz.rbac.service.UserService;
+import com.gnilc.common.exception.IllegalConditionException;
 import com.gnilc.common.exception.InvalidArgumentException;
 import com.gnilc.common.i18n.I18nMessageService;
 import com.gnilc.system.admin.dao.AdminDao;
 import com.gnilc.system.admin.entity.bo.AdminBo;
 import com.gnilc.system.admin.entity.dto.AdminDto;
 import com.gnilc.system.session.AdminSessionManager;
-import com.gnilc.system.auth.AccessPrincipalUtils;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -38,12 +41,14 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -91,7 +96,6 @@ class AdminServiceTest {
                 roleMenus,
                 users,
                 userRoles,
-                new AccessPrincipalUtils(messages),
                 messages));
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setUserPrincipal(DefaultAccessPrincipal.of(USER_ID));
@@ -211,6 +215,84 @@ class AdminServiceTest {
         verify(menus).getMenuRoutes(List.of(31L));
     }
 
+    @Test
+    void updateAdminRejectsDisablingTheCurrentAdministrator() {
+        AdminBo current = currentAdmin();
+        doReturn(current).when(admins).getAdmin(ADMIN_ID);
+        AdminDto update = new AdminDto();
+        update.setId(ADMIN_ID);
+        update.setUsername("admin");
+        update.setNickname("Administrator");
+        update.setStatus(false);
+
+        assertThatThrownBy(() -> admins.updateAdmin(update))
+                .isInstanceOf(IllegalConditionException.class)
+                .hasMessage("The current administrator cannot disable itself.");
+        verify(admins, never()).updateById(any());
+    }
+
+    @ParameterizedTest(name = "status {0} -> {1}, revoke sessions: {2}")
+    @MethodSource("statusTransitions")
+    void updateAdminRevokesSessionsOnlyWhenAnEnabledAdministratorIsDisabled(
+            Boolean currentStatus,
+            Boolean submittedStatus,
+            boolean shouldRevokeSessions) {
+        AdminBo target = currentAdmin();
+        target.setUserId(USER_ID + 1);
+        target.setStatus(currentStatus);
+        doReturn(target).when(admins).getAdmin(ADMIN_ID);
+        doReturn(true).when(admins).updateById(any());
+        AdminDto update = new AdminDto();
+        update.setId(ADMIN_ID);
+        update.setStatus(submittedStatus);
+
+        admins.updateAdmin(update);
+
+        if (shouldRevokeSessions) {
+            verify(sessions).cleanupUserSessions(USER_ID + 1);
+        } else {
+            verify(sessions, never()).cleanupUserSessions(any());
+        }
+    }
+
+    @Test
+    void createAdminRejectsWhitespaceOnlyNicknames() {
+        AdminDto create = new AdminDto();
+        create.setUsername("operator");
+        create.setPassword("Strong#123");
+        create.setNickname("   ");
+
+        assertThatThrownBy(() -> admins.createAdmin(create))
+                .isInstanceOf(InvalidArgumentException.class)
+                .hasMessage("Nickname is required.");
+        verify(users, never()).createUser();
+    }
+
+    @Test
+    void removeAdminRejectsDeletingTheCurrentAdministrator() {
+        AdminBo current = currentAdmin();
+        doReturn(current).when(admins).getById(ADMIN_ID);
+
+        assertThatThrownBy(() -> admins.removeAdmin(ADMIN_ID))
+                .isInstanceOf(IllegalConditionException.class)
+                .hasMessage("The current administrator cannot delete itself.");
+        verify(sessions, never()).cleanupUserSessions(any());
+        verify(admins, never()).removeById(ADMIN_ID);
+    }
+
+    private static Stream<Arguments> statusTransitions() {
+        return Stream.of(
+                Arguments.of(true, false, true),
+                Arguments.of(true, true, false),
+                Arguments.of(true, null, false),
+                Arguments.of(false, false, false),
+                Arguments.of(false, true, false),
+                Arguments.of(false, null, false),
+                Arguments.of(null, false, false),
+                Arguments.of(null, true, false),
+                Arguments.of(null, null, false));
+    }
+
     private void stubQueryChain() {
         doAnswer(invocation -> new LambdaQueryChainWrapper<>(
                 adminDao, Wrappers.lambdaQuery(AdminBo.class)))
@@ -238,7 +320,9 @@ class AdminServiceTest {
         AdminBo admin = new AdminBo();
         admin.setId(ADMIN_ID);
         admin.setUserId(USER_ID);
+        admin.setUsername("admin");
         admin.setPassword(PASSWORD_ENCODER.encode("Initial#123"));
+        admin.setStatus(true);
         return admin;
     }
 }

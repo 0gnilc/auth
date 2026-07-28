@@ -24,12 +24,16 @@ public class AdminApiTestConfiguration {
         return () -> {
             new ResourceDatabasePopulator(new ClassPathResource("sql/schema/02_admin.sql"))
                     .execute(dataSource);
+            new ResourceDatabasePopulator(new ClassPathResource("sql/schema/03_framework_permissions.sql"))
+                    .execute(dataSource);
+            new ResourceDatabasePopulator(new ClassPathResource("sql/schema/04_rbac_permissions.sql"))
+                    .execute(dataSource);
             new ResourceDatabasePopulator(new ClassPathResource("sql/schema/05_admin_permissions.sql"))
                     .execute(dataSource);
             new ResourceDatabasePopulator(new ClassPathResource("sql/schema/06_i18n.sql"))
                     .execute(dataSource);
-            Long adminRoleId = jdbc.queryForObject(
-                    "select id from az_role where code = 'admin' and del = 0", Long.class);
+            new ResourceDatabasePopulator(new ClassPathResource("sql/schema/07_rbac_admin.sql"))
+                    .execute(dataSource);
             jdbc.update("""
                     insert into az_role (del, create_time, code, name, built_in)
                     values (0, now(), 'limited', 'Limited', 0)
@@ -46,19 +50,6 @@ public class AdminApiTestConfiguration {
                     insert into az_user_role (del, create_time, user_id, role_id)
                     values (0, now(), ?, ?)
                     """, LIMITED_USER_ID, limitedRoleId);
-            jdbc.update("""
-                    insert into az_menu
-                        (del, create_time, pid, type, status, access_code, name, title, `order`)
-                    values (0, now(), 0, 'button', 1, 'admin:manage', 'admin-manage',
-                            'Admin management', 1)
-                    """);
-            Long menuId = jdbc.queryForObject(
-                    "select id from az_menu where access_code = 'admin:manage'", Long.class);
-            jdbc.update("""
-                    insert into az_role_menu
-                        (del, create_time, role_id, menu_id)
-                    values (0, now(), ?, ?)
-                    """, adminRoleId, menuId);
             permissionCache.resetAll();
         };
     }

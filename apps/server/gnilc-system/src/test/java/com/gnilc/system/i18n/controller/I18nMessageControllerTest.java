@@ -23,7 +23,6 @@ import java.util.List;
 import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verify;
@@ -60,81 +59,84 @@ class I18nMessageControllerTest {
     }
 
     @Test
-    void readRoutesReturnGroupedMessagesForRequestClient() throws Exception {
-        I18nMessageVo message = message("menu.dashboard.title", "首页", "Dashboard");
+    void runtimeBundleUsesCategoryWhileAdministrationUsesGlobalMessageKey() throws Exception {
+        I18nMessageVo message = message("admin", "menu.dashboard.title", "首页", "Dashboard");
         when(service.getMessageBundle("admin"))
                 .thenReturn(Map.of("zh-CN", Map.of("menu", Map.of("title", "首页"))));
-        when(service.getMessagePage(eq("admin"), any(I18nMessagePageDto.class)))
+        when(service.getSupportedCategories()).thenReturn(List.of("default", "admin"));
+        when(service.getMessagePage(any(I18nMessagePageDto.class)))
                 .thenReturn(new PageResult<>(
                         List.of(new I18nMessageItemVo("admin", message.getMessageKey(), message.getValues())),
                         1,
                         10,
                         1));
-        when(service.getMessageValues("admin", message.getMessageKey())).thenReturn(message);
+        when(service.getMessageValues(message.getMessageKey())).thenReturn(message);
 
-        mvc.perform(post("/sys/i18n-message/bundle").header("X-Client", "admin"))
+        mvc.perform(post("/sys/i18n-message/bundle/admin"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.zh-CN.menu.title").value("首页"));
+        mvc.perform(post("/sys/i18n-message/categories"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0]").value("default"))
+                .andExpect(jsonPath("$.data[1]").value("admin"));
         mvc.perform(post("/sys/i18n-message/page")
-                        .header("X-Client", "admin")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"key\":\"dashboard\",\"currentPage\":1,\"pageSize\":10}"))
+                        .content("{\"category\":\"admin\",\"key\":\"dashboard\",\"currentPage\":1,\"pageSize\":10}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.list[0].client").value("admin"))
+                .andExpect(jsonPath("$.data.list[0].category").value("admin"))
                 .andExpect(jsonPath("$.data.list[0].values[1].locale").value("en-US"));
-        mvc.perform(post("/sys/i18n-message/values/menu.dashboard.title")
-                        .header("X-Client", "admin"))
+        mvc.perform(post("/sys/i18n-message/values/menu.dashboard.title"))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.category").value("admin"))
                 .andExpect(jsonPath("$.data.messageKey").value("menu.dashboard.title"));
 
         verify(service).getMessageBundle("admin");
-        verify(service).getMessageValues("admin", "menu.dashboard.title");
+        verify(service).getSupportedCategories();
+        verify(service).getMessageValues("menu.dashboard.title");
     }
 
     @Test
     void saveAndRemoveRoutesDelegateUnifiedCommands() throws Exception {
-        I18nMessageVo saved = message("menu.home.title", "首页", "Home");
-        when(service.saveMessage(eq("admin"), any(I18nMessageDto.class))).thenReturn(saved);
+        I18nMessageVo saved = message("admin", "menu.home.title", "首页", "Home");
+        when(service.saveMessage(any(I18nMessageDto.class))).thenReturn(saved);
 
         mvc.perform(post("/sys/i18n-message/save")
-                        .header("X-Client", "admin")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "previousKey": "menu.old.title",
+                                  "category": "admin",
                                   "messageKey": "menu.home.title",
-                                  "values": [{"locale":"zh-CN","value":"首页"}]
+                                  "values": [{"locale":"en-US","value":"Home"}]
                                 }
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.messageKey").value("menu.home.title"));
-        mvc.perform(post("/sys/i18n-message/remove/menu.home.title")
-                        .header("X-Client", "admin"))
+        mvc.perform(post("/sys/i18n-message/remove/menu.home.title"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0));
 
-        verify(service).saveMessage(eq("admin"), any(I18nMessageDto.class));
-        verify(service).removeMessage("admin", "menu.home.title");
+        verify(service).saveMessage(any(I18nMessageDto.class));
+        verify(service).removeMessage("menu.home.title");
     }
 
     @Test
     void invalidNestedRequestFieldsReturnLocalizedFieldErrorsWithoutCallingService() throws Exception {
         mvc.perform(post("/sys/i18n-message/save")
-                        .header("X-Client", "admin")
                         .header(ACCEPT_LANGUAGE, "en-US-POSIX")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
+                                  "category": "",
                                   "messageKey": "",
                                   "values": [{"locale":"","value":"title"}]
                                 }
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(10001))
-                .andExpect(jsonPath("$.data[*].field", hasItems("messageKey", "values[0].locale")))
-                .andExpect(jsonPath("$.data[*].code", hasItems("NotBlank", "NotBlank")))
+                .andExpect(jsonPath("$.data[*].field", hasItems("category", "messageKey", "values[0].locale")))
+                .andExpect(jsonPath("$.data[*].code", hasItems("NotBlank", "NotBlank", "NotBlank")))
                 .andExpect(jsonPath("$.data[*].message", hasItems(
-                        "国际化 key 不能为空。", "语言不能为空。")));
+                        "分类不能为空。", "国际化 key 不能为空。", "语言不能为空。")));
 
         verifyNoInteractions(service);
     }
@@ -142,26 +144,24 @@ class I18nMessageControllerTest {
     @Test
     void malformedAndBusinessInvalidRequestsUseTheExistingErrorEnvelope() throws Exception {
         mvc.perform(post("/sys/i18n-message/save")
-                        .header("X-Client", "admin")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(10001))
                 .andExpect(jsonPath("$.error").value("请求体格式错误。"));
 
-        when(service.saveMessage(eq("admin"), any(I18nMessageDto.class)))
+        when(service.saveMessage(any(I18nMessageDto.class)))
                 .thenThrow(new InvalidArgumentException("invalid key"));
         mvc.perform(post("/sys/i18n-message/save")
-                        .header("X-Client", "admin")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"messageKey\":\"menu.title\",\"values\":[]}"))
+                        .content("{\"category\":\"admin\",\"messageKey\":\"menu.title\",\"values\":[]}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(10001))
                 .andExpect(jsonPath("$.error").value("invalid key"));
     }
 
-    private I18nMessageVo message(String key, String zhCn, String enUs) {
-        return new I18nMessageVo(key, List.of(
+    private I18nMessageVo message(String category, String key, String zhCn, String enUs) {
+        return new I18nMessageVo(category, key, List.of(
                 new I18nMessageValueVo("zh-CN", zhCn),
                 new I18nMessageValueVo("en-US", enUs)));
     }

@@ -1,7 +1,9 @@
+/* eslint-disable vue/one-component-per-file -- Inline stubs keep this component test self-contained. */
+
 import type { I18nMessageLoader, I18nMessageSaver } from '../types';
 
 import { flushPromises, mount } from '@vue/test-utils';
-import { defineComponent, h, ref } from 'vue';
+import { defineComponent, h, nextTick, ref } from 'vue';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -13,6 +15,7 @@ const dialog = vi.hoisted(() => ({
 
 vi.mock('@vben/locales', () => ({
   $t: (key: string) => key,
+  i18n: { global: { locale: { value: 'zh-CN' } } },
 }));
 
 vi.mock('@vben-core/popup-ui', () => ({
@@ -72,7 +75,10 @@ vi.mock('@vben-core/shadcn-ui', async () => {
   });
   const VbenPopover = defineComponent({
     name: 'VbenPopover',
-    props: { open: Boolean },
+    props: {
+      contentProps: { default: undefined, type: Object },
+      open: Boolean,
+    },
     emits: ['update:open'],
     setup(props, { emit, slots }) {
       return () =>
@@ -111,6 +117,7 @@ function mountInput(options: {
   modelValue?: string;
   rows?: number;
   save?: I18nMessageSaver;
+  size?: 'default' | 'large' | 'small';
 }) {
   const modelValue = ref(options.modelValue ?? '');
   const load =
@@ -129,6 +136,7 @@ function mountInput(options: {
           },
           rows: options.rows,
           save,
+          size: options.size,
         });
     },
   });
@@ -180,7 +188,7 @@ describe('i18n message input', () => {
     expect(load).toHaveBeenCalledTimes(2);
   });
 
-  it('keeps committed values for null and clears them for an empty value list', async () => {
+  it('keeps current values when lookup returns null or an empty value list', async () => {
     const load = vi
       .fn<I18nMessageLoader>()
       .mockResolvedValueOnce({
@@ -211,7 +219,7 @@ describe('i18n message input', () => {
 
     expect(wrapper.get('[data-locale="zh-CN"]').element).toHaveProperty(
       'value',
-      '',
+      '示例',
     );
   });
 
@@ -231,6 +239,67 @@ describe('i18n message input', () => {
     expect(
       buttonByText(wrapper, 'ui.i18nMessageInput.save').attributes('disabled'),
     ).toBeDefined();
+  });
+
+  it('keeps the key input and lookup action as separate grouped controls', async () => {
+    const { wrapper } = mountInput({});
+    await open(wrapper);
+
+    const group = wrapper.get('[data-test="i18n-message-key-group"]');
+    expect(group.element.children).toHaveLength(2);
+    expect(group.element.children[0]).toBe(
+      wrapper.get('[data-test="i18n-message-key"]').element,
+    );
+    expect(group.element.children[1]).toBe(
+      wrapper.get('[data-test="i18n-message-search"]').element,
+    );
+    expect(
+      wrapper.get('[data-test="i18n-message-search"]').classes(),
+    ).toContain('cursor-pointer');
+    expect(
+      wrapper.get('[data-test="i18n-message-search"]').classes(),
+    ).toContain('disabled:pointer-events-auto');
+  });
+
+  it('applies one size to the external input and popover editors', async () => {
+    const defaultInput = mountInput({});
+    const smallInput = mountInput({ size: 'small' });
+    const largeInput = mountInput({ size: 'large' });
+
+    expect(defaultInput.wrapper.get('[role="combobox"]').classes()).toContain(
+      'h-[32px]',
+    );
+    expect(smallInput.wrapper.get('[role="combobox"]').classes()).toContain(
+      'h-[24px]',
+    );
+    expect(largeInput.wrapper.get('[role="combobox"]').classes()).toContain(
+      'h-[40px]',
+    );
+
+    await open(defaultInput.wrapper);
+    await open(smallInput.wrapper);
+    await open(largeInput.wrapper);
+
+    expect(
+      defaultInput.wrapper
+        .get('[data-test="i18n-message-key-group"]')
+        .classes(),
+    ).toContain('h-[32px]');
+    expect(
+      smallInput.wrapper.get('[data-test="i18n-message-key-group"]').classes(),
+    ).toContain('h-[24px]');
+    expect(
+      largeInput.wrapper.get('[data-test="i18n-message-key-group"]').classes(),
+    ).toContain('h-[40px]');
+    expect(
+      defaultInput.wrapper.get('[data-test="i18n-message-search"]').classes(),
+    ).toContain('w-[32px]');
+    expect(smallInput.wrapper.get('[data-locale="en-US"]').classes()).toContain(
+      'text-xs',
+    );
+    expect(largeInput.wrapper.get('[data-locale="en-US"]').classes()).toContain(
+      'text-sm',
+    );
   });
 
   it('shows the value error directly below the locale inputs', async () => {
@@ -263,11 +332,40 @@ describe('i18n message input', () => {
     ).toBe('4');
   });
 
-  it('keeps an existing key read-only and does not leak draft values', async () => {
-    const load = vi.fn<I18nMessageLoader>().mockResolvedValue({
-      messageKey: 'menu.example.title',
-      values: [{ locale: 'zh-CN', value: '旧标题' }],
-    });
+  it('does not override the shared popover and alert stacking levels', async () => {
+    const { wrapper } = mountInput({});
+
+    expect(
+      wrapper.getComponent({ name: 'VbenPopover' }).props('contentProps'),
+    ).not.toHaveProperty('style');
+
+    await open(wrapper);
+    await wrapper
+      .get('[data-test="i18n-message-key"]')
+      .setValue('menu.layered.title');
+    await buttonByText(wrapper, 'ui.i18nMessageInput.cancel').trigger('click');
+    await flushPromises();
+
+    expect(dialog.confirm).toHaveBeenCalledOnce();
+    expect(dialog.confirm.mock.calls[0]?.[0]).not.toHaveProperty(
+      'containerClass',
+    );
+  });
+
+  it('keeps an existing key editable and only looks up a changed key on demand', async () => {
+    const load = vi
+      .fn<I18nMessageLoader>()
+      .mockResolvedValueOnce({
+        messageKey: 'menu.example.title',
+        values: [
+          { locale: 'zh-CN', value: '旧标题' },
+          { locale: 'en-US', value: 'Old title' },
+        ],
+      })
+      .mockResolvedValueOnce({
+        messageKey: 'menu.other.title',
+        values: [{ locale: 'en-US', value: 'Other title' }],
+      });
     const { modelValue, wrapper } = mountInput({
       load,
       modelValue: 'menu.example.title',
@@ -276,10 +374,140 @@ describe('i18n message input', () => {
 
     expect(
       wrapper.get('[data-test="i18n-message-key"]').attributes('disabled'),
-    ).toBeDefined();
-    await wrapper.get('[data-locale="zh-CN"]').setValue('新标题');
+    ).toBeUndefined();
+    await wrapper
+      .get('[data-test="i18n-message-key"]')
+      .setValue('menu.other.title');
+
+    expect(load).toHaveBeenCalledTimes(1);
+    expect(wrapper.get('[data-locale="zh-CN"]').element).toHaveProperty(
+      'value',
+      '旧标题',
+    );
+
+    await wrapper.get('[data-test="i18n-message-search"]').trigger('click');
+    await flushPromises();
+
+    expect(load).toHaveBeenLastCalledWith('menu.other.title');
+    expect(wrapper.get('[data-locale="zh-CN"]').element).toHaveProperty(
+      'value',
+      '',
+    );
+    expect(wrapper.get('[data-locale="en-US"]').element).toHaveProperty(
+      'value',
+      'Other title',
+    );
 
     expect(modelValue.value).toBe('menu.example.title');
+  });
+
+  it('switches a non-empty lookup to reset without requiring another lookup', async () => {
+    const load = vi.fn<I18nMessageLoader>().mockResolvedValue({
+      messageKey: 'menu.example.title',
+      values: [
+        { locale: 'en-US', value: 'Example' },
+        { locale: 'zh-CN', value: '示例' },
+      ],
+    });
+    const { wrapper } = mountInput({ load });
+    await open(wrapper);
+    await wrapper
+      .get('[data-test="i18n-message-key"]')
+      .setValue('menu.example.title');
+
+    const action = wrapper.get('[data-test="i18n-message-search"]');
+    await action.trigger('click');
+    await flushPromises();
+
+    expect(action.attributes('title')).toBe('ui.i18nMessageInput.reset');
+    expect(wrapper.get('[data-locale="en-US"]').element).toHaveProperty(
+      'value',
+      'Example',
+    );
+
+    await action.trigger('click');
+
+    expect(action.attributes('title')).toBe('ui.i18nMessageInput.search');
+    expect(
+      wrapper.get('[data-test="i18n-message-key"]').element,
+    ).toHaveProperty('value', 'menu.example.title');
+    expect(wrapper.get('[data-locale="en-US"]').element).toHaveProperty(
+      'value',
+      '',
+    );
+    expect(wrapper.get('[data-locale="zh-CN"]').element).toHaveProperty(
+      'value',
+      '',
+    );
+
+    await wrapper.get('[data-locale="en-US"]').setValue('Replacement');
+    expect(
+      buttonByText(wrapper, 'ui.i18nMessageInput.save').attributes('disabled'),
+    ).toBeUndefined();
+  });
+
+  it('keeps the lookup action in search mode for an empty result', async () => {
+    const load = vi.fn<I18nMessageLoader>().mockResolvedValue(null);
+    const { wrapper } = mountInput({ load });
+    await open(wrapper);
+    await wrapper
+      .get('[data-test="i18n-message-key"]')
+      .setValue('menu.missing.title');
+    await wrapper.get('[data-locale="en-US"]').setValue('Draft');
+
+    const action = wrapper.get('[data-test="i18n-message-search"]');
+    await action.trigger('click');
+    await flushPromises();
+
+    expect(action.attributes('title')).toBe('ui.i18nMessageInput.search');
+    expect(wrapper.get('[data-locale="en-US"]').element).toHaveProperty(
+      'value',
+      'Draft',
+    );
+  });
+
+  it('requires en-US and a successful manual lookup after the key changes', async () => {
+    const load = vi.fn<I18nMessageLoader>().mockResolvedValue(null);
+    const { wrapper } = mountInput({ load });
+    await open(wrapper);
+    await wrapper
+      .get('[data-test="i18n-message-key"]')
+      .setValue('menu.new.title');
+    await wrapper.get('[data-locale="en-US"]').setValue('New title');
+
+    expect(
+      buttonByText(wrapper, 'ui.i18nMessageInput.save').attributes('disabled'),
+    ).toBeDefined();
+
+    await wrapper.get('[data-test="i18n-message-search"]').trigger('click');
+    await flushPromises();
+
+    expect(
+      buttonByText(wrapper, 'ui.i18nMessageInput.save').attributes('disabled'),
+    ).toBeUndefined();
+
+    await wrapper.get('[data-locale="en-US"]').setValue('   ');
+    expect(wrapper.get('[data-test="i18n-message-value-error"]').text()).toBe(
+      'ui.i18nMessageInput.fallbackRequired',
+    );
+  });
+
+  it('shows the active locale, then en-US, then the Message Key', async () => {
+    const load = vi.fn<I18nMessageLoader>().mockResolvedValue({
+      messageKey: 'menu.example.title',
+      values: [{ locale: 'en-US', value: 'Example' }],
+    });
+    const { wrapper } = mountInput({
+      load,
+      modelValue: 'menu.example.title',
+    });
+
+    await open(wrapper);
+
+    expect(wrapper.get('[role="combobox"]').element).toHaveProperty(
+      'value',
+      'Example',
+    );
   });
 
   it('closes a clean draft without asking for confirmation', async () => {
@@ -344,8 +572,10 @@ describe('i18n message input', () => {
     await wrapper
       .get('[data-test="i18n-message-key"]')
       .setValue('menu.new.title');
-    await wrapper.get('[data-locale="zh-CN"]').setValue('新标题');
-    await wrapper.get('[data-locale="en-US"]').setValue('New title');
+    await wrapper.get('[data-test="i18n-message-search"]').trigger('click');
+    await flushPromises();
+    await wrapper.get('[data-locale="zh-CN"]').setValue('  新标题  ');
+    await wrapper.get('[data-locale="en-US"]').setValue('  New title  ');
 
     await buttonByText(wrapper, 'ui.i18nMessageInput.save').trigger('click');
     await flushPromises();
@@ -353,8 +583,8 @@ describe('i18n message input', () => {
     expect(save).toHaveBeenCalledWith({
       messageKey: 'menu.new.title',
       values: [
-        { locale: 'zh-CN', value: '新标题' },
         { locale: 'en-US', value: 'New title' },
+        { locale: 'zh-CN', value: '新标题' },
       ],
     });
     expect(modelValue.value).toBe('menu.new.title');
@@ -370,6 +600,9 @@ describe('i18n message input', () => {
     await wrapper
       .get('[data-test="i18n-message-key"]')
       .setValue('menu.draft.title');
+    await wrapper.get('[data-test="i18n-message-search"]').trigger('click');
+    await flushPromises();
+    await wrapper.get('[data-locale="en-US"]').setValue('Draft title');
 
     await buttonByText(wrapper, 'ui.i18nMessageInput.save').trigger('click');
     await flushPromises();
@@ -378,5 +611,108 @@ describe('i18n message input', () => {
     expect(
       wrapper.get('[data-test="i18n-message-key"]').element,
     ).toHaveProperty('value', 'menu.draft.title');
+  });
+
+  it('ignores an older lookup response after closing and reopening for another key', async () => {
+    let resolveOlder!: (value: {
+      messageKey: string;
+      values: Array<{ locale: string; value: string }>;
+    }) => void;
+    const older = new Promise<{
+      messageKey: string;
+      values: Array<{ locale: string; value: string }>;
+    }>((resolve) => {
+      resolveOlder = resolve;
+    });
+    const load = vi
+      .fn<I18nMessageLoader>()
+      .mockReturnValueOnce(older)
+      .mockResolvedValueOnce({
+        messageKey: 'menu.new.title',
+        values: [{ locale: 'en-US', value: 'New title' }],
+      });
+    const { modelValue, wrapper } = mountInput({
+      load,
+      modelValue: 'menu.old.title',
+    });
+
+    await open(wrapper);
+    wrapper
+      .getComponent({ name: 'VbenPopover' })
+      .vm.$emit('update:open', false);
+    await flushPromises();
+    modelValue.value = 'menu.new.title';
+    await nextTick();
+    await open(wrapper);
+
+    expect(wrapper.get('[role="combobox"]').element).toHaveProperty(
+      'value',
+      'New title',
+    );
+
+    resolveOlder({
+      messageKey: 'menu.old.title',
+      values: [{ locale: 'en-US', value: 'Old title' }],
+    });
+    await flushPromises();
+
+    expect(wrapper.get('[role="combobox"]').element).toHaveProperty(
+      'value',
+      'New title',
+    );
+  });
+
+  it('clears a lookup failure when the user changes the key', async () => {
+    const load = vi
+      .fn<I18nMessageLoader>()
+      .mockRejectedValueOnce(new Error('unavailable'))
+      .mockResolvedValueOnce(null);
+    const { wrapper } = mountInput({
+      load,
+      modelValue: 'menu.failed.title',
+    });
+    await open(wrapper);
+
+    expect(wrapper.text()).toContain('ui.i18nMessageInput.loadError');
+    await wrapper
+      .get('[data-test="i18n-message-key"]')
+      .setValue('menu.retry.title');
+
+    expect(wrapper.text()).not.toContain('ui.i18nMessageInput.loadError');
+    await wrapper.get('[data-test="i18n-message-search"]').trigger('click');
+    await flushPromises();
+
+    expect(load).toHaveBeenLastCalledWith('menu.retry.title');
+  });
+
+  it('prevents duplicate saves while the first save is pending', async () => {
+    let resolveSave!: (value: {
+      messageKey: string;
+      values: Array<{ locale: string; value: string }>;
+    }) => void;
+    const save = vi.fn<I18nMessageSaver>().mockImplementation(
+      (input) =>
+        new Promise((resolve) => {
+          resolveSave = () => resolve(input);
+        }),
+    );
+    const { wrapper } = mountInput({ save });
+    await open(wrapper);
+    await wrapper
+      .get('[data-test="i18n-message-key"]')
+      .setValue('menu.pending.title');
+    await wrapper.get('[data-test="i18n-message-search"]').trigger('click');
+    await flushPromises();
+    await wrapper.get('[data-locale="en-US"]').setValue('Pending title');
+
+    const saveButton = buttonByText(wrapper, 'ui.i18nMessageInput.save');
+    await saveButton.trigger('click');
+    await saveButton.trigger('click');
+
+    expect(save).toHaveBeenCalledOnce();
+    expect(saveButton.attributes('disabled')).toBeDefined();
+
+    resolveSave({ messageKey: 'menu.pending.title', values: [] });
+    await flushPromises();
   });
 });

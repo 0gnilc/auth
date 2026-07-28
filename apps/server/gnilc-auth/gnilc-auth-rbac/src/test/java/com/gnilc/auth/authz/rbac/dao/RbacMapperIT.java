@@ -21,6 +21,8 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -61,6 +63,25 @@ class RbacMapperIT {
     }
 
     @Test
+    void instantMappingUsesUtcSessionAndMicrosecondPrecision() {
+        Instant instant = Instant.parse("2026-07-27T10:30:00.123456Z");
+        RoleBo role = role("utc-auditor", "UTC Auditor");
+        role.setCreateTime(instant);
+
+        roles.insert(role);
+
+        assertThat(jdbc.queryForObject("select @@session.time_zone", String.class))
+                .isEqualTo("+00:00");
+        assertThat(jdbc.queryForObject(
+                "select date_format(create_time, '%Y-%m-%d %H:%i:%s.%f') from az_role where id = ?",
+                String.class,
+                role.getId()))
+                .isEqualTo("2026-07-27 10:30:00.123456");
+        assertThat(roles.selectById(role.getId()).getCreateTime())
+                .isEqualTo(instant);
+    }
+
+    @Test
     void everyRbacMapperPersistsItsProductionTableMapping() {
         RoleBo role = role("manager", "Manager");
         roles.insert(role);
@@ -96,6 +117,62 @@ class RbacMapperIT {
         assertThat(rolePermissions.selectById(rolePermission.getId()).getPermissionId())
                 .isEqualTo(permission.getId());
         assertThat(roleMenus.selectById(roleMenu.getId()).getMenuId()).isEqualTo(menu.getId());
+    }
+
+    @Test
+    void menuAndPermissionMappingsPersistBuiltInAndClearNullableMenuFields() {
+        PermissionBo permission = new PermissionBo();
+        permission.setCode("report:manage");
+        permission.setName("Manage reports");
+        permission.setTargetIdentifier("/reports/**");
+        permission.setTargetQualifier("POST");
+        permission.setPublicAccess(false);
+        permission.setBuiltIn(true);
+        permissions.insert(permission);
+
+        MenuBo menu = menu("report-settings", "/reports/settings", 0L, MenuType.MENU, 20);
+        menu.setBuiltIn(true);
+        menu.setAccessCode("report:manage");
+        menu.setRedirect("/reports");
+        menu.setActivePath("/reports/settings");
+        menu.setBadge("New");
+        menu.setBadgeType("normal");
+        menu.setBadgeVariants("primary");
+        menu.setIcon("lucide:settings");
+        menu.setIframeSrc("https://example.test/reports");
+        menu.setLink("https://example.test");
+        menu.setQuery("{\"tab\":\"settings\"}");
+        menus.insert(menu);
+
+        menu.setAccessCode(null);
+        menu.setPath(null);
+        menu.setComponent(null);
+        menu.setRedirect(null);
+        menu.setActivePath(null);
+        menu.setBadge(null);
+        menu.setBadgeType(null);
+        menu.setBadgeVariants(null);
+        menu.setIcon(null);
+        menu.setIframeSrc(null);
+        menu.setLink(null);
+        menu.setQuery(null);
+        menus.updateById(menu);
+
+        assertThat(permissions.selectById(permission.getId()).getBuiltIn()).isTrue();
+        assertThat(menus.selectById(menu.getId()))
+                .returns(true, MenuBo::getBuiltIn)
+                .returns(null, MenuBo::getAccessCode)
+                .returns(null, MenuBo::getPath)
+                .returns(null, MenuBo::getComponent)
+                .returns(null, MenuBo::getRedirect)
+                .returns(null, MenuBo::getActivePath)
+                .returns(null, MenuBo::getBadge)
+                .returns(null, MenuBo::getBadgeType)
+                .returns(null, MenuBo::getBadgeVariants)
+                .returns(null, MenuBo::getIcon)
+                .returns(null, MenuBo::getIframeSrc)
+                .returns(null, MenuBo::getLink)
+                .returns(null, MenuBo::getQuery);
     }
 
     private RoleBo role(String code, String name) {

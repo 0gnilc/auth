@@ -20,6 +20,9 @@ import com.gnilc.test.cleanup.RedisCleaner;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -33,6 +36,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -88,6 +92,7 @@ class AdminServiceIT {
                 .extracting(com.gnilc.system.admin.entity.vo.AdminVo::getUsername)
                 .containsExactly("alice");
 
+        authenticateAs(admins.getAdminByUsername("other-admin").getUserId());
         admins.removeAdmin(stored.getId());
         assertThat(admins.getAdmin(stored.getId())).isNull();
         assertThat(admins.login("alice", "Strong#123")).isNull();
@@ -128,6 +133,7 @@ class AdminServiceIT {
         update.setNickname("Robert");
         update.setStatus(false);
         update.setRoleCodes(List.of("reviewer"));
+        authenticateAs(admins.getAdminByUsername("still-enabled").getUserId());
         admins.updateAdmin(update);
 
         assertThat(admins.getAdmin(bob.getId()).getNickname()).isEqualTo("Robert");
@@ -162,6 +168,34 @@ class AdminServiceIT {
     }
 
     @Test
+    void updateClearsExplicitlySubmittedNullableProfileFields() {
+        AdminDto create = admin("profile-clear", "Initial#123", List.of());
+        create.setAvatar("https://example.test/avatar.png");
+        create.setDesc("Temporary description");
+        admins.createAdmin(create);
+        AdminBo stored = admins.getAdminByUsername("profile-clear");
+
+        AdminDto omitted = new AdminDto();
+        omitted.setId(stored.getId());
+        omitted.setNickname("Profile unchanged");
+        admins.updateAdmin(omitted);
+        assertThat(admins.getAdmin(stored.getId())).satisfies(admin -> {
+            assertThat(admin.getAvatar()).isEqualTo("https://example.test/avatar.png");
+            assertThat(admin.getDescription()).isEqualTo("Temporary description");
+        });
+
+        AdminDto update = new AdminDto();
+        update.setId(stored.getId());
+        update.setAvatar(null);
+        update.setDesc(null);
+        admins.updateAdmin(update);
+
+        AdminBo updated = admins.getAdmin(stored.getId());
+        assertThat(updated.getAvatar()).isNull();
+        assertThat(updated.getDescription()).isNull();
+    }
+
+    @Test
     void roleReplacementSupportsEmptyListAndRejectsUnknownRole() {
         ensureRole("operator");
         admins.createAdmin(admin("carol", "Strong#123", List.of("operator")));
@@ -177,11 +211,11 @@ class AdminServiceIT {
         AdminRoleDto clear = new AdminRoleDto();
         clear.setId(carol.getId());
         clear.setRoleCodes(List.of());
-        admins.updateAdminRoles(clear);
+        admins.saveAdminRoles(clear);
         assertThat(admins.getRoleCodes(carol.getUserId())).containsExactly("admin");
 
         clear.setRoleCodes(List.of("operator"));
-        admins.updateAdminRoles(clear);
+        admins.saveAdminRoles(clear);
         assertThat(admins.getRoleCodes(carol.getUserId()))
                 .containsExactlyInAnyOrder("admin", "operator");
 
@@ -192,18 +226,31 @@ class AdminServiceIT {
         assertThat(admins.getRoleCodes(carol.getUserId())).containsExactly("admin");
 
         clear.setRoleCodes(List.of("missing"));
-        assertThatThrownBy(() -> admins.updateAdminRoles(clear))
+        assertThatThrownBy(() -> admins.saveAdminRoles(clear))
                 .isInstanceOf(IllegalConditionException.class);
     }
 
     @Test
-    void createRejectsWeakPasswordsAndDuplicateUsernames() {
-        assertThatThrownBy(() -> admins.createAdmin(admin("weak", "password", null)))
-                .isInstanceOf(InvalidArgumentException.class);
-
+    void createRejectsDuplicateUsernames() {
         admins.createAdmin(admin("unique", "Strong#123", null));
         assertThatThrownBy(() -> admins.createAdmin(admin("unique", "Another#123", null)))
                 .isInstanceOf(InvalidArgumentException.class);
+    }
+
+    @ParameterizedTest(name = "accepts {0}")
+    @MethodSource("validPasswordBoundaries")
+    void createAcceptsPasswordLengthBoundaries(String username, String password) {
+        admins.createAdmin(admin(username, password, null));
+
+        assertThat(admins.login(username, password)).isNotNull();
+    }
+
+    @ParameterizedTest(name = "rejects {0}")
+    @MethodSource("invalidPasswordBoundaries")
+    void createRejectsEveryPasswordComplexityBoundary(String caseName, String password) {
+        assertThatThrownBy(() -> admins.createAdmin(admin("invalid-" + caseName, password, null)))
+                .isInstanceOf(InvalidArgumentException.class)
+                .hasMessageContaining("Password must be 8 to 32 characters");
     }
 
     @Test
@@ -219,107 +266,6 @@ class AdminServiceIT {
         admins.createAdmin(blank);
         assertThat(admins.getAdminByUsername("home-blank").getHomePath())
                 .isEqualTo("/dashboard");
-    }
-
-    @Test
-    void currentProfileUpdateUsesPrincipalUserIdAndOnlyChangesEditableFields() {
-        ensureRole("operator");
-        AdminDto current = admin("profile-owner", "Initial#123", List.of("operator"));
-        current.setAvatar("https://example.test/old.png");
-        current.setDesc("Old description");
-        admins.createAdmin(current);
-        AdminBo owner = admins.getAdminByUsername("profile-owner");
-
-        admins.createAdmin(admin("other-profile", "Other#123", List.of()));
-        AdminBo other = admins.getAdminByUsername("other-profile");
-        authenticateAs(owner.getUserId());
-
-        AdminDto update = new AdminDto();
-        update.setId(other.getId());
-        update.setUsername("hijacked");
-        update.setPassword("Changed#456");
-        update.setNickname("Updated Owner");
-        update.setAvatar("  ");
-        update.setDesc(" ");
-        update.setHomePath("/hijacked");
-        update.setStatus(false);
-        update.setRoleCodes(List.of());
-        admins.updateProfile(update);
-
-        AdminBo updated = admins.getAdmin(owner.getId());
-        assertThat(updated.getUsername()).isEqualTo("profile-owner");
-        assertThat(updated.getNickname()).isEqualTo("Updated Owner");
-        assertThat(updated.getAvatar()).isNull();
-        assertThat(updated.getDescription()).isNull();
-        assertThat(updated.getHomePath()).isEqualTo("/workspace");
-        assertThat(updated.getStatus()).isTrue();
-        assertThat(admins.getRoleCodes(owner.getUserId()))
-                .containsExactlyInAnyOrder("admin", "operator");
-        assertThat(admins.login("profile-owner", "Initial#123")).isNotNull();
-        assertThat(admins.getAdmin(other.getId()).getNickname()).isEqualTo("other-profile");
-    }
-
-    @Test
-    void currentProfileUpdateRejectsBlankNicknameWithoutChangingProfile() {
-        admins.createAdmin(admin("invalid-profile", "Initial#123", List.of()));
-        AdminBo owner = admins.getAdminByUsername("invalid-profile");
-        authenticateAs(owner.getUserId());
-
-        AdminDto update = new AdminDto();
-        update.setNickname("   ");
-        update.setAvatar("https://example.test/changed.png");
-
-        assertThatThrownBy(() -> admins.updateProfile(update))
-                .isInstanceOf(InvalidArgumentException.class)
-                .hasMessage("Nickname is required.");
-        assertThat(admins.getAdmin(owner.getId()).getNickname()).isEqualTo("invalid-profile");
-        assertThat(admins.getAdmin(owner.getId()).getAvatar()).isNull();
-    }
-
-    @Test
-    void currentPasswordUpdateChangesPasswordAndRevokesOnlyCurrentUsersSessions() {
-        admins.createAdmin(admin("password-owner", "Initial#123", List.of()));
-        AdminBo owner = admins.getAdminByUsername("password-owner");
-        AdminTokenVo firstSession = admins.login("password-owner", "Initial#123");
-        AdminTokenVo secondSession = admins.login("password-owner", "Initial#123");
-
-        admins.createAdmin(admin("password-other", "Other#123", List.of()));
-        AdminTokenVo otherSession = admins.login("password-other", "Other#123");
-        AdminBo other = admins.getAdminByUsername("password-other");
-        authenticateAs(owner.getUserId());
-
-        admins.updatePassword("Initial#123", "Changed#456");
-
-        assertThat(admins.login("password-owner", "Initial#123")).isNull();
-        assertThat(admins.login("password-owner", "Changed#456")).isNotNull();
-        assertThat(sessions.validateAccessToken(firstSession.getAccessToken())).isNull();
-        assertThat(sessions.validateAccessToken(secondSession.getAccessToken())).isNull();
-        assertThat(admins.refresh(firstSession.getRefreshToken())).isNull();
-        assertThat(admins.refresh(secondSession.getRefreshToken())).isNull();
-        assertThat(sessions.validateAccessToken(otherSession.getAccessToken()))
-                .isEqualTo(other.getUserId());
-        assertThat(admins.refresh(otherSession.getRefreshToken())).isNotNull();
-    }
-
-    @Test
-    void currentPasswordUpdateRejectsInvalidCredentialsWithoutChangingPasswordOrSessions() {
-        admins.createAdmin(admin("password-invalid", "Initial#123", List.of()));
-        AdminBo owner = admins.getAdminByUsername("password-invalid");
-        AdminTokenVo session = admins.login("password-invalid", "Initial#123");
-        authenticateAs(owner.getUserId());
-
-        assertThatThrownBy(() -> admins.updatePassword("Wrong#123", "Changed#456"))
-                .isInstanceOf(InvalidArgumentException.class)
-                .hasMessage("Current password is incorrect.");
-        assertThatThrownBy(() -> admins.updatePassword("Initial#123", "weak"))
-                .isInstanceOf(InvalidArgumentException.class)
-                .hasMessageContaining("Password must be 8 to 32 characters");
-
-        assertThat(admins.login("password-invalid", "Initial#123")).isNotNull();
-        assertThat(admins.login("password-invalid", "Changed#456")).isNull();
-        assertThat(sessions.validateAccessToken(session.getAccessToken()))
-                .isEqualTo(owner.getUserId());
-        assertThat(admins.refresh(session.getRefreshToken())).isNotNull();
     }
 
     @Test
@@ -370,6 +316,25 @@ class AdminServiceIT {
         dto.setStatus(true);
         dto.setRoleCodes(roleCodes);
         return dto;
+    }
+
+    private static Stream<Arguments> validPasswordBoundaries() {
+        return Stream.of(
+                Arguments.of("password-length-8", "Aa1#aaaa"),
+                Arguments.of("password-length-32", "Aa1#" + "a".repeat(28)));
+    }
+
+    private static Stream<Arguments> invalidPasswordBoundaries() {
+        return Stream.of(
+                Arguments.of("length-7", "Aa1#aaa"),
+                Arguments.of("length-33", "Aa1#" + "a".repeat(29)),
+                Arguments.of("uppercase", "aa1#aaaa"),
+                Arguments.of("lowercase", "AA1#AAAA"),
+                Arguments.of("digit", "Aa#aaaaa"),
+                Arguments.of("special", "Aa1aaaaa"),
+                Arguments.of("space", "Aa1# aaa"),
+                Arguments.of("tab", "Aa1#\taaa"),
+                Arguments.of("newline", "Aa1#\naaa"));
     }
 
     private void ensureRole(String code) {

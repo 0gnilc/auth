@@ -14,7 +14,10 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ContextConfiguration;
 
+import java.util.List;
+
 import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.not;
@@ -35,10 +38,10 @@ class AdminAuthApiIT extends AdminApiTestSupport {
     private PermissionCache permissionCache;
 
     @Test
-    void loginRefreshAndLogoutRunThroughTheRealHttpAndRedisStack() {
+    void loginRepeatedRefreshAndLogoutRunThroughTheRealHttpAndRedisStack() {
         TokenPair pair = loginAsDefaultAdmin();
 
-        String accessToken = given()
+        String firstRefreshedAccessToken = given()
                 .header("X-Refresh-Token", pair.refreshToken())
                 .when()
                 .post("/api/sys/admin/refresh")
@@ -51,12 +54,36 @@ class AdminAuthApiIT extends AdminApiTestSupport {
                 .path("data.accessToken");
 
         given()
-                .header("Authorization", bearer(accessToken))
+                .header("Authorization", bearer(pair.accessToken()))
+                .when()
+                .get("/api/sys/admin/user-info")
+                .then()
+                .statusCode(401);
+
+        given()
+                .header("Authorization", bearer(firstRefreshedAccessToken))
                 .when()
                 .get("/api/sys/admin/user-info")
                 .then()
                 .statusCode(200)
                 .body("data.username", equalTo("admin"));
+
+        String secondRefreshedAccessToken = given()
+                .header("X-Refresh-Token", pair.refreshToken())
+                .when()
+                .post("/api/sys/admin/refresh")
+                .then()
+                .statusCode(200)
+                .body("code", equalTo(0))
+                .body("data.refreshToken", equalTo(pair.refreshToken()))
+                .body("data.accessToken", not(equalTo(firstRefreshedAccessToken)))
+                .extract()
+                .path("data.accessToken");
+
+        given().header("Authorization", bearer(firstRefreshedAccessToken))
+                .get("/api/sys/admin/user-info").then().statusCode(401);
+        given().header("Authorization", bearer(secondRefreshedAccessToken))
+                .get("/api/sys/admin/user-info").then().statusCode(200);
 
         given()
                 .header("X-Refresh-Token", pair.refreshToken())
@@ -72,6 +99,45 @@ class AdminAuthApiIT extends AdminApiTestSupport {
                 .then()
                 .statusCode(401)
                 .body("code", equalTo(20002));
+
+        given()
+                .header("Authorization", bearer(secondRefreshedAccessToken))
+                .when()
+                .get("/api/sys/admin/user-info")
+                .then()
+                .statusCode(401);
+
+        given()
+                .header("X-Refresh-Token", pair.refreshToken())
+                .when()
+                .post("/api/sys/admin/logout")
+                .then()
+                .statusCode(401)
+                .body("code", equalTo(20002));
+    }
+
+    @Test
+    void refreshRejectsMissingBlankMalformedAndAccessTokens() {
+        TokenPair pair = loginAsDefaultAdmin();
+
+        given()
+                .post("/api/sys/admin/refresh")
+                .then()
+                .statusCode(401)
+                .body("code", equalTo(20002));
+
+        for (String invalidToken : List.of(
+                " ",
+                "not-a-token",
+                "sys_admin.not-a-number.value",
+                pair.accessToken())) {
+            given()
+                    .header("X-Refresh-Token", invalidToken)
+                    .post("/api/sys/admin/refresh")
+                    .then()
+                    .statusCode(401)
+                    .body("code", equalTo(20002));
+        }
     }
 
     @Test
@@ -120,8 +186,9 @@ class AdminAuthApiIT extends AdminApiTestSupport {
                 .body("data[0].meta.title", equalTo("menu.dashboard.title"))
                 .body("data[1].name", equalTo("System"))
                 .body("data[1].path", equalTo("/system"))
-                .body("data[1].children.size()", equalTo(1))
-                .body("data[1].children[0].name", equalTo("I18nMessage"))
+                .body("data[1].children.size()", equalTo(5))
+                .body("data[1].children.name", contains(
+                        "I18nMessage", "Admin", "Role", "Permission", "Menu"))
                 .body("data[1].children[0].path", equalTo("/system/i18n-message"))
                 .body("data[1].children[0].meta.title", equalTo("menu.i18nMessage.title"))
                 .body("data[2].name", equalTo("Profile"))
@@ -194,7 +261,7 @@ class AdminAuthApiIT extends AdminApiTestSupport {
                 .then()
                 .statusCode(200)
                 .body("code", equalTo(0))
-                .body("data.size()", equalTo(4))
+                .body("data.size()", equalTo(3))
                 .body("data[0].name", equalTo("LimitedCatalog"))
                 .body("data[0].children.size()", equalTo(1))
                 .body("data[0].children[0].name", equalTo("LimitedHome"))
@@ -207,8 +274,7 @@ class AdminAuthApiIT extends AdminApiTestSupport {
                 .body("data[2].name", equalTo("LimitedRepository"))
                 .body("data[2].component", equalTo("IFrameView"))
                 .body("data[2].meta.link", equalTo("https://example.test/repository"))
-                .body("data[3].name", equalTo("LimitedEmpty"))
-                .body("data[3].children.size()", equalTo(0))
+                .body("data.name", not(hasItem("LimitedEmpty")))
                 .body("data.name", not(hasItem("LimitedExport")))
                 .body("data.name", not(hasItem("LimitedDisabled")))
                 .body("data.name", not(hasItem("LimitedDisabledChild")))

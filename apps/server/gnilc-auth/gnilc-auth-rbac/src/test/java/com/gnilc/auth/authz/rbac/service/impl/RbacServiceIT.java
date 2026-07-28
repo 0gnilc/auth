@@ -27,6 +27,9 @@ import com.gnilc.auth.authz.rbac.service.UserService;
 import com.gnilc.auth.authz.rbac.support.RbacTestApplication;
 import com.gnilc.auth.authz.rbac.support.RbacContainerContextInitializer;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -35,6 +38,7 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -57,6 +61,7 @@ class RbacServiceIT {
     @Test
     void roleLifecycleEnforcesUniqueCodesAndProtectsBuiltInRoles() {
         RoleDto create = role("support", "Support");
+        create.setRemark("Temporary remark");
         roles.createRole(create);
         RoleBo role = roles.getRoleByCode("support");
 
@@ -69,6 +74,7 @@ class RbacServiceIT {
         update.setId(role.getId());
         roles.updateRole(update);
         assertThat(roles.getRoleByCode("support-v2").getName()).isEqualTo("Support v2");
+        assertThat(roles.getRoleByCode("support-v2").getRemark()).isNull();
 
         RoleBo builtInRole = new RoleBo();
         builtInRole.setCode("built-in");
@@ -94,6 +100,8 @@ class RbacServiceIT {
     @Test
     void permissionLifecycleSupportsFilteringAndLogicalRemoval() {
         PermissionDto create = permission("invoice:read", "Read invoices", "/invoices/**", false);
+        create.setTargetQualifier("GET");
+        create.setRemark("Temporary remark");
         permissions.createPermission(create);
         PermissionBo stored = permissions.getPermissionByCode("invoice:read");
 
@@ -107,6 +115,8 @@ class RbacServiceIT {
         update.setId(stored.getId());
         permissions.updatePermission(update);
         assertThat(permissions.getPermissionByCode("invoice:view").getPublicAccess()).isTrue();
+        assertThat(permissions.getPermissionByCode("invoice:view").getTargetQualifier()).isNull();
+        assertThat(permissions.getPermissionByCode("invoice:view").getRemark()).isNull();
 
         permissions.removePermission(stored.getId());
         assertThat(permissions.getById(stored.getId())).isNull();
@@ -135,7 +145,7 @@ class RbacServiceIT {
         RolePermissionDto rolePermission = new RolePermissionDto();
         rolePermission.setRoleId(analyst.getId());
         rolePermission.setPermissionIds(List.of(report.getId()));
-        rolePermissions.updateRolePermission(rolePermission);
+        rolePermissions.saveRolePermissions(rolePermission);
 
         assertThat(users.checkRole(userId, "analyst")).isTrue();
         assertThat(users.getRoles(userId)).extracting(RoleBo::getCode).containsExactly("analyst");
@@ -150,6 +160,63 @@ class RbacServiceIT {
         userRole.setRoleIds(List.of());
         userRoles.updateUserRole(userRole);
         assertThat(users.getRoles(userId)).isEmpty();
+    }
+
+    @Test
+    void roleRemovalClearsAllBindingsAndUserGrants() {
+        roles.createRole(role("temporary-operator", "Temporary operator"));
+        RoleBo role = roles.getRoleByCode("temporary-operator");
+        permissions.createPermission(permission(
+                "temporary:operate", "Temporary operation", "/temporary/**", false));
+        PermissionBo permission = permissions.getPermissionByCode("temporary:operate");
+        MenuDto menuDto = menu("temporary", "Temporary", "/temporary", MenuType.CATALOG, 0L, 10);
+        menus.createMenu(menuDto);
+        MenuBo menu = menus.getMenuByPath("/temporary");
+        Long userId = users.createUser();
+
+        UserRoleDto userRole = new UserRoleDto();
+        userRole.setUserId(userId);
+        userRole.setRoleIds(List.of(role.getId()));
+        userRoles.updateUserRole(userRole);
+        RolePermissionDto rolePermission = new RolePermissionDto();
+        rolePermission.setRoleId(role.getId());
+        rolePermission.setPermissionIds(List.of(permission.getId()));
+        rolePermissions.saveRolePermissions(rolePermission);
+        RoleMenuDto roleMenu = new RoleMenuDto();
+        roleMenu.setRoleId(role.getId());
+        roleMenu.setMenuIds(List.of(menu.getId()));
+        roleMenus.saveRoleMenus(roleMenu);
+
+        roles.removeRole(role.getId());
+
+        assertThat(userRoles.getRoleIds(userId)).isEmpty();
+        assertThat(rolePermissions.getPermissionIds(role.getId())).isEmpty();
+        assertThat(roleMenus.getMenuIds(role.getId())).isEmpty();
+        assertThat(users.getPermissions(userId)).isEmpty();
+        assertThat(users.getMenus(userId)).isEmpty();
+    }
+
+    @Test
+    void permissionRemovalClearsRoleBindingsAndUserGrants() {
+        roles.createRole(role("permission-owner", "Permission owner"));
+        RoleBo role = roles.getRoleByCode("permission-owner");
+        permissions.createPermission(permission(
+                "temporary:read", "Read temporary data", "/temporary/**", false));
+        PermissionBo permission = permissions.getPermissionByCode("temporary:read");
+        Long userId = users.createUser();
+        UserRoleDto userRole = new UserRoleDto();
+        userRole.setUserId(userId);
+        userRole.setRoleIds(List.of(role.getId()));
+        userRoles.updateUserRole(userRole);
+        RolePermissionDto rolePermission = new RolePermissionDto();
+        rolePermission.setRoleId(role.getId());
+        rolePermission.setPermissionIds(List.of(permission.getId()));
+        rolePermissions.saveRolePermissions(rolePermission);
+
+        permissions.removePermission(permission.getId());
+
+        assertThat(rolePermissions.getPermissionIds(role.getId())).isEmpty();
+        assertThat(users.getPermissions(userId)).isEmpty();
     }
 
     @Test
@@ -172,11 +239,11 @@ class RbacServiceIT {
         RolePermissionDto rolePermission = new RolePermissionDto();
         rolePermission.setRoleId(role.getId());
         rolePermission.setPermissionIds(List.of(permission.getId()));
-        rolePermissions.updateRolePermission(rolePermission);
+        rolePermissions.saveRolePermissions(rolePermission);
         RoleMenuDto roleMenu = new RoleMenuDto();
         roleMenu.setRoleId(role.getId());
         roleMenu.setMenuIds(List.of(menu.getId()));
-        roleMenus.updateRoleMenu(roleMenu);
+        roleMenus.saveRoleMenus(roleMenu);
 
         jdbc.update("""
                 insert into az_user_role (del, create_time, user_id, role_id)
@@ -207,8 +274,8 @@ class RbacServiceIT {
                 .containsExactly("duplicates");
 
         userRoles.updateUserRole(userRole);
-        rolePermissions.updateRolePermission(rolePermission);
-        roleMenus.updateRoleMenu(roleMenu);
+        rolePermissions.saveRolePermissions(rolePermission);
+        roleMenus.saveRoleMenus(roleMenu);
         assertThat(activeRelationCount("az_user_role", "user_id", userId)).isEqualTo(2);
         assertThat(activeRelationCount("az_role_permission", "role_id", role.getId())).isEqualTo(2);
         assertThat(activeRelationCount("az_role_menu", "role_id", role.getId())).isEqualTo(2);
@@ -219,9 +286,9 @@ class RbacServiceIT {
         userRole.setRoleIds(List.of());
         userRoles.updateUserRole(userRole);
         rolePermission.setPermissionIds(List.of());
-        rolePermissions.updateRolePermission(rolePermission);
+        rolePermissions.saveRolePermissions(rolePermission);
         roleMenu.setMenuIds(List.of());
-        roleMenus.updateRoleMenu(roleMenu);
+        roleMenus.saveRoleMenus(roleMenu);
         assertThat(userRoles.getRoleIds(userId)).isEmpty();
         assertThat(rolePermissions.getPermissionIds(role.getId())).isEmpty();
         assertThat(roleMenus.getMenuIds(role.getId())).isEmpty();
@@ -229,12 +296,56 @@ class RbacServiceIT {
         userRole.setRoleIds(List.of(role.getId()));
         userRoles.updateUserRole(userRole);
         rolePermission.setPermissionIds(List.of(permission.getId()));
-        rolePermissions.updateRolePermission(rolePermission);
+        rolePermissions.saveRolePermissions(rolePermission);
         roleMenu.setMenuIds(List.of(menu.getId()));
-        roleMenus.updateRoleMenu(roleMenu);
+        roleMenus.saveRoleMenus(roleMenu);
         assertThat(userRoles.getRoleIds(userId)).containsExactly(role.getId());
         assertThat(rolePermissions.getPermissionIds(role.getId())).containsExactly(permission.getId());
         assertThat(roleMenus.getMenuIds(role.getId())).containsExactly(menu.getId());
+    }
+
+    @ParameterizedTest(name = "{0} parent -> {2}, accepted: {3}")
+    @MethodSource("menuParentChildCases")
+    void menuHierarchyEnforcesEveryParentChildTypeCombination(
+            String parentLabel,
+            MenuType parentType,
+            MenuType childType,
+            boolean accepted) {
+        long parentId = createMatrixParent(parentType);
+        MenuDto child = validMenu("matrix-child", childType, parentId);
+
+        if (accepted) {
+            menus.createMenu(child);
+            assertThat(findMenu(child)).isNotNull();
+        } else {
+            assertThatThrownBy(() -> menus.createMenu(child))
+                    .isInstanceOf(InvalidArgumentException.class);
+        }
+    }
+
+    @ParameterizedTest(name = "{0} URL length {1}, accepted: {2}")
+    @MethodSource("menuUrlBoundaries")
+    void menuHttpUrlLengthUsesTheExactFiveHundredCharacterBoundary(
+            MenuType type,
+            int length,
+            boolean accepted) {
+        MenuDto menu = validMenu("url-" + type.name().toLowerCase() + '-' + length, type, 0L);
+        String url = httpUrl(length);
+        if (type == MenuType.EMBEDDED) {
+            menu.setIframeSrc(url);
+        } else {
+            menu.setLink(url);
+        }
+
+        if (accepted) {
+            menus.createMenu(menu);
+            MenuBo stored = menus.getMenuByPath(menu.getPath());
+            assertThat(type == MenuType.EMBEDDED ? stored.getIframeSrc() : stored.getLink())
+                    .hasSize(500);
+        } else {
+            assertThatThrownBy(() -> menus.createMenu(menu))
+                    .isInstanceOf(InvalidArgumentException.class);
+        }
     }
 
     @Test
@@ -261,7 +372,7 @@ class RbacServiceIT {
         binding.setRoleId(editor.getId());
         Long buttonId = menus.getMenuByAccessCode("dashboard:edit").getId();
         binding.setMenuIds(List.of(buttonId));
-        roleMenus.updateRoleMenu(binding);
+        roleMenus.saveRoleMenus(binding);
 
         assertThat(roleMenus.getMenuIds(editor.getId()))
                 .containsExactlyInAnyOrder(rootBo.getId(), buttonId);
@@ -277,11 +388,11 @@ class RbacServiceIT {
         RoleMenuDto binding = new RoleMenuDto();
         binding.setRoleId(roleId);
         binding.setMenuIds(List.of(menuId));
-        roleMenus.updateRoleMenu(binding);
+        roleMenus.saveRoleMenus(binding);
 
         binding.setMenuIds(List.of(Long.MAX_VALUE));
 
-        assertThatThrownBy(() -> roleMenus.updateRoleMenu(binding))
+        assertThatThrownBy(() -> roleMenus.saveRoleMenus(binding))
                 .isInstanceOf(InvalidArgumentException.class);
         assertThat(roleMenus.getMenuIds(roleId)).containsExactly(menuId);
     }
@@ -299,7 +410,7 @@ class RbacServiceIT {
         binding.setRoleId(roleId);
         binding.setMenuIds(List.of(disabledMenuId));
 
-        roleMenus.updateRoleMenu(binding);
+        roleMenus.saveRoleMenus(binding);
 
         assertThat(roleMenus.getMenuIds(roleId)).containsExactly(disabledMenuId);
     }
@@ -319,12 +430,12 @@ class RbacServiceIT {
         RoleMenuDto binding = new RoleMenuDto();
         binding.setRoleId(roleId);
         binding.setMenuIds(List.of(existingMenuId));
-        roleMenus.updateRoleMenu(binding);
+        roleMenus.saveRoleMenus(binding);
         jdbc.update("update az_menu set del = 1 where id = ?", deletedMenuId);
 
         binding.setMenuIds(List.of(deletedMenuId));
 
-        assertThatThrownBy(() -> roleMenus.updateRoleMenu(binding))
+        assertThatThrownBy(() -> roleMenus.saveRoleMenus(binding))
                 .isInstanceOf(InvalidArgumentException.class);
         assertThat(roleMenus.getMenuIds(roleId)).containsExactly(existingMenuId);
     }
@@ -348,6 +459,34 @@ class RbacServiceIT {
     }
 
     @Test
+    void menuUpdateClearsNullableRoutingOptions() {
+        MenuDto create = menu("Reports", "Reports", "/reports", MenuType.MENU, 0L, 10);
+        create.setComponent("/reports/index");
+        create.setRedirect("/reports/overview");
+        create.setAffixTab(true);
+        create.setAffixTabOrder(3);
+        create.setMaxNumOfOpenTab(2);
+        menus.createMenu(create);
+        MenuBo stored = menus.getMenuByPath("/reports");
+
+        MenuDto update = menu("Reports", "Reports", "/reports", MenuType.MENU, 0L, 10);
+        update.setId(stored.getId());
+        update.setName(" Reports ");
+        update.setPath(" /reports ");
+        update.setComponent(" /reports/index ");
+        update.setAffixTab(false);
+        menus.updateMenu(update);
+
+        MenuBo updated = menus.getById(stored.getId());
+        assertThat(updated.getName()).isEqualTo("Reports");
+        assertThat(updated.getPath()).isEqualTo("/reports");
+        assertThat(updated.getComponent()).isEqualTo("/reports/index");
+        assertThat(updated.getRedirect()).isNull();
+        assertThat(updated.getAffixTabOrder()).isNull();
+        assertThat(updated.getMaxNumOfOpenTab()).isNull();
+    }
+
+    @Test
     void menuRemovalDeletesTheWholeSubtreeAndItsRoleBindings() {
         MenuDto root = menu("operations", "Operations", "/operations", MenuType.CATALOG, 0L, 10);
         menus.createMenu(root);
@@ -365,7 +504,7 @@ class RbacServiceIT {
         RoleMenuDto binding = new RoleMenuDto();
         binding.setRoleId(roleId);
         binding.setMenuIds(List.of(buttonId));
-        roleMenus.updateRoleMenu(binding);
+        roleMenus.saveRoleMenus(binding);
         jdbc.update("update az_menu set del = 1 where id = ?", childBo.getId());
 
         menus.removeMenu(rootBo.getId());
@@ -420,7 +559,7 @@ class RbacServiceIT {
                 auditId, buttonId, embeddedId, linkId, emptyId, hiddenChildId, Long.MAX_VALUE));
 
         assertThat(routes).extracting(MenuRouteVo::getName)
-                .containsExactly("Tools", "Documentation", "Repository", "Empty");
+                .containsExactly("Tools", "Documentation", "Repository");
         MenuRouteVo toolsRoute = routes.get(0);
         assertThat(toolsRoute.getComponent()).isNull();
         assertThat(toolsRoute.getChildren()).singleElement().satisfies(route -> {
@@ -431,7 +570,6 @@ class RbacServiceIT {
         });
         assertThat(routes.get(1).getComponent()).isEqualTo("IFrameView");
         assertThat(routes.get(2).getComponent()).isEqualTo("IFrameView");
-        assertThat(routes.get(3).getChildren()).isEmpty();
     }
 
     @Test
@@ -486,6 +624,74 @@ class RbacServiceIT {
         dto.setOrder(order);
         dto.setStatus(true);
         return dto;
+    }
+
+    private long createMatrixParent(MenuType parentType) {
+        if (parentType == null) {
+            return 0L;
+        }
+        long parentPid = 0L;
+        if (parentType == MenuType.BUTTON) {
+            MenuDto container = validMenu("matrix-container", MenuType.CATALOG, 0L);
+            menus.createMenu(container);
+            parentPid = menus.getMenuByPath(container.getPath()).getId();
+        }
+        MenuDto parent = validMenu("matrix-parent", parentType, parentPid);
+        menus.createMenu(parent);
+        return findMenu(parent).getId();
+    }
+
+    private MenuDto validMenu(String name, MenuType type, long pid) {
+        MenuDto dto = menu(
+                name,
+                name,
+                type == MenuType.BUTTON ? null : '/' + name,
+                type,
+                pid,
+                10);
+        switch (type) {
+            case MENU -> dto.setComponent("/views/" + name);
+            case BUTTON -> dto.setAccessCode(name + ":action");
+            case EMBEDDED -> dto.setIframeSrc("https://example.test/" + name);
+            case LINK -> dto.setLink("https://example.test/" + name);
+            case CATALOG -> {
+            }
+        }
+        return dto;
+    }
+
+    private MenuBo findMenu(MenuDto dto) {
+        return dto.getType() == MenuType.BUTTON
+                ? menus.getMenuByAccessCode(dto.getAccessCode())
+                : menus.getMenuByPath(dto.getPath());
+    }
+
+    private static Stream<Arguments> menuParentChildCases() {
+        Stream.Builder<Arguments> cases = Stream.builder();
+        for (MenuType childType : MenuType.values()) {
+            cases.add(Arguments.of("root", null, childType, childType != MenuType.BUTTON));
+        }
+        for (MenuType parentType : MenuType.values()) {
+            for (MenuType childType : MenuType.values()) {
+                boolean accepted = parentType == MenuType.CATALOG
+                        || (parentType == MenuType.MENU && childType == MenuType.BUTTON);
+                cases.add(Arguments.of(parentType.name().toLowerCase(), parentType, childType, accepted));
+            }
+        }
+        return cases.build();
+    }
+
+    private static Stream<Arguments> menuUrlBoundaries() {
+        return Stream.of(
+                Arguments.of(MenuType.EMBEDDED, 500, true),
+                Arguments.of(MenuType.EMBEDDED, 501, false),
+                Arguments.of(MenuType.LINK, 500, true),
+                Arguments.of(MenuType.LINK, 501, false));
+    }
+
+    private static String httpUrl(int length) {
+        String prefix = "https://example.test/";
+        return prefix + "a".repeat(length - prefix.length());
     }
 
     private int activeRelationCount(String table, String ownerColumn, Long ownerId) {

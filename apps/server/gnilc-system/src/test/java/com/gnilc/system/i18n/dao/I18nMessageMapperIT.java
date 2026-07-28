@@ -28,13 +28,14 @@ class I18nMessageMapperIT {
 
     @Test
     void mappingUsesCaseSensitiveUniqueKeyAutoFillAndPhysicalDelete() {
-        I18nMessageBo lower = message("test.mapper.title", "zh-CN", "标题");
+        I18nMessageBo lower = message("admin", "test.mapper.title", "zh-CN", "标题");
         messages.insert(lower);
-        messages.insert(message("test.Mapper.title", "zh-CN", "大写标题"));
+        messages.insert(message("admin", "test.Mapper.title", "zh-CN", "大写标题"));
 
         assertThat(lower.getId()).isNotNull();
         assertThat(lower.getCreateTime()).isNotNull();
-        assertThatThrownBy(() -> messages.insert(message("test.mapper.title", "zh-CN", "重复")))
+        assertThatThrownBy(() -> messages.insert(message(
+                "default", "test.mapper.title", "zh-CN", "重复")))
                 .isInstanceOf(DuplicateKeyException.class);
 
         messages.deleteById(lower.getId());
@@ -44,9 +45,9 @@ class I18nMessageMapperIT {
                 .isZero();
     }
 
-    private I18nMessageBo message(String key, String locale, String value) {
+    private I18nMessageBo message(String category, String key, String locale, String value) {
         I18nMessageBo row = new I18nMessageBo();
-        row.setClient("admin");
+        row.setCategory(category);
         row.setMessageKey(key);
         row.setLocale(locale);
         row.setI18nValue(value);

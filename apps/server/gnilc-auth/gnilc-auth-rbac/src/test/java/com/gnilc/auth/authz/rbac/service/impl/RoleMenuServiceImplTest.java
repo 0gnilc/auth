@@ -6,9 +6,12 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.conditions.query.LambdaQueryChainWrapper;
 import com.gnilc.auth.authz.rbac.dao.RoleMenusDao;
 import com.gnilc.auth.authz.rbac.entity.bo.MenuBo;
+import com.gnilc.auth.authz.rbac.entity.bo.RoleBo;
 import com.gnilc.auth.authz.rbac.entity.bo.RoleMenuBo;
 import com.gnilc.auth.authz.rbac.entity.dto.RoleMenuDto;
 import com.gnilc.auth.authz.rbac.service.MenuService;
+import com.gnilc.auth.authz.rbac.service.RoleService;
+import com.gnilc.common.exception.IllegalConditionException;
 import com.gnilc.common.exception.InvalidArgumentException;
 import com.gnilc.common.i18n.I18nMessageService;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
@@ -30,6 +33,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -41,6 +45,8 @@ class RoleMenuServiceImplTest {
     private RoleMenusDao roleMenusDao;
     @Mock
     private MenuService menuService;
+    @Mock
+    private RoleService roleService;
 
     private RoleMenuServiceImpl roleMenus;
 
@@ -56,21 +62,23 @@ class RoleMenuServiceImplTest {
         source.setDefaultEncoding("UTF-8");
         roleMenus = spy(new RoleMenuServiceImpl(
                 menuService,
+                roleService,
                 new I18nMessageService(source, "en-US")));
-        doAnswer(invocation -> new LambdaQueryChainWrapper<>(
+        lenient().doAnswer(invocation -> new LambdaQueryChainWrapper<>(
                 roleMenusDao, Wrappers.lambdaQuery(RoleMenuBo.class)))
                 .when(roleMenus).lambdaQuery();
     }
 
     @Test
-    void updateRoleMenuSavesTheValidatedAncestorClosure() {
+    void saveRoleMenusSavesTheValidatedAncestorClosure() {
         RoleMenuDto dto = assignment(7L, List.of(30L));
+        when(roleService.getById(7L)).thenReturn(role(7L, false));
         when(roleMenusDao.selectList(any())).thenReturn(List.of());
         when(menuService.getMenusWithAncestors(Set.of(30L), true))
                 .thenReturn(List.of(menu(20L), menu(30L)));
         doReturn(true).when(roleMenus).saveBatch(anyCollection());
 
-        roleMenus.updateRoleMenu(dto);
+        roleMenus.saveRoleMenus(dto);
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<Collection<RoleMenuBo>> saved = ArgumentCaptor.forClass(Collection.class);
@@ -84,17 +92,30 @@ class RoleMenuServiceImplTest {
     }
 
     @Test
-    void updateRoleMenuDoesNotMutateBindingsWhenMenuValidationFails() {
+    void saveRoleMenusDoesNotMutateBindingsWhenMenuValidationFails() {
         RoleMenuDto dto = assignment(7L, List.of(Long.MAX_VALUE));
+        when(roleService.getById(7L)).thenReturn(role(7L, false));
         when(roleMenusDao.selectList(any())).thenReturn(List.of());
         when(menuService.getMenusWithAncestors(Set.of(Long.MAX_VALUE), true))
                 .thenThrow(new InvalidArgumentException("The selected menu is invalid."));
 
-        assertThatThrownBy(() -> roleMenus.updateRoleMenu(dto))
+        assertThatThrownBy(() -> roleMenus.saveRoleMenus(dto))
                 .isInstanceOf(InvalidArgumentException.class);
         verify(roleMenus, never()).lambdaUpdate();
         verify(roleMenus, never()).saveBatch(anyCollection());
         verify(roleMenusDao).selectList(any());
+    }
+
+    @Test
+    void saveRoleMenusRejectsBuiltInRolesBeforeReadingBindings() {
+        RoleMenuDto dto = assignment(7L, List.of(30L));
+        when(roleService.getById(7L)).thenReturn(role(7L, true));
+
+        assertThatThrownBy(() -> roleMenus.saveRoleMenus(dto))
+                .isInstanceOf(IllegalConditionException.class)
+                .hasMessage("Built-in role permissions and menus cannot be modified.");
+        verify(roleMenus, never()).lambdaQuery();
+        verify(roleMenus, never()).saveBatch(anyCollection());
     }
 
     private RoleMenuDto assignment(Long roleId, List<Long> menuIds) {
@@ -108,5 +129,12 @@ class RoleMenuServiceImplTest {
         MenuBo menu = new MenuBo();
         menu.setId(id);
         return menu;
+    }
+
+    private RoleBo role(Long id, boolean builtIn) {
+        RoleBo role = new RoleBo();
+        role.setId(id);
+        role.setBuiltIn(builtIn);
+        return role;
     }
 }
