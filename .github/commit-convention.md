@@ -59,6 +59,8 @@ Any commit that contains `BREAKING CHANGE:` is treated as a breaking change and 
 - `docs`
 - `workflow`
 
+Scoped package names such as `@app/server` and `@vben-core/shared` are also valid.
+
 ## Subject
 
 - Required.
