@@ -7,7 +7,7 @@ import com.gnilc.common.i18n.I18nMessageService;
 import com.gnilc.auth.authz.rbac.dao.UserRoleDao;
 import com.gnilc.auth.authz.rbac.entity.bo.UserRoleBo;
 import com.gnilc.auth.authz.rbac.entity.dto.UserRoleDto;
-import com.gnilc.auth.authz.rbac.event.RbacAuthzEvent;
+import com.gnilc.auth.authz.rbac.event.AuthorizationEvent;
 import com.gnilc.auth.authz.rbac.service.UserRoleService;
 import com.google.common.collect.Sets;
 import org.springframework.context.ApplicationEventPublisher;
@@ -67,9 +67,9 @@ public class UserRoleServiceImpl extends ServiceImpl<UserRoleDao, UserRoleBo> im
             saveBatch(bos);
         }
 
-        eventPublisher.publishEvent(RbacAuthzEvent.of(
-                RbacAuthzEvent.Type.USER_ROLE,
-                RbacAuthzEvent.Action.REPLACE,
+        eventPublisher.publishEvent(AuthorizationEvent.of(
+                AuthorizationEvent.Type.USER_ROLE,
+                AuthorizationEvent.Action.REPLACE,
                 userId));
     }
 
@@ -100,9 +100,9 @@ public class UserRoleServiceImpl extends ServiceImpl<UserRoleDao, UserRoleBo> im
             bo.setRoleId(roleId);
             save(bo);
         }
-        eventPublisher.publishEvent(RbacAuthzEvent.of(
-                RbacAuthzEvent.Type.USER_ROLE,
-                RbacAuthzEvent.Action.REPLACE,
+        eventPublisher.publishEvent(AuthorizationEvent.of(
+                AuthorizationEvent.Type.USER_ROLE,
+                AuthorizationEvent.Action.REPLACE,
                 userId));
     }
 
@@ -114,9 +114,9 @@ public class UserRoleServiceImpl extends ServiceImpl<UserRoleDao, UserRoleBo> im
         remove(new LambdaQueryWrapper<UserRoleBo>()
                 .eq(UserRoleBo::getUserId, userId)
                 .eq(UserRoleBo::getRoleId, roleId));
-        eventPublisher.publishEvent(RbacAuthzEvent.of(
-                RbacAuthzEvent.Type.USER_ROLE,
-                RbacAuthzEvent.Action.REPLACE,
+        eventPublisher.publishEvent(AuthorizationEvent.of(
+                AuthorizationEvent.Type.USER_ROLE,
+                AuthorizationEvent.Action.REPLACE,
                 userId));
     }
 
@@ -153,9 +153,9 @@ public class UserRoleServiceImpl extends ServiceImpl<UserRoleDao, UserRoleBo> im
         lambdaUpdate()
                 .eq(UserRoleBo::getRoleId, roleId)
                 .remove();
-        userIds.forEach(userId -> eventPublisher.publishEvent(RbacAuthzEvent.of(
-                RbacAuthzEvent.Type.USER_ROLE,
-                RbacAuthzEvent.Action.REPLACE,
+        userIds.forEach(userId -> eventPublisher.publishEvent(AuthorizationEvent.of(
+                AuthorizationEvent.Type.USER_ROLE,
+                AuthorizationEvent.Action.REPLACE,
                 userId)));
     }
 

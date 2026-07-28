@@ -2,7 +2,7 @@ package com.gnilc.auth.authz.rbac.provider.cache;
 
 import com.gnilc.auth.authz.rbac.service.RolePermissionService;
 import com.gnilc.auth.authz.rbac.service.UserRoleService;
-import com.gnilc.auth.authz.rbac.event.RbacAuthzEvent;
+import com.gnilc.auth.authz.rbac.event.AuthorizationEvent;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 
@@ -43,7 +43,7 @@ public class PermissionCacheResetPolicy {
      * @param event 携带授权数据 ID 的 RBAC 授权事件
      * @return 缓存重置命令列表
      */
-    public List<PermissionCacheResetCommand> commandsFor(RbacAuthzEvent<Long> event) {
+    public List<PermissionCacheResetCommand> commandsFor(AuthorizationEvent<Long> event) {
         if (event == null || event.getType() == null) {
             return List.of();
         }
@@ -51,7 +51,7 @@ public class PermissionCacheResetPolicy {
             case PERMISSION -> commandsForPermission(event.getData());
             case ROLE, ROLE_PERMISSION -> userCommandsForRole(event.getData());
             case USER, USER_ROLE -> userCommand(event.getData());
-            case ALL -> List.of();
+            case ROLE_MENU, ALL -> List.of();
         };
     }
 
@@ -61,8 +61,8 @@ public class PermissionCacheResetPolicy {
      * @param event RBAC 授权全量清理事件
      * @return 缓存重置命令列表
      */
-    public List<PermissionCacheResetCommand> commandsForAll(RbacAuthzEvent<Void> event) {
-        if (event == null || event.getType() != RbacAuthzEvent.Type.ALL) {
+    public List<PermissionCacheResetCommand> commandsForAll(AuthorizationEvent<Void> event) {
+        if (event == null || event.getType() != AuthorizationEvent.Type.ALL) {
             return List.of();
         }
         return List.of(PermissionCacheResetCommand.all());

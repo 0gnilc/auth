@@ -6,6 +6,7 @@ import com.gnilc.common.base.Preconditions;
 import com.gnilc.common.i18n.I18nMessageService;
 import com.gnilc.common.utils.BeanPropertyUtils;
 import com.gnilc.common.utils.PageResult;
+import com.gnilc.system.admin.cache.AdminCacheService;
 import com.gnilc.auth.authz.rbac.entity.bo.MenuBo;
 import com.gnilc.auth.authz.rbac.entity.bo.RoleBo;
 import com.gnilc.auth.authz.rbac.entity.dto.UserRoleDto;
@@ -25,10 +26,12 @@ import com.gnilc.system.admin.entity.dto.AdminPageDto;
 import com.gnilc.system.admin.entity.dto.AdminRoleDto;
 import com.gnilc.system.admin.entity.vo.AdminTokenVo;
 import com.gnilc.system.admin.entity.vo.AdminVo;
+import com.gnilc.system.admin.event.AdminEvent;
 import com.gnilc.system.admin.service.AdminService;
 import com.gnilc.system.auth.AccessPrincipalUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,26 +54,32 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
     private static final BCryptPasswordEncoder PASSWORD_ENCODER = new BCryptPasswordEncoder();
 
     private final AdminSessionManager sessionManager;
+    private final AdminCacheService cacheService;
     private final RoleService roleService;
     private final MenuService menuService;
     private final RoleMenuService roleMenuService;
     private final UserService userService;
     private final UserRoleService userRoleService;
+    private final ApplicationEventPublisher eventPublisher;
     private final I18nMessageService messages;
 
     public AdminServiceImpl(AdminSessionManager sessionManager,
+                            AdminCacheService cacheService,
                             RoleService roleService,
                             MenuService menuService,
                             RoleMenuService roleMenuService,
                             UserService userService,
                             UserRoleService userRoleService,
+                            ApplicationEventPublisher eventPublisher,
                             I18nMessageService messages) {
         this.sessionManager = sessionManager;
+        this.cacheService = cacheService;
         this.roleService = roleService;
         this.menuService = menuService;
         this.roleMenuService = roleMenuService;
         this.userService = userService;
         this.userRoleService = userRoleService;
+        this.eventPublisher = eventPublisher;
         this.messages = messages;
     }
 
@@ -125,11 +134,22 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
     @Override
     public AdminVo getUserInfo() {
         Long userId = AccessPrincipalUtils.getUserId();
-        AdminBo bo = getAdminByUserId(userId);
-        if (bo == null) {
+        AdminVo vo = cacheService.getUserInfo(userId, () -> {
+            AdminBo bo = getAdminByUserId(userId);
+            if (bo == null) {
+                return null;
+            }
+            AdminVo userInfo = new AdminVo();
+            BeanUtils.copyProperties(bo, userInfo);
+            userInfo.setDesc(bo.getDescription());
+            userInfo.setStatus(null);
+            return userInfo;
+        });
+        if (vo == null) {
             return null;
         }
-        return toAdminVo(bo, false, true);
+        vo.setRoleCodes(getRoleCodes(userId));
+        return vo;
     }
 
     @Override
@@ -156,6 +176,7 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
                 .set(AdminBo::getDescription, description)
                 .eq(AdminBo::getId, bo.getId())
                 .update();
+        eventPublisher.publishEvent(new AdminEvent(AdminEvent.Action.UPDATE, bo.getUserId()));
     }
 
     @Override
@@ -211,11 +232,12 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
      */
     @Override
     public List<String> getRoleCodes(Long userId) {
-        return Optional.ofNullable(roleService.getRoles(userId)).orElse(List.of()).stream()
-                .map(RoleBo::getCode)
-                .filter(StringUtils::isNotBlank)
-                .distinct()
-                .toList();
+        return cacheService.getRoleCodes(userId,
+                () -> Optional.ofNullable(roleService.getRoles(userId)).orElse(List.of()).stream()
+                        .map(RoleBo::getCode)
+                        .filter(StringUtils::isNotBlank)
+                        .distinct()
+                        .toList());
     }
 
     /**
@@ -223,22 +245,25 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
      */
     @Override
     public List<String> getMenuAccessCodes(Long userId) {
-        return Optional.ofNullable(userService.getMenus(userId)).orElse(List.of()).stream()
-                .filter(menu -> menu.getType() == MenuType.BUTTON)
-                .filter(MenuBo::getStatus)
-                .map(MenuBo::getAccessCode)
-                .filter(StringUtils::isNotBlank)
-                .map(String::trim)
-                .distinct()
-                .toList();
+        return cacheService.getMenuAccessCodes(userId,
+                () -> Optional.ofNullable(userService.getMenus(userId)).orElse(List.of()).stream()
+                        .filter(menu -> menu.getType() == MenuType.BUTTON)
+                        .filter(MenuBo::getStatus)
+                        .map(MenuBo::getAccessCode)
+                        .filter(StringUtils::isNotBlank)
+                        .map(String::trim)
+                        .distinct()
+                        .toList());
     }
 
     @Override
     public List<MenuRouteVo> getMenuRoutes() {
         Long userId = AccessPrincipalUtils.getUserId();
-        List<Long> roleIds = userRoleService.getRoleIds(userId);
-        List<Long> menuIds = roleMenuService.getMenuIds(roleIds);
-        return menuService.getMenuRoutes(menuIds);
+        return cacheService.getMenuRoutes(userId, () -> {
+            List<Long> roleIds = userRoleService.getRoleIds(userId);
+            List<Long> menuIds = roleMenuService.getMenuIds(roleIds);
+            return menuService.getMenuRoutes(menuIds);
+        });
     }
 
     /**
@@ -317,6 +342,7 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
 
         updateById(bo);
         saveRolesIfProvided(bo.getUserId(), dto.getRoleCodes());
+        eventPublisher.publishEvent(new AdminEvent(AdminEvent.Action.UPDATE, bo.getUserId()));
 
         if (wasEnabled) {
             sessionManager.cleanupUserSessions(bo.getUserId());
@@ -351,22 +377,28 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
         removeById(id);
         userService.removeUser(bo.getUserId());
         replaceRoles(bo.getUserId(), List.of());
+        eventPublisher.publishEvent(new AdminEvent(AdminEvent.Action.DELETE, bo.getUserId()));
     }
 
     /**
      * 分页查询管理员。
      */
     @Override
-    public PageResult<AdminVo> getAdminPage(AdminPageDto dto) {
-        AdminPageDto query = dto == null ? new AdminPageDto() : dto;
+    public PageResult<AdminVo> getAdminPage(AdminPageDto params) {
         IPage<AdminBo> page = lambdaQuery()
-                .eq(StringUtils.isNotBlank(query.getUsername()), AdminBo::getUsername, query.getUsername())
-                .like(StringUtils.isNotBlank(query.getNickname()), AdminBo::getNickname, query.getNickname())
-                .eq(query.getStatus() != null, AdminBo::getStatus, query.getStatus())
+                .eq(StringUtils.isNotBlank(params.getUsername()), AdminBo::getUsername, params.getUsername())
+                .like(StringUtils.isNotBlank(params.getNickname()), AdminBo::getNickname, params.getNickname())
+                .eq(params.getStatus() != null, AdminBo::getStatus, params.getStatus())
                 .orderByDesc(AdminBo::getId)
-                .page(query.getPage());
+                .page(params.getPage());
         List<AdminVo> vos = page.getRecords().stream()
-                .map(bo -> toAdminVo(bo, true, true))
+                .map(bo -> {
+                    AdminVo vo = new AdminVo();
+                    BeanUtils.copyProperties(bo, vo);
+                    vo.setDesc(bo.getDescription());
+                    vo.setRoleCodes(getRoleCodes(bo.getUserId()));
+                    return vo;
+                })
                 .toList();
         return PageResult.of(page, vos);
     }
@@ -442,16 +474,4 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
         userRoleService.updateUserRole(dto);
     }
 
-    private AdminVo toAdminVo(AdminBo bo, boolean includeStatus, boolean includeRoleCodes) {
-        AdminVo vo = new AdminVo();
-        BeanUtils.copyProperties(bo, vo);
-        vo.setDesc(bo.getDescription());
-        if (!includeStatus) {
-            vo.setStatus(null);
-        }
-        if (includeRoleCodes) {
-            vo.setRoleCodes(getRoleCodes(bo.getUserId()));
-        }
-        return vo;
-    }
 }

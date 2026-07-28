@@ -12,7 +12,7 @@ import com.gnilc.auth.authz.rbac.entity.dto.RoleDto;
 import com.gnilc.auth.authz.rbac.entity.dto.RolePageDto;
 import com.gnilc.auth.authz.rbac.entity.dto.RoleQueryDto;
 import com.gnilc.auth.authz.rbac.entity.vo.RoleVo;
-import com.gnilc.auth.authz.rbac.event.RbacAuthzEvent;
+import com.gnilc.auth.authz.rbac.event.AuthorizationEvent;
 import com.gnilc.auth.authz.rbac.service.RoleMenuService;
 import com.gnilc.auth.authz.rbac.service.RolePermissionService;
 import com.gnilc.auth.authz.rbac.service.RoleService;
@@ -95,9 +95,9 @@ public class RoleServiceImpl extends ServiceImpl<RoleDao, RoleBo> implements Rol
         bo.setBuiltIn(Boolean.FALSE);
         save(bo);
 
-        eventPublisher.publishEvent(RbacAuthzEvent.of(
-                RbacAuthzEvent.Type.ROLE,
-                RbacAuthzEvent.Action.CREATE,
+        eventPublisher.publishEvent(AuthorizationEvent.of(
+                AuthorizationEvent.Type.ROLE,
+                AuthorizationEvent.Action.CREATE,
                 bo.getId()));
     }
 
@@ -135,9 +135,9 @@ public class RoleServiceImpl extends ServiceImpl<RoleDao, RoleBo> implements Rol
         bo.setRemark(remark);
         updateById(bo);
 
-        eventPublisher.publishEvent(RbacAuthzEvent.of(
-                RbacAuthzEvent.Type.ROLE,
-                RbacAuthzEvent.Action.UPDATE,
+        eventPublisher.publishEvent(AuthorizationEvent.of(
+                AuthorizationEvent.Type.ROLE,
+                AuthorizationEvent.Action.UPDATE,
                 roleId));
     }
 
@@ -155,9 +155,9 @@ public class RoleServiceImpl extends ServiceImpl<RoleDao, RoleBo> implements Rol
         userRoleService.removeByRoleId(id);
         removeById(id);
 
-        eventPublisher.publishEvent(RbacAuthzEvent.of(
-                RbacAuthzEvent.Type.ROLE,
-                RbacAuthzEvent.Action.DELETE,
+        eventPublisher.publishEvent(AuthorizationEvent.of(
+                AuthorizationEvent.Type.ROLE,
+                AuthorizationEvent.Action.DELETE,
                 id));
     }
 

@@ -9,6 +9,7 @@ import com.gnilc.auth.authz.rbac.entity.bo.MenuBo;
 import com.gnilc.auth.authz.rbac.entity.bo.RoleBo;
 import com.gnilc.auth.authz.rbac.entity.bo.RoleMenuBo;
 import com.gnilc.auth.authz.rbac.entity.dto.RoleMenuDto;
+import com.gnilc.auth.authz.rbac.event.AuthorizationEvent;
 import com.gnilc.auth.authz.rbac.service.MenuService;
 import com.gnilc.auth.authz.rbac.service.RoleService;
 import com.gnilc.common.exception.IllegalConditionException;
@@ -21,6 +22,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.support.ResourceBundleMessageSource;
 
 import java.util.Collection;
@@ -47,6 +49,8 @@ class RoleMenuServiceImplTest {
     private MenuService menuService;
     @Mock
     private RoleService roleService;
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     private RoleMenuServiceImpl roleMenus;
 
@@ -63,6 +67,7 @@ class RoleMenuServiceImplTest {
         roleMenus = spy(new RoleMenuServiceImpl(
                 menuService,
                 roleService,
+                eventPublisher,
                 new I18nMessageService(source, "en-US")));
         lenient().doAnswer(invocation -> new LambdaQueryChainWrapper<>(
                 roleMenusDao, Wrappers.lambdaQuery(RoleMenuBo.class)))
@@ -89,6 +94,7 @@ class RoleMenuServiceImplTest {
                 .containsOnly(7L);
         verify(menuService).getMenusWithAncestors(Set.of(30L), true);
         verify(roleMenusDao).selectList(any());
+        assertRoleMenuEvent(7L);
     }
 
     @Test
@@ -123,6 +129,16 @@ class RoleMenuServiceImplTest {
         dto.setRoleId(roleId);
         dto.setMenuIds(menuIds);
         return dto;
+    }
+
+    private void assertRoleMenuEvent(Long roleId) {
+        ArgumentCaptor<Object> event = ArgumentCaptor.forClass(Object.class);
+        verify(eventPublisher).publishEvent(event.capture());
+        assertThat(event.getValue()).isInstanceOfSatisfying(AuthorizationEvent.class, published -> {
+            assertThat(published.getType()).isEqualTo(AuthorizationEvent.Type.ROLE_MENU);
+            assertThat(published.getAction()).isEqualTo(AuthorizationEvent.Action.REPLACE);
+            assertThat(published.getData()).isEqualTo(roleId);
+        });
     }
 
     private MenuBo menu(Long id) {

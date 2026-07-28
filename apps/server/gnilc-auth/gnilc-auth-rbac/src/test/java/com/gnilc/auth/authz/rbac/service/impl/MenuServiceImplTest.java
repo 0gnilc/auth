@@ -6,6 +6,7 @@ import com.gnilc.auth.authz.rbac.entity.bo.MenuBo;
 import com.gnilc.auth.authz.rbac.entity.dto.MenuDto;
 import com.gnilc.auth.authz.rbac.entity.enums.MenuType;
 import com.gnilc.auth.authz.rbac.entity.vo.MenuRouteVo;
+import com.gnilc.auth.authz.rbac.event.MenuEvent;
 import com.gnilc.auth.authz.rbac.service.RoleMenuService;
 import com.gnilc.common.exception.IllegalConditionException;
 import com.gnilc.common.exception.InvalidArgumentException;
@@ -16,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.context.support.ResourceBundleMessageSource;
 
@@ -39,6 +41,8 @@ class MenuServiceImplTest {
     private MenuDao menuDao;
     @Mock
     private RoleMenuService roleMenuService;
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     private MenuServiceImpl menus;
 
@@ -51,6 +55,7 @@ class MenuServiceImplTest {
         menus = spy(new MenuServiceImpl(
                 menuDao,
                 roleMenuService,
+                eventPublisher,
                 new ObjectMapper(),
                 new I18nMessageService(source, "en-US")));
     }
@@ -196,6 +201,7 @@ class MenuServiceImplTest {
         verify(menuDao).getSubtreeIds(1L, true);
         verify(roleMenuService).removeByMenuIds(subtreeIds);
         verify(menus).removeByIds(subtreeIds);
+        verify(eventPublisher).publishEvent(new MenuEvent(MenuEvent.Action.DELETE, 1L));
     }
 
     @Test
