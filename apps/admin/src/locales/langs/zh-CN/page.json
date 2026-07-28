@@ -55,7 +55,7 @@
       "keyPlaceholder": "按Message Key模糊查询",
       "value": "翻译值",
       "valuePlaceholder": "按翻译值模糊查询",
-      "client": "客户端",
+      "category": "分类",
       "locale": "语言",
       "allLocales": "全部语言"
     },
@@ -66,8 +66,23 @@
       "remove": "删除",
       "reload": "刷新"
     },
+    "drawer": {
+      "createTitle": "新增国际化消息",
+      "editTitle": "修改国际化消息"
+    },
+    "form": {
+      "category": "分类",
+      "messageKey": "Message Key"
+    },
+    "validation": {
+      "keyRequired": "请输入 Message Key",
+      "keyTooLong": "Message Key 不能超过 191 个字符",
+      "keyInvalid": "Message Key 必须是以字母开头的点分标识",
+      "enRequired": "en-US 兜底文本不能为空",
+      "valueTooLong": "单个语言文本不能超过 4000 个字符"
+    },
     "table": {
-      "client": "客户端",
+      "category": "分类",
       "key": "Message Key",
       "operations": "操作",
       "empty": "暂无国际化配置"
@@ -77,9 +92,263 @@
       "removeSuccess": "国际化配置已删除",
       "removeConfirm": "确定删除“{key}”的全部语言配置吗？",
       "removeTitle": "删除国际化配置",
-      "staticKey": "该Message Key由前端静态语言包管理，不能保存到动态配置",
       "runtimeReloadFailed": "数据已保存，但当前页面语言包刷新失败",
       "listReloadFailed": "数据已变更，但列表刷新失败"
+    }
+  },
+  "rbacCommon": {
+    "actions": "操作",
+    "builtIn": "内置",
+    "builtInProtected": "内置资源不可修改",
+    "cancel": "取消",
+    "custom": "自定义",
+    "disabled": "禁用",
+    "discard": "放弃修改",
+    "edit": "修改",
+    "enabled": "启用",
+    "filterPlaceholder": "筛选可选项",
+    "keepEditing": "继续编辑",
+    "noMatches": "没有匹配项",
+    "noneSelected": "暂未选择",
+    "remove": "删除",
+    "reset": "重置",
+    "save": "保存",
+    "search": "查询",
+    "selected": "已选择",
+    "unsavedConfirm": "当前内容尚未保存，确定放弃修改吗？",
+    "unsavedTitle": "未保存的修改"
+  },
+  "systemAdmin": {
+    "title": "后台管理员",
+    "filters": {
+      "username": "按用户名精确查询",
+      "nickname": "按昵称模糊查询",
+      "status": "启用状态"
+    },
+    "actions": {
+      "create": "新增后台管理员",
+      "roles": "分配角色"
+    },
+    "table": {
+      "username": "用户名",
+      "nickname": "昵称",
+      "roles": "角色",
+      "roleCount": "共 {count} 个角色",
+      "status": "状态",
+      "createTime": "创建时间"
+    },
+    "drawer": {
+      "createTitle": "新增后台管理员",
+      "editTitle": "修改后台管理员",
+      "rolesTitle": "为“{name}”分配角色"
+    },
+    "form": {
+      "username": "用户名",
+      "password": "密码",
+      "passwordUnchanged": "留空则不修改密码",
+      "nickname": "昵称",
+      "homePath": "默认首页",
+      "avatar": "头像 URL",
+      "description": "描述",
+      "status": "启用状态"
+    },
+    "validation": {
+      "username": "请输入用户名",
+      "password": "新增后台管理员时必须设置密码",
+      "nickname": "请输入昵称",
+      "homePath": "请输入默认首页"
+    },
+    "messages": {
+      "saveSuccess": "后台管理员已保存",
+      "removeConfirm": "确定删除后台管理员“{name}”吗？",
+      "removeTitle": "删除后台管理员",
+      "removeSuccess": "后台管理员已删除",
+      "rolesSuccess": "角色分配已保存",
+      "statusConfirm": "确定将“{name}”设为{status}吗？",
+      "statusTitle": "修改启用状态",
+      "statusSuccess": "启用状态已更新",
+      "currentProtected": "不能删除当前后台管理员"
+    }
+  },
+  "systemRole": {
+    "title": "角色管理",
+    "filters": {
+      "code": "按角色标识精确查询",
+      "name": "按角色名称模糊查询"
+    },
+    "actions": {
+      "create": "新增角色",
+      "permissions": "分配权限",
+      "menus": "菜单授权"
+    },
+    "table": {
+      "code": "角色标识",
+      "name": "角色名称",
+      "remark": "描述",
+      "type": "类型",
+      "createTime": "创建时间"
+    },
+    "drawer": {
+      "createTitle": "新增角色",
+      "editTitle": "修改角色",
+      "permissionsTitle": "为“{name}”分配权限",
+      "menusTitle": "为“{name}”进行菜单授权"
+    },
+    "form": {
+      "code": "角色标识",
+      "name": "角色名称",
+      "remark": "描述"
+    },
+    "validation": {
+      "code": "请输入角色标识",
+      "name": "请输入角色名称"
+    },
+    "messages": {
+      "saveSuccess": "角色已保存",
+      "removeConfirm": "确定删除角色“{name}”吗？",
+      "removeTitle": "删除角色",
+      "removeSuccess": "角色已删除",
+      "permissionsSuccess": "角色权限已保存",
+      "menusSuccess": "角色菜单已保存"
+    }
+  },
+  "systemPermission": {
+    "title": "权限管理",
+    "public": "公开访问",
+    "protected": "需要授权",
+    "filters": {
+      "code": "按权限标识精确查询",
+      "name": "按权限名称模糊查询",
+      "targetIdentifier": "按访问目标模糊查询",
+      "publicAccess": "访问方式"
+    },
+    "actions": {
+      "create": "新增权限",
+      "enablePublic": "确认公开"
+    },
+    "table": {
+      "code": "权限标识",
+      "name": "权限名称",
+      "qualifier": "限定符",
+      "target": "访问目标",
+      "access": "访问方式",
+      "type": "类型"
+    },
+    "drawer": {
+      "createTitle": "新增权限",
+      "editTitle": "修改权限"
+    },
+    "form": {
+      "code": "权限标识",
+      "name": "权限名称",
+      "qualifier": "目标限定符",
+      "qualifierPlaceholder": "例如 POST",
+      "targetIdentifier": "访问目标标识",
+      "remark": "描述",
+      "publicAccess": "公开访问",
+      "publicHint": "无需角色授权即可访问",
+      "protectedHint": "必须通过角色获得该权限"
+    },
+    "validation": {
+      "code": "请输入权限标识",
+      "name": "请输入权限名称",
+      "targetIdentifier": "请输入访问目标标识"
+    },
+    "messages": {
+      "saveSuccess": "权限已保存",
+      "removeConfirm": "确定删除权限“{name}”吗？",
+      "removeTitle": "删除权限",
+      "removeSuccess": "权限已删除",
+      "publicConfirm": "开启后，该访问目标将绕过角色授权检查。确定公开访问吗？",
+      "publicTitle": "确认公开访问"
+    }
+  },
+  "systemMenu": {
+    "title": "菜单管理",
+    "root": "根菜单",
+    "filters": {
+      "keyword": "关键词"
+    },
+    "actions": {
+      "create": "新增菜单",
+      "append": "新增下级"
+    },
+    "types": {
+      "catalog": "目录",
+      "menu": "菜单",
+      "embedded": "内嵌页面",
+      "link": "外链",
+      "button": "按钮"
+    },
+    "table": {
+      "title": "菜单标题",
+      "name": "菜单名称",
+      "type": "类型",
+      "accessCode": "按钮权限码",
+      "path": "路径",
+      "status": "状态"
+    },
+    "drawer": {
+      "createTitle": "新增菜单",
+      "editTitle": "修改菜单"
+    },
+    "sections": {
+      "routing": "路由配置",
+      "badgeAndTabs": "徽标与标签页",
+      "behavior": "显示与行为"
+    },
+    "form": {
+      "type": "菜单类型",
+      "typeImmutable": "保存成功后类型不可再修改",
+      "parent": "上级菜单",
+      "name": "菜单名称",
+      "title": "菜单标题",
+      "path": "路由路径",
+      "component": "组件路径",
+      "accessCode": "按钮权限码",
+      "iframeSrc": "内嵌页面 URL",
+      "link": "外链 URL",
+      "status": "启用状态",
+      "order": "排序",
+      "redirect": "重定向",
+      "activePath": "激活菜单路径",
+      "icon": "图标",
+      "query": "路由查询参数（JSON 对象）",
+      "badge": "徽标内容",
+      "badgeType": "徽标类型",
+      "badgeVariants": "徽标样式",
+      "affixTabOrder": "固定标签页排序",
+      "maxNumOfOpenTab": "最大同名标签数",
+      "affixTab": "固定标签页",
+      "fullPathKey": "完整路径作为标签 Key",
+      "hideChildrenInMenu": "隐藏子菜单",
+      "hideInBreadcrumb": "在面包屑隐藏",
+      "hideInMenu": "在菜单隐藏",
+      "hideInTab": "在标签页隐藏",
+      "keepAlive": "缓存页面",
+      "noBasicLayout": "不使用基础布局",
+      "openInNewWindow": "在新窗口打开"
+    },
+    "validation": {
+      "type": "请选择菜单类型",
+      "parent": "请选择上级菜单",
+      "name": "请输入菜单名称",
+      "title": "请配置菜单标题",
+      "path": "请输入路由路径",
+      "component": "请输入组件路径",
+      "accessCode": "请输入按钮权限码",
+      "iframeSrc": "请输入内嵌页面 URL",
+      "link": "请输入外链 URL",
+      "query": "路由查询参数必须是有效的 JSON 对象",
+      "url": "请输入完整的 http 或 https 地址",
+      "parentType": "所选上级菜单不能包含当前菜单类型"
+    },
+    "messages": {
+      "saveSuccess": "菜单已保存",
+      "removeConfirm": "确定删除“{name}”及其全部下级菜单吗？",
+      "removeTitle": "删除菜单",
+      "removeSuccess": "菜单已删除",
+      "removeImpactConfirm": "确定删除“{name}”吗？将同时删除 {descendants} 个下级节点，并影响 {roles} 个角色的菜单授权。"
     }
   }
 }

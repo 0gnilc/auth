@@ -49,16 +49,7 @@ export const useAuthStore = defineStore('auth', () => {
         accessStore.setAccessToken(accessToken);
         accessStore.setRefreshToken(refreshToken);
 
-        // 获取用户信息并存储到 accessStore 中
-        const [userInfoResult, accessCodes] = await Promise.all([
-          getUserInfo(),
-          getMenuAccessCodes(),
-        ]);
-
-        userInfo = userInfoResult;
-
-        userStore.setUserInfo(userInfo);
-        accessStore.setAccessCodes(accessCodes);
+        userInfo = await getUserInfo();
 
         const { loadDynamicMessages } = await import('#/locales/dynamic');
         await loadDynamicMessages();
@@ -112,8 +103,12 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function getUserInfo() {
-    const userInfo = await getAdminUserInfo();
+    const [userInfo, accessCodes] = await Promise.all([
+      getAdminUserInfo(),
+      getMenuAccessCodes(),
+    ]);
     userStore.setUserInfo(userInfo);
+    accessStore.setAccessCodes(accessCodes);
     return userInfo;
   }
 

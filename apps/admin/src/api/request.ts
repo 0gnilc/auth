@@ -20,8 +20,6 @@ import { useAuthStore } from '#/store';
 import { refresh } from './core';
 
 const { apiURL } = useAppConfig(import.meta.env, import.meta.env.PROD);
-const CLIENT_HEADER = 'X-Client';
-const ADMIN_CLIENT = 'admin';
 
 function createRequestClient(baseURL: string, options?: RequestClientOptions) {
   const client = new RequestClient({
@@ -75,7 +73,6 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
 
       config.headers.Authorization = formatToken(accessStore.accessToken);
       config.headers['Accept-Language'] = preferences.app.locale;
-      config.headers[CLIENT_HEADER] = ADMIN_CLIENT;
       return config;
     },
   });

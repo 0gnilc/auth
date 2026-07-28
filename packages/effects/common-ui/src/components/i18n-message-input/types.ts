@@ -22,10 +22,11 @@ export type I18nMessageLoader = (
 /** 保存 Message 并返回后端确认后的完整数据。 */
 export type I18nMessageSaver = (message: I18nMessage) => Promise<I18nMessage>;
 
+/** I18nMessageInput 支持的表单控件尺寸。 */
+export type I18nMessageInputSize = 'default' | 'large' | 'small';
+
 /** I18nMessageInput 的公开属性。 */
 export interface I18nMessageInputProps {
-  /** 外部输入框用于显示文本的默认语言。 */
-  defaultLocale?: string;
   /** 是否禁用组件。 */
   disabled?: boolean;
   /** 打开浮层时使用的数据加载函数。 */
@@ -38,4 +39,6 @@ export interface I18nMessageInputProps {
   rows?: number;
   /** 点击保存时使用的数据保存函数。 */
   save: I18nMessageSaver;
+  /** 内外输入控件的统一尺寸，默认与标准表单控件一致。 */
+  size?: I18nMessageInputSize;
 }

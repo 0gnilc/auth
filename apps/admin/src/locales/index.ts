@@ -11,7 +11,6 @@ import {
   setupI18n as coreSetup,
   i18n,
   loadCoreLocaleMessages,
-  loadLocaleMessages,
   loadLocalesMapFromDir,
 } from '@vben/locales';
 import { preferences } from '@vben/preferences';
@@ -20,21 +19,19 @@ import dayjs from 'dayjs';
 import enLocale from 'element-plus/es/locale/lang/en';
 import defaultLocale from 'element-plus/es/locale/lang/zh-cn';
 
-import { collectLeafKeys, mergeMessages } from './messages';
+import { mergeMessages } from './messages';
 
 // Element Plus 通过响应式引用消费当前语言配置，切换后无需重新挂载应用。
 const elementLocale = ref<Language>(defaultLocale);
-// vue-i18n 找不到当前语言消息时，统一回退到中文。
-const DEFAULT_LOCALE: SupportedLanguagesType = 'zh-CN';
+// vue-i18n 找不到当前语言消息时，统一回退到英文。
+const DEFAULT_LOCALE: SupportedLanguagesType = 'en-US';
 // 前后端共享同一组固定语言代码；数据库动态消息也只会返回这些语言。
-const SUPPORTED_LOCALES: SupportedLanguagesType[] = ['zh-CN', 'en-US'];
+const SUPPORTED_LOCALES: SupportedLanguagesType[] = ['en-US', 'zh-CN'];
 
 // Vite 将每个语言目录包装为延迟加载函数，避免首屏一次加载全部静态 JSON。
 const modules = import.meta.glob('./langs/**/*.json');
 // 后端返回的是按语言组织的完整快照；替换整个对象才能同步反映已删除的 key。
 const dynamicMessages = ref<Record<string, Record<string, unknown>>>({});
-// 汇总公共和应用静态语言包的叶子 key，用于阻止保存不会生效的动态同名 key。
-const staticKeys = new Set<string>();
 
 // 将 ./langs/{locale}/{namespace}.json 聚合为按语言延迟加载的消息树。
 const localesMap = loadLocalesMapFromDir(
@@ -46,23 +43,17 @@ const localesMap = loadLocalesMapFromDir(
  *
  * 动态消息优先级最低，公共静态语言包居中，应用静态语言包最高。这样后台
  * 可以配置菜单等运行时内容，但不能覆盖随版本发布的按钮、表单和页面文案。
- * 第三方库语言包与消息树并行加载，它们由各自的全局状态管理。
  */
-async function loadMessages(lang: SupportedLanguagesType) {
-  // 并行加载 Admin 应用静态消息、公共静态消息，并同步第三方库的语言环境。
+async function buildMessages(lang: SupportedLanguagesType) {
+  // 并行加载 Admin 应用静态消息和公共静态消息。
   const [appLocaleMessages, coreLocaleMessages] = await Promise.all([
     // 加载 apps/admin/src/locales/langs/{lang} 下的应用专属 JSON。
     localesMap[lang]?.(),
     // 加载 packages/locales/src/langs/{lang} 下的公共 JSON。
     loadCoreLocaleMessages(lang),
-    // 切换 Element Plus 和 dayjs 的语言；该任务只产生副作用，不参与解构赋值。
-    loadThirdPartyMessage(lang),
   ]);
   // Vite 动态导入结果以 default 包裹消息；当前语言不存在时使用空对象。
   const localMessages = appLocaleMessages?.default ?? {};
-  // 收集公共和应用静态消息的叶子 key，供动态消息管理功能检查 key 冲突。
-  collectLeafKeys(coreLocaleMessages, '', staticKeys);
-  collectLeafKeys(localMessages, '', staticKeys);
   // 按“动态 < 公共静态 < Admin 静态”的优先级生成最终消息树。
   return mergeMessages(
     mergeMessages(dynamicMessages.value[lang] ?? {}, coreLocaleMessages),
@@ -71,42 +62,29 @@ async function loadMessages(lang: SupportedLanguagesType) {
 }
 
 /**
- * 加载所有支持语言的静态语言包并收集叶子 key。
- *
- * 不能只检查当前语言，否则某个 key 只存在于另一语言时仍可能被错误写入
- * 数据库。Set 会自动去重，多次调用是幂等的，并复用已加载的模块结果。
+ * 用户实际切换语言时，同时更新消息树和第三方组件语言。
  */
-async function ensureStaticKeys() {
-  await Promise.all(
-    SUPPORTED_LOCALES.map(async (locale) => {
-      const [appMessages, coreMessages] = await Promise.all([
-        localesMap[locale]?.(),
-        loadCoreLocaleMessages(locale),
-      ]);
-      collectLeafKeys(coreMessages, '', staticKeys);
-      collectLeafKeys(appMessages?.default ?? {}, '', staticKeys);
-    }),
-  );
-  return staticKeys;
+async function loadMessages(lang: SupportedLanguagesType) {
+  const [messages] = await Promise.all([
+    buildMessages(lang),
+    loadThirdPartyMessage(lang),
+  ]);
+  return messages;
 }
 
 /**
  * 替换数据库动态消息快照，并重新生成每个语言的运行时消息。
  *
- * loadLocaleMessages 会重新调用上面的 loadMessages，因此每个语言都会按既定
- * 优先级与静态消息合并。该底层函数在加载过程中会切换当前语言，所以最后
- * 再加载进入函数前的活动语言，保证用户界面不会停留在循环中的最后一项。
+ * 每个语言都会按既定优先级与静态消息重新合并，并通过 setLocaleMessage
+ * 原位替换。该流程不改变活动语言，也不会切换 Element Plus 或 Day.js。
  */
 async function applyDynamicMessages(
   bundle: Record<string, Record<string, unknown>>,
 ) {
   dynamicMessages.value = bundle;
-  const activeLocale = i18n.global.locale.value as SupportedLanguagesType;
   for (const locale of SUPPORTED_LOCALES) {
-    await loadLocaleMessages(locale);
-  }
-  if (SUPPORTED_LOCALES.includes(activeLocale)) {
-    await loadLocaleMessages(activeLocale);
+    const messages = await buildMessages(locale);
+    i18n.global.setLocaleMessage(locale, messages);
   }
 }
 
@@ -181,7 +159,6 @@ export {
   $t,
   applyDynamicMessages,
   elementLocale,
-  ensureStaticKeys,
   setupI18n,
   SUPPORTED_LOCALES,
 };

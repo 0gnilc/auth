@@ -1,332 +1,173 @@
 <script setup lang="ts">
-import type { I18nMessageSaver } from '@vben/common-ui';
+import type { I18nMessageFormDrawerData } from './modules/form.vue';
 
+import type { VxeTableGridOptions } from '#/adapter/vxe-table';
 import type { I18nMessageApi } from '#/api';
 
-import { onMounted, reactive, ref } from 'vue';
+import { onMounted, ref } from 'vue';
 
-import {
-  I18nMessageInput,
-  Page,
-  VbenButton,
-  VbenIconButton,
-} from '@vben/common-ui';
-import { Eraser, Plus, RotateCw, Search } from '@vben/icons';
+import { Page, useVbenDrawer, VbenButton } from '@vben/common-ui';
+import { IconifyIcon } from '@vben/icons';
 
-import {
-  ElInput,
-  ElMessage,
-  ElMessageBox,
-  ElOption,
-  ElPagination,
-  ElSelect,
-  ElTable,
-  ElTableColumn,
-  ElTag,
-} from 'element-plus';
+import { ElMessage, ElTag } from 'element-plus';
 
+import { useVbenVxeGrid, VbenTableAction } from '#/adapter/vxe-table';
 import {
+  getI18nMessageCategories,
   getI18nMessagePage,
-  getI18nMessageValues,
   removeI18nMessage,
-  saveI18nMessage,
 } from '#/api';
-import { $t, ensureStaticKeys, SUPPORTED_LOCALES } from '#/locales';
+import { $t, SUPPORTED_LOCALES } from '#/locales';
 import { reloadDynamicMessages } from '#/locales/dynamic';
 
-const ADMIN_CLIENT = 'admin';
-const DEFAULT_PAGE_SIZE = 10;
+import { useColumns, useGridFormSchema } from './data';
+import Form from './modules/form.vue';
 
-const loading = ref(false);
-const removingKey = ref('');
-const newMessageKey = ref('');
-const rows = ref<I18nMessageApi.MessageItem[]>([]);
-const total = ref(0);
+const categories = ref<string[]>([]);
 
-const query = reactive({
-  client: ADMIN_CLIENT,
-  currentPage: 1,
-  key: '',
-  locale: '',
-  pageSize: DEFAULT_PAGE_SIZE,
-  value: '',
+interface I18nMessageTableRow extends I18nMessageApi.MessageItem {
+  rowKey: string;
+}
+
+const [FormDrawer, formDrawerApi] = useVbenDrawer({
+  connectedComponent: Form,
+  destroyOnClose: true,
+});
+
+const [Grid, gridApi] = useVbenVxeGrid<I18nMessageTableRow>({
+  formOptions: {
+    schema: useGridFormSchema(categories),
+    submitOnChange: false,
+  },
+  gridOptions: {
+    columns: useColumns(),
+    height: 'auto',
+    keepSource: true,
+    pagerConfig: {},
+    proxyConfig: {
+      ajax: {
+        async query({ page }, args) {
+          const result = await getI18nMessagePage({
+            currentPage: page.currentPage,
+            pageSize: page.pageSize,
+            ...args,
+          });
+          return {
+            list: result.list.map((item) => ({
+              ...item,
+              rowKey: item.messageKey,
+            })),
+            total: result.totalCount,
+          };
+        },
+      },
+      showLoading: false,
+    },
+    rowConfig: { keyField: 'rowKey' },
+    toolbarConfig: {
+      custom: true,
+      refresh: true,
+      search: true,
+      zoom: true,
+    },
+  } as VxeTableGridOptions<I18nMessageTableRow>,
 });
 
 function valueFor(row: I18nMessageApi.MessageItem, locale: string) {
   return row.values.find((item) => item.locale === locale)?.value ?? '';
 }
 
-function toMessageItem(row: unknown) {
-  return row as I18nMessageApi.MessageItem;
+function openForm(row?: I18nMessageApi.MessageItem) {
+  const data: I18nMessageFormDrawerData = {
+    categories: categories.value,
+    row,
+  };
+  formDrawerApi.setData(data).open();
 }
 
-async function loadPage() {
-  loading.value = true;
-  try {
-    const result = await getI18nMessagePage({ ...query });
-    rows.value = result.list;
-    total.value = result.totalCount;
-  } finally {
-    loading.value = false;
+async function onDelete(row: I18nMessageApi.MessageItem) {
+  await removeI18nMessage(row.messageKey);
+  ElMessage.success($t('page.i18nMessage.messages.removeSuccess'));
+  if (row.category === 'admin') {
+    try {
+      await reloadDynamicMessages();
+    } catch {
+      ElMessage.warning($t('page.i18nMessage.messages.runtimeReloadFailed'));
+    }
   }
+  await gridApi.query();
 }
 
-async function handleSearch() {
-  query.currentPage = 1;
-  await loadPage();
+function refresh() {
+  void gridApi.query();
 }
 
-async function handleReset() {
-  Object.assign(query, {
-    client: ADMIN_CLIENT,
-    currentPage: 1,
-    key: '',
-    locale: '',
-    pageSize: DEFAULT_PAGE_SIZE,
-    value: '',
-  });
-  await loadPage();
-}
-
-async function refreshAfterMutation(successMessage: string) {
-  let runtimeReloadFailed = false;
-  let listReloadFailed = false;
-  try {
-    await reloadDynamicMessages();
-  } catch {
-    runtimeReloadFailed = true;
-  }
-  try {
-    await loadPage();
-  } catch {
-    listReloadFailed = true;
-  }
-
-  if (listReloadFailed) {
-    ElMessage.warning($t('page.i18nMessage.messages.listReloadFailed'));
-  }
-  if (runtimeReloadFailed) {
-    ElMessage.warning($t('page.i18nMessage.messages.runtimeReloadFailed'));
-  } else {
-    ElMessage.success(successMessage);
-  }
-}
-
-const saveMessage: I18nMessageSaver = async (input) => {
-  const staticKeys = await ensureStaticKeys();
-  if (staticKeys.has(input.messageKey)) {
-    ElMessage.error($t('page.i18nMessage.messages.staticKey'));
-    throw new Error('Static Message Keys cannot be saved dynamically.');
-  }
-
-  const saved = await saveI18nMessage(input);
-  await refreshAfterMutation($t('page.i18nMessage.messages.saveSuccess'));
-  return saved;
-};
-
-async function handleRemove(row: I18nMessageApi.MessageItem) {
-  try {
-    await ElMessageBox.confirm(
-      $t('page.i18nMessage.messages.removeConfirm', { key: row.messageKey }),
-      $t('page.i18nMessage.messages.removeTitle'),
-      {
-        confirmButtonText: $t('page.i18nMessage.actions.remove'),
-        type: 'warning',
-      },
-    );
-  } catch {
-    return;
-  }
-
-  removingKey.value = row.messageKey;
-  try {
-    await removeI18nMessage(row.messageKey);
-    await refreshAfterMutation($t('page.i18nMessage.messages.removeSuccess'));
-  } finally {
-    removingKey.value = '';
-  }
-}
-
-onMounted(loadPage);
+onMounted(async () => {
+  categories.value = await getI18nMessageCategories();
+});
 </script>
 
 <template>
-  <Page
-    :title="$t('page.i18nMessage.title')"
-    auto-content-height
-    content-class="p-0"
-  >
-    <div class="flex h-full min-h-0 flex-col bg-background">
-      <form
-        class="grid shrink-0 gap-3 border-b border-border px-4 py-4 md:grid-cols-2 xl:grid-cols-[minmax(180px,1fr)_minmax(180px,1fr)_180px_180px_auto]"
-        @submit.prevent="handleSearch"
+  <Page auto-content-height>
+    <FormDrawer @success="refresh" />
+    <Grid :table-title="$t('page.i18nMessage.title')">
+      <template #toolbar-tools>
+        <VbenButton
+          v-access:code="'system:i18n-message:save'"
+          size="sm"
+          :disabled="categories.length === 0"
+          @click="openForm()"
+        >
+          <IconifyIcon icon="lucide:plus" class="mr-2 size-4" />
+          {{ $t('page.i18nMessage.actions.create') }}
+        </VbenButton>
+      </template>
+
+      <template #category="{ row }">
+        <ElTag effect="plain">{{ row.category }}</ElTag>
+      </template>
+
+      <template #messageKey="{ row }">
+        <code class="break-all text-xs">{{ row.messageKey }}</code>
+      </template>
+
+      <template
+        v-for="locale in SUPPORTED_LOCALES"
+        :key="locale"
+        #[locale]="{ row }"
       >
-        <ElInput
-          v-model="query.key"
-          clearable
-          :placeholder="$t('page.i18nMessage.filters.keyPlaceholder')"
-          :aria-label="$t('page.i18nMessage.filters.key')"
-        />
-        <ElInput
-          v-model="query.value"
-          clearable
-          :placeholder="$t('page.i18nMessage.filters.valuePlaceholder')"
-          :aria-label="$t('page.i18nMessage.filters.value')"
-        />
-        <ElInput
-          v-model="query.client"
-          :aria-label="$t('page.i18nMessage.filters.client')"
-        />
-        <ElSelect
-          v-model="query.locale"
-          :placeholder="$t('page.i18nMessage.filters.locale')"
-          :aria-label="$t('page.i18nMessage.filters.locale')"
-        >
-          <ElOption
-            :label="$t('page.i18nMessage.filters.allLocales')"
-            value=""
-          />
-          <ElOption
-            v-for="locale in SUPPORTED_LOCALES"
-            :key="locale"
-            :label="locale"
-            :value="locale"
-          />
-        </ElSelect>
-        <div
-          class="flex items-center justify-end gap-2 md:col-span-2 xl:col-span-1"
-        >
-          <VbenButton type="submit" size="sm">
-            <Search class="mr-2 size-4" />
-            {{ $t('page.i18nMessage.actions.search') }}
-          </VbenButton>
-          <VbenButton
-            type="button"
-            size="sm"
-            variant="outline"
-            @click="handleReset"
-          >
-            {{ $t('page.i18nMessage.actions.reset') }}
-          </VbenButton>
-        </div>
-      </form>
+        <span class="line-clamp-2 break-words">{{
+          valueFor(row, locale)
+        }}</span>
+      </template>
 
-      <div
-        class="flex shrink-0 flex-col gap-3 border-b border-border px-4 py-3 lg:flex-row lg:items-center lg:justify-between"
-      >
-        <div class="w-full min-w-0 lg:max-w-md">
-          <I18nMessageInput
-            v-model="newMessageKey"
-            :load="getI18nMessageValues"
-            :locales="SUPPORTED_LOCALES"
-            :save="saveMessage"
-            :placeholder="$t('page.i18nMessage.newMessagePlaceholder')"
-          />
-        </div>
-        <div class="flex shrink-0 items-center justify-end gap-2">
-          <VbenButton
-            v-if="newMessageKey"
-            type="button"
-            size="sm"
-            @click="newMessageKey = ''"
-          >
-            <Plus class="mr-2 size-4" />
-            {{ $t('page.i18nMessage.actions.create') }}
-          </VbenButton>
-          <VbenIconButton
-            :tooltip="$t('page.i18nMessage.actions.reload')"
-            class="size-9 rounded-md"
-            @click="loadPage"
-          >
-            <RotateCw class="size-4" />
-          </VbenIconButton>
-        </div>
-      </div>
-
-      <div class="min-h-0 flex-1 overflow-auto px-4 py-3">
-        <ElTable
-          v-loading="loading"
-          :data="rows"
-          height="100%"
-          table-layout="fixed"
-        >
-          <ElTableColumn
-            prop="client"
-            :label="$t('page.i18nMessage.table.client')"
-            width="120"
-          >
-            <template #default="{ row }">
-              <ElTag effect="plain" size="small">{{ row.client }}</ElTag>
-            </template>
-          </ElTableColumn>
-          <ElTableColumn
-            prop="messageKey"
-            :label="$t('page.i18nMessage.table.key')"
-            min-width="260"
-          >
-            <template #default="{ row }">
-              <code class="break-all text-xs">{{ row.messageKey }}</code>
-            </template>
-          </ElTableColumn>
-          <ElTableColumn
-            v-for="locale in SUPPORTED_LOCALES"
-            :key="locale"
-            :label="locale"
-            min-width="220"
-          >
-            <template #default="{ row }">
-              <I18nMessageInput
-                v-if="locale === SUPPORTED_LOCALES[0]"
-                :model-value="toMessageItem(row).messageKey"
-                :default-locale="locale"
-                :load="getI18nMessageValues"
-                :locales="SUPPORTED_LOCALES"
-                :save="saveMessage"
-              />
-              <span v-else class="line-clamp-2 break-words">
-                {{ valueFor(toMessageItem(row), locale) }}
-              </span>
-            </template>
-          </ElTableColumn>
-          <ElTableColumn
-            fixed="right"
-            :label="$t('page.i18nMessage.table.operations')"
-            width="72"
-            align="center"
-          >
-            <template #default="{ row }">
-              <div class="flex justify-center">
-                <VbenIconButton
-                  :tooltip="$t('page.i18nMessage.actions.remove')"
-                  class="size-8 rounded-md text-destructive"
-                  :disabled="removingKey === row.messageKey"
-                  @click="handleRemove(toMessageItem(row))"
-                >
-                  <Eraser class="size-4" />
-                </VbenIconButton>
-              </div>
-            </template>
-          </ElTableColumn>
-          <template #empty>
-            <span class="text-muted-foreground">{{
-              $t('page.i18nMessage.table.empty')
-            }}</span>
-          </template>
-        </ElTable>
-      </div>
-
-      <div class="flex shrink-0 justify-end border-t border-border px-4 py-3">
-        <ElPagination
-          v-model:current-page="query.currentPage"
-          v-model:page-size="query.pageSize"
-          background
-          layout="total, sizes, prev, pager, next"
-          :page-sizes="[10, 20, 50, 100]"
-          :total="total"
-          @current-change="loadPage"
-          @size-change="handleSearch"
+      <template #action="{ row }">
+        <VbenTableAction
+          :actions="[
+            {
+              auth: 'system:i18n-message:save',
+              icon: 'lucide:edit',
+              text: $t('page.rbacCommon.edit'),
+              onClick: () => openForm(row),
+            },
+          ]"
+          :dropdown-actions="[
+            {
+              auth: 'system:i18n-message:remove',
+              danger: true,
+              icon: 'lucide:trash-2',
+              text: $t('page.i18nMessage.actions.remove'),
+              popConfirm: {
+                title: $t('page.i18nMessage.messages.removeConfirm', {
+                  key: row.messageKey,
+                }),
+                confirm: () => onDelete(row),
+              },
+            },
+          ]"
+          align="center"
         />
-      </div>
-    </div>
+      </template>
+    </Grid>
   </Page>
 </template>

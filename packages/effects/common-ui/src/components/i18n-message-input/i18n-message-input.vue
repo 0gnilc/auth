@@ -7,7 +7,7 @@ import type {
 
 import { computed, ref, useId, watch } from 'vue';
 
-import { $t } from '@vben/locales';
+import { $t, i18n } from '@vben/locales';
 
 import { confirm as confirmDialog } from '@vben-core/popup-ui';
 import {
@@ -25,11 +25,11 @@ defineOptions({ inheritAttrs: false });
 
 // 合并组件属性与默认配置。
 const props = withDefaults(defineProps<I18nMessageInputProps>(), {
-  defaultLocale: 'zh-CN',
   disabled: false,
-  locales: () => ['zh-CN', 'en-US'],
+  locales: () => ['en-US', 'zh-CN'],
   placeholder: '',
   rows: 2,
+  size: 'default',
 });
 
 // 业务表单双向绑定的 Message Key。
@@ -44,8 +44,10 @@ const loading = ref(false);
 const saving = ref(false);
 // 最近一次加载是否失败。
 const loadError = ref(false);
-// 当前 Message Key 是否来自已有数据。
-const existingKey = ref(false);
+// 最近一次成功查询对应的 Message Key；Key 改动后必须重新查询。
+const searchedKey = ref<string>();
+// 最近一次查询是否返回了可供重置的语言文本。
+const canResetLookup = ref(false);
 // 浮层内正在编辑的独立草稿。
 const draft = ref<I18nMessage>(createMessage());
 // 本次打开或加载完成时的初始快照。
@@ -65,14 +67,57 @@ const contentProps = {
   sideOffset: 6,
 };
 
-// 外部输入框显示默认语言文本，未加载时回退到前端语言包。
+// 采用与 Element Plus 标准表单控件一致的 24/32/40px 高度。
+const controlSize = computed(
+  () =>
+    ({
+      default: {
+        action: 'w-[32px]',
+        editor: 'px-3 py-1.5 text-sm',
+        height: 'h-[32px]',
+        icon: 'right-2.5 size-4',
+        trigger: 'pr-9',
+      },
+      large: {
+        action: 'w-[40px]',
+        editor: 'px-3 py-2 text-sm',
+        height: 'h-[40px]',
+        icon: 'right-3 size-4',
+        trigger: 'pr-10',
+      },
+      small: {
+        action: 'w-[24px]',
+        editor: 'px-2 py-1 text-xs',
+        height: 'h-[24px]',
+        icon: 'right-2 size-3.5',
+        trigger: 'pr-7',
+      },
+    })[props.size],
+);
+
+// en-US 始终作为编辑区第一项和必填兜底语言。
+const orderedLocales = computed(() => [
+  'en-US',
+  ...props.locales.filter((locale) => locale !== 'en-US'),
+]);
+
+// 外部输入框按当前界面语言、en-US、Message Key 的顺序显示。
 const displayValue = computed(() => {
   if (committed.value?.messageKey === modelValue.value) {
-    return getMessageValue(committed.value.values, props.defaultLocale);
+    return (
+      getMessageValue(
+        committed.value.values,
+        String(i18n.global.locale.value),
+      ) ||
+      getMessageValue(committed.value.values, 'en-US') ||
+      modelValue.value
+    );
   }
-  return modelValue.value
-    ? $t(modelValue.value, {}, { locale: props.defaultLocale })
-    : '';
+  if (!modelValue.value) return '';
+  const active = $t(modelValue.value);
+  if (active !== modelValue.value) return active;
+  const fallback = $t(modelValue.value, {}, { locale: 'en-US' });
+  return fallback === modelValue.value ? modelValue.value : fallback;
 });
 
 // 校验非空 Message Key 的长度、格式和保留路径段。
@@ -96,12 +141,19 @@ const keyError = computed(() => {
   return '';
 });
 
-// 校验各语言文本的最大长度。
-const valueError = computed(() =>
-  draft.value.values.some(({ value }) => value.length > 4000)
-    ? $t('ui.i18nMessageInput.valueTooLong')
-    : '',
-);
+// 校验兜底语言必填与各语言文本的最大长度。
+const valueError = computed(() => {
+  if (draft.value.values.some(({ value }) => value.length > 4000)) {
+    return $t('ui.i18nMessageInput.valueTooLong');
+  }
+  if (
+    draft.value.messageKey.trim() &&
+    !getMessageValue(draft.value.values, 'en-US').trim()
+  ) {
+    return $t('ui.i18nMessageInput.fallbackRequired');
+  }
+  return '';
+});
 
 // 草稿是否相对初始快照发生变化。
 const dirty = computed(() => !messagesEqual(draft.value, initial.value));
@@ -114,7 +166,8 @@ const cannotSave = computed(
     loadError.value ||
     !draft.value.messageKey.trim() ||
     !!keyError.value ||
-    !!valueError.value,
+    !!valueError.value ||
+    searchedKey.value !== draft.value.messageKey.trim(),
 );
 
 // 外部 Message Key 变化后清除不再匹配的已提交数据。
@@ -146,6 +199,11 @@ function getMessageValue(values: I18nMessageValue[], locale: string) {
 
 /** 更新草稿中的 Message Key。 */
 function setDraftKey(value: string) {
+  ++loadSequence;
+  loadError.value = false;
+  loading.value = false;
+  searchedKey.value = undefined;
+  canResetLookup.value = false;
   draft.value = { ...draft.value, messageKey: value };
 }
 
@@ -180,8 +238,6 @@ function messagesEqual(left: I18nMessage, right: I18nMessage) {
 
 /** 使用当前 v-model 加载本次打开所需的独立草稿。 */
 async function loadDraft() {
-  // 本次加载的序号，用于识别异步返回值是否已经过期。
-  const sequence = ++loadSequence;
   // 当前表单绑定并去除首尾空格后的 Message Key。
   const messageKey = modelValue.value.trim();
   // 优先使用最近已提交的数据初始化草稿。
@@ -189,27 +245,45 @@ async function loadDraft() {
     committed.value?.messageKey === messageKey
       ? copyMessage(committed.value)
       : createMessage(messageKey);
-  existingKey.value = !!messageKey;
   draft.value = currentMessage;
   initial.value = copyMessage(currentMessage);
   loadError.value = false;
+  searchedKey.value = undefined;
+  canResetLookup.value = false;
 
   if (!messageKey) return;
 
+  await lookup(messageKey, true);
+}
+
+/** 查询指定 Key；非空结果覆盖全部语言，空结果保留当前草稿。 */
+async function lookup(messageKey: string, initializing = false) {
+  const key = messageKey.trim();
+  if (!key || keyError.value) return;
+  // 本次查询的序号，用于识别 Key 变化、关闭或后续查询产生的过期响应。
+  const sequence = ++loadSequence;
   loading.value = true;
   try {
     // 使用方返回的当前 Message 数据或不存在标记。
-    const result = await props.load(messageKey);
+    const result = await props.load(key);
     if (sequence !== loadSequence || !visible.value) return;
-    if (result === null) return;
-    // 只接受当前请求 Key，避免加载函数返回错误的 Message Key。
-    const message = createMessage(messageKey, result.values);
-    draft.value = message;
-    initial.value = copyMessage(message);
-    committed.value = copyMessage(message);
+    loadError.value = false;
+    searchedKey.value = key;
+    canResetLookup.value = !!result?.values.length;
+    if (result?.values.length) {
+      // 只接受当前请求 Key，避免加载函数返回错误的 Message Key。
+      const message = createMessage(key, result.values);
+      draft.value = message;
+      committed.value = copyMessage(message);
+    }
+    if (initializing) {
+      initial.value = copyMessage(draft.value);
+    }
   } catch {
     if (sequence === loadSequence && visible.value) {
       loadError.value = true;
+      searchedKey.value = undefined;
+      canResetLookup.value = false;
     }
   } finally {
     if (sequence === loadSequence) {
@@ -232,6 +306,24 @@ function close() {
   loading.value = false;
   saving.value = false;
   loadError.value = false;
+  searchedKey.value = undefined;
+  canResetLookup.value = false;
+}
+
+/** 清空非空查询结果，保留 Key 与已完成的查询状态供重新填写。 */
+function resetLookupValues() {
+  if (!canResetLookup.value || loading.value || saving.value) return;
+  draft.value = createMessage(draft.value.messageKey);
+  canResetLookup.value = false;
+}
+
+/** 根据当前查询状态执行查询或清空已回填的语言文本。 */
+function handleLookupAction() {
+  if (canResetLookup.value) {
+    resetLookupValues();
+    return;
+  }
+  void lookup(draft.value.messageKey);
 }
 
 /** 取消编辑；草稿变化时先请求用户确认。 */
@@ -257,7 +349,7 @@ async function cancel() {
 
 /** 在加载失败状态下重新加载当前 Message。 */
 async function retryLoad() {
-  await loadDraft();
+  await lookup(draft.value.messageKey);
 }
 
 /** 保存草稿，成功后同步 v-model 并关闭浮层。 */
@@ -268,9 +360,9 @@ async function save() {
     // 后端保存并确认后的完整 Message 数据。
     const result = await props.save({
       messageKey: draft.value.messageKey.trim(),
-      values: props.locales.map((locale) => ({
+      values: orderedLocales.value.map((locale) => ({
         locale,
-        value: getMessageValue(draft.value.values, locale),
+        value: getMessageValue(draft.value.values, locale).trim(),
       })),
     });
     // 保存结果副本，避免组件状态与调用方对象共享引用。
@@ -313,13 +405,15 @@ function handleVisibilityChange(opened: boolean) {
           :disabled="disabled"
           :placeholder="placeholder || $t('ui.i18nMessageInput.placeholder')"
           :aria-expanded="visible"
-          class="w-full cursor-pointer pr-10"
+          :class="[controlSize.height, controlSize.editor, controlSize.trigger]"
+          class="w-full cursor-pointer"
           readonly
           role="combobox"
         />
         <VbenIcon
           icon="lucide:languages"
-          class="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2"
+          :class="controlSize.icon"
+          class="pointer-events-none absolute top-1/2 -translate-y-1/2"
         />
       </div>
     </template>
@@ -336,15 +430,47 @@ function handleVisibilityChange(opened: boolean) {
             *
           </span>
         </Label>
-        <Input
-          :id="`${fieldId}-key`"
-          aria-required="true"
-          data-test="i18n-message-key"
-          :model-value="draft.messageKey"
-          :placeholder="$t('ui.i18nMessageInput.keyPlaceholder')"
-          :disabled="loading || saving || existingKey"
-          @update:model-value="setDraftKey(String($event))"
-        />
+        <div
+          :class="controlSize.height"
+          class="i18n-message-key-group border-input bg-background flex w-full items-center overflow-hidden rounded-md border"
+          data-test="i18n-message-key-group"
+        >
+          <Input
+            :id="`${fieldId}-key`"
+            aria-required="true"
+            :class="controlSize.editor"
+            class="i18n-message-key-input h-full min-w-0 flex-1 rounded-none border-0 shadow-none"
+            data-test="i18n-message-key"
+            :model-value="draft.messageKey"
+            :placeholder="$t('ui.i18nMessageInput.keyPlaceholder')"
+            :disabled="loading || saving"
+            @update:model-value="setDraftKey(String($event))"
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            :class="controlSize.action"
+            class="h-full shrink-0 cursor-pointer rounded-none disabled:pointer-events-auto disabled:cursor-not-allowed"
+            data-test="i18n-message-search"
+            :title="
+              $t(
+                canResetLookup
+                  ? 'ui.i18nMessageInput.reset'
+                  : 'ui.i18nMessageInput.search',
+              )
+            "
+            :disabled="
+              loading || saving || !draft.messageKey.trim() || !!keyError
+            "
+            @click="handleLookupAction"
+          >
+            <VbenIcon
+              :icon="canResetLookup ? 'lucide:rotate-ccw' : 'lucide:search'"
+              class="size-4"
+            />
+          </Button>
+        </div>
         <p v-if="keyError" class="text-destructive text-xs">{{ keyError }}</p>
       </div>
 
@@ -371,8 +497,21 @@ function handleVisibilityChange(opened: boolean) {
 
       <div v-else class="min-h-0 overflow-y-auto pr-1">
         <div class="space-y-3">
-          <div v-for="locale in locales" :key="locale" class="space-y-1.5">
-            <Label :for="`${fieldId}-${locale}`">{{ locale }}</Label>
+          <div
+            v-for="locale in orderedLocales"
+            :key="locale"
+            class="space-y-1.5"
+          >
+            <Label :for="`${fieldId}-${locale}`">
+              {{ locale }}
+              <span
+                v-if="locale === 'en-US'"
+                aria-hidden="true"
+                class="text-destructive ml-0.5 text-xs"
+              >
+                *
+              </span>
+            </Label>
             <Textarea
               :id="`${fieldId}-${locale}`"
               :data-locale="locale"
@@ -380,6 +519,7 @@ function handleVisibilityChange(opened: boolean) {
               :placeholder="$t('ui.i18nMessageInput.valuePlaceholder')"
               :disabled="saving"
               :rows="rows"
+              :class="controlSize.editor"
               class="i18n-message-textarea resize-y bg-background shadow-none transition-none placeholder:text-muted-foreground/50 focus-visible:border-input focus-visible:ring-0 dark:bg-background"
               @update:model-value="setDraftValue(locale, String($event))"
             />
@@ -422,5 +562,17 @@ function handleVisibilityChange(opened: boolean) {
   &:focus-visible {
     box-shadow: inset 0 0 0 1px hsl(var(--ring));
   }
+}
+
+.i18n-message-key-group {
+  --ring: var(--primary);
+
+  &:focus-within {
+    border-color: hsl(var(--ring));
+  }
+}
+
+.i18n-message-key-input:focus-visible {
+  box-shadow: none;
 }
 </style>

@@ -1,76 +1,18 @@
 import type { AxiosResponse, HttpResponse } from '@vben/request';
-import type { UserInfo } from '@vben/types';
 
-import type { PageParams, PageResult } from '#/api/types';
-
-import { isEmpty } from '@vben/utils';
+import type { AdminApi } from '#/api/system/admin';
 
 import { baseRequestClient, requestClient } from '#/api/request';
 
-export namespace AdminApi {
-  export interface Admin extends UserInfo {
-    createTime: string;
-    id: string;
-    roleCodes: string[];
-    status?: boolean;
-  }
-
-  export interface AdminSession {
-    accessToken: string;
-    refreshToken: string;
-  }
+interface AdminSession {
+  accessToken: string;
+  refreshToken: string;
 }
 
 const REFRESH_TOKEN_HEADER = 'X-Refresh-Token';
 
-export async function getAdminPage(
-  params?: PageParams &
-    Partial<Pick<AdminApi.Admin, 'nickname' | 'status' | 'username'>>,
-) {
-  return requestClient.post<PageResult<AdminApi.Admin>>(
-    '/sys/admin/page',
-    params,
-  );
-}
-
-export async function createAdmin(
-  admin: Omit<
-    AdminApi.Admin,
-    'createTime' | 'homePath' | 'id' | 'roleCodes' | 'userId'
-  > & {
-    homePath?: string;
-    password: string;
-    roleCodes?: string[];
-  },
-) {
-  return requestClient.post<null>('/sys/admin/create', admin);
-}
-
-export async function updateAdmin(
-  admin: Partial<Omit<AdminApi.Admin, 'createTime' | 'id' | 'userId'>> &
-    Pick<AdminApi.Admin, 'id'> & { password?: null | string },
-) {
-  const { password, ...profile } = admin;
-  const data = isEmpty(password?.trim()) ? profile : admin;
-
-  return requestClient.post<null>('/sys/admin/update', data);
-}
-
-export async function updateAdminRoles(id: string, roleCodes: string[]) {
-  return requestClient.post<null>('/sys/admin/update-roles', {
-    id,
-    roleCodes,
-  });
-}
-
-export async function removeAdmin(id: string) {
-  return requestClient.post<null>(
-    `/sys/admin/remove/${encodeURIComponent(id)}`,
-  );
-}
-
 export async function login(username: string, password: string) {
-  return requestClient.post<AdminApi.AdminSession>('/sys/admin/login', {
+  return requestClient.post<AdminSession>('/sys/admin/login', {
     password,
     username,
   });
@@ -78,7 +20,7 @@ export async function login(username: string, password: string) {
 
 export async function refresh(refreshToken: string) {
   const response = await baseRequestClient.post<
-    AxiosResponse<HttpResponse<AdminApi.AdminSession>>
+    AxiosResponse<HttpResponse<AdminSession>>
   >('/sys/admin/refresh', undefined, {
     headers: { [REFRESH_TOKEN_HEADER]: refreshToken },
   });

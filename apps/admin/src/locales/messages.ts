@@ -30,26 +30,4 @@ function mergeMessages(
   return result;
 }
 
-/**
- * 将嵌套消息树展开为点分叶子 key，并累加到给定集合。
- *
- * 这里只记录真正可翻译的叶子，例如 page.login.title；中间命名空间不会被
- * 视为可占用的消息 key。集合由调用方复用，因此可以汇总公共语言包和应用
- * 语言包的全部静态 key，供动态消息管理页面执行冲突检查。
- */
-function collectLeafKeys(
-  messages: Record<string, unknown>,
-  prefix: string,
-  target: Set<string>,
-) {
-  for (const [key, value] of Object.entries(messages)) {
-    const path = prefix ? `${prefix}.${key}` : key;
-    if (isMessageObject(value)) {
-      collectLeafKeys(value, path, target);
-    } else {
-      target.add(path);
-    }
-  }
-}
-
-export { collectLeafKeys, mergeMessages };
+export { mergeMessages };

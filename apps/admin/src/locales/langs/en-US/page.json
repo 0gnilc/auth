@@ -55,7 +55,7 @@
       "keyPlaceholder": "Search by Message Key",
       "value": "Translation",
       "valuePlaceholder": "Search by translation",
-      "client": "Client",
+      "category": "Category",
       "locale": "Locale",
       "allLocales": "All locales"
     },
@@ -66,8 +66,23 @@
       "remove": "Delete",
       "reload": "Reload"
     },
+    "drawer": {
+      "createTitle": "Create internationalization message",
+      "editTitle": "Edit internationalization message"
+    },
+    "form": {
+      "category": "Category",
+      "messageKey": "Message Key"
+    },
+    "validation": {
+      "keyRequired": "Enter a Message Key",
+      "keyTooLong": "Message Key cannot exceed 191 characters",
+      "keyInvalid": "Message Key must be a dot-delimited identifier beginning with a letter",
+      "enRequired": "The en-US fallback text is required",
+      "valueTooLong": "A locale value cannot exceed 4000 characters"
+    },
     "table": {
-      "client": "Client",
+      "category": "Category",
       "key": "Message Key",
       "operations": "Actions",
       "empty": "No internationalization messages"
@@ -77,9 +92,263 @@
       "removeSuccess": "Internationalization message deleted",
       "removeConfirm": "Delete every locale value for Message Key “{key}”?",
       "removeTitle": "Delete internationalization message",
-      "staticKey": "This Message Key is owned by the frontend static language pack and cannot be saved dynamically",
       "runtimeReloadFailed": "Data was saved, but the current page language pack could not be refreshed",
       "listReloadFailed": "Data changed, but the list could not be refreshed"
+    }
+  },
+  "rbacCommon": {
+    "actions": "Actions",
+    "builtIn": "Built-in",
+    "builtInProtected": "Built-in resources cannot be changed",
+    "cancel": "Cancel",
+    "custom": "Custom",
+    "disabled": "Disabled",
+    "discard": "Discard changes",
+    "edit": "Edit",
+    "enabled": "Enabled",
+    "filterPlaceholder": "Filter available items",
+    "keepEditing": "Keep editing",
+    "noMatches": "No matching items",
+    "noneSelected": "Nothing selected",
+    "remove": "Delete",
+    "reset": "Reset",
+    "save": "Save",
+    "search": "Search",
+    "selected": "Selected",
+    "unsavedConfirm": "There are unsaved changes. Discard them?",
+    "unsavedTitle": "Unsaved changes"
+  },
+  "systemAdmin": {
+    "title": "Administrators",
+    "filters": {
+      "username": "Exact username",
+      "nickname": "Search nickname",
+      "status": "Status"
+    },
+    "actions": {
+      "create": "Create administrator",
+      "roles": "Assign roles"
+    },
+    "table": {
+      "username": "Username",
+      "nickname": "Nickname",
+      "roles": "Roles",
+      "roleCount": "{count} roles",
+      "status": "Status",
+      "createTime": "Created"
+    },
+    "drawer": {
+      "createTitle": "Create administrator",
+      "editTitle": "Edit administrator",
+      "rolesTitle": "Assign roles to {name}"
+    },
+    "form": {
+      "username": "Username",
+      "password": "Password",
+      "passwordUnchanged": "Leave blank to keep the current password",
+      "nickname": "Nickname",
+      "homePath": "Default home",
+      "avatar": "Avatar URL",
+      "description": "Description",
+      "status": "Enabled"
+    },
+    "validation": {
+      "username": "Enter a username",
+      "password": "A password is required for a new administrator",
+      "nickname": "Enter a nickname",
+      "homePath": "Enter a default home path"
+    },
+    "messages": {
+      "saveSuccess": "Administrator saved",
+      "removeConfirm": "Delete administrator {name}?",
+      "removeTitle": "Delete administrator",
+      "removeSuccess": "Administrator deleted",
+      "rolesSuccess": "Role assignments saved",
+      "statusConfirm": "Set {name} to {status}?",
+      "statusTitle": "Change status",
+      "statusSuccess": "Status updated",
+      "currentProtected": "The current administrator cannot be deleted"
+    }
+  },
+  "systemRole": {
+    "title": "Roles",
+    "filters": {
+      "code": "Exact role code",
+      "name": "Search role name"
+    },
+    "actions": {
+      "create": "Create role",
+      "permissions": "Assign permissions",
+      "menus": "Assign menus"
+    },
+    "table": {
+      "code": "Role code",
+      "name": "Role name",
+      "remark": "Description",
+      "type": "Type",
+      "createTime": "Created"
+    },
+    "drawer": {
+      "createTitle": "Create role",
+      "editTitle": "Edit role",
+      "permissionsTitle": "Assign permissions to {name}",
+      "menusTitle": "Assign menus to {name}"
+    },
+    "form": {
+      "code": "Role code",
+      "name": "Role name",
+      "remark": "Description"
+    },
+    "validation": {
+      "code": "Enter a role code",
+      "name": "Enter a role name"
+    },
+    "messages": {
+      "saveSuccess": "Role saved",
+      "removeConfirm": "Delete role {name}?",
+      "removeTitle": "Delete role",
+      "removeSuccess": "Role deleted",
+      "permissionsSuccess": "Role permissions saved",
+      "menusSuccess": "Role menus saved"
+    }
+  },
+  "systemPermission": {
+    "title": "Permissions",
+    "public": "Public",
+    "protected": "Authorized",
+    "filters": {
+      "code": "Exact permission code",
+      "name": "Search permission name",
+      "targetIdentifier": "Search target",
+      "publicAccess": "Access mode"
+    },
+    "actions": {
+      "create": "Create permission",
+      "enablePublic": "Make public"
+    },
+    "table": {
+      "code": "Permission code",
+      "name": "Permission name",
+      "qualifier": "Qualifier",
+      "target": "Target",
+      "access": "Access",
+      "type": "Type"
+    },
+    "drawer": {
+      "createTitle": "Create permission",
+      "editTitle": "Edit permission"
+    },
+    "form": {
+      "code": "Permission code",
+      "name": "Permission name",
+      "qualifier": "Target qualifier",
+      "qualifierPlaceholder": "For example POST",
+      "targetIdentifier": "Target identifier",
+      "remark": "Description",
+      "publicAccess": "Public access",
+      "publicHint": "No role permission is required",
+      "protectedHint": "Access requires a permission granted through a role"
+    },
+    "validation": {
+      "code": "Enter a permission code",
+      "name": "Enter a permission name",
+      "targetIdentifier": "Enter a target identifier"
+    },
+    "messages": {
+      "saveSuccess": "Permission saved",
+      "removeConfirm": "Delete permission {name}?",
+      "removeTitle": "Delete permission",
+      "removeSuccess": "Permission deleted",
+      "publicConfirm": "This target will bypass role authorization checks. Make it publicly accessible?",
+      "publicTitle": "Confirm public access"
+    }
+  },
+  "systemMenu": {
+    "title": "Menus",
+    "root": "Root",
+    "filters": {
+      "keyword": "Keyword"
+    },
+    "actions": {
+      "create": "Create menu",
+      "append": "Add child"
+    },
+    "types": {
+      "catalog": "Catalog",
+      "menu": "Menu",
+      "embedded": "Embedded",
+      "link": "Link",
+      "button": "Button"
+    },
+    "table": {
+      "title": "Menu title",
+      "name": "Menu name",
+      "type": "Type",
+      "accessCode": "Button access code",
+      "path": "Path",
+      "status": "Status"
+    },
+    "drawer": {
+      "createTitle": "Create menu",
+      "editTitle": "Edit menu"
+    },
+    "sections": {
+      "routing": "Routing",
+      "badgeAndTabs": "Badge and tabs",
+      "behavior": "Visibility and behavior"
+    },
+    "form": {
+      "type": "Menu type",
+      "typeImmutable": "The type cannot be changed after a successful save",
+      "parent": "Parent menu",
+      "name": "Menu name",
+      "title": "Menu title",
+      "path": "Route path",
+      "component": "Component path",
+      "accessCode": "Button access code",
+      "iframeSrc": "Embedded page URL",
+      "link": "External URL",
+      "status": "Enabled",
+      "order": "Order",
+      "redirect": "Redirect",
+      "activePath": "Active menu path",
+      "icon": "Icon",
+      "query": "Route query (JSON object)",
+      "badge": "Badge content",
+      "badgeType": "Badge type",
+      "badgeVariants": "Badge variant",
+      "affixTabOrder": "Affixed tab order",
+      "maxNumOfOpenTab": "Maximum matching tabs",
+      "affixTab": "Affix tab",
+      "fullPathKey": "Use full path as tab key",
+      "hideChildrenInMenu": "Hide child menus",
+      "hideInBreadcrumb": "Hide in breadcrumb",
+      "hideInMenu": "Hide in menu",
+      "hideInTab": "Hide in tabs",
+      "keepAlive": "Keep page alive",
+      "noBasicLayout": "Skip basic layout",
+      "openInNewWindow": "Open in a new window"
+    },
+    "validation": {
+      "type": "Select a menu type",
+      "parent": "Select a parent menu",
+      "name": "Enter a menu name",
+      "title": "Configure a menu title",
+      "path": "Enter a route path",
+      "component": "Enter a component path",
+      "accessCode": "Enter a button access code",
+      "iframeSrc": "Enter an embedded page URL",
+      "link": "Enter an external URL",
+      "query": "Route query must be a valid JSON object",
+      "url": "Enter a complete http or https URL",
+      "parentType": "The selected parent cannot contain this menu type"
+    },
+    "messages": {
+      "saveSuccess": "Menu saved",
+      "removeConfirm": "Delete {name} and all of its descendants?",
+      "removeTitle": "Delete menu",
+      "removeSuccess": "Menu deleted",
+      "removeImpactConfirm": "Delete {name}? This also deletes {descendants} descendant nodes and affects menu grants for {roles} roles."
     }
   }
 }
