@@ -13,3 +13,4 @@ All repository ADRs live in this directory, including decisions scoped to a sing
 - [0009: Protect built-in RBAC resources](0009-protect-built-in-rbac-resources.md)
 - [0010: Keep dynamic internationalization auxiliary to business resources](0010-keep-dynamic-i18n-auxiliary-to-business-resources.md)
 - [0011: Use global Message Keys and category-scoped bundles](0011-use-global-message-keys-and-category-scoped-bundles.md)
+- [0012: Cache Admin query results in Redis](0012-cache-admin-query-results-in-redis.md)

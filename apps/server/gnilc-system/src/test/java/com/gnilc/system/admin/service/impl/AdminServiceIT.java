@@ -6,6 +6,7 @@ import com.gnilc.auth.authn.context.DefaultAccessPrincipal;
 import com.gnilc.common.exception.IllegalConditionException;
 import com.gnilc.common.exception.InvalidArgumentException;
 import com.gnilc.auth.authz.rbac.service.RoleService;
+import com.gnilc.system.admin.cache.AdminCacheService;
 import com.gnilc.system.admin.entity.bo.AdminBo;
 import com.gnilc.system.admin.entity.dto.AdminDto;
 import com.gnilc.system.admin.entity.dto.AdminPageDto;
@@ -47,6 +48,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @Transactional
 class AdminServiceIT {
     @Autowired private AdminService admins;
+    @Autowired private AdminCacheService adminCache;
     @Autowired private RoleService roles;
     @Autowired private RedisConnectionFactory redis;
     @Autowired private JdbcTemplate jdbc;
@@ -212,10 +214,13 @@ class AdminServiceIT {
         clear.setId(carol.getId());
         clear.setRoleCodes(List.of());
         admins.saveAdminRoles(clear);
+        // The class-level test transaction reaches BEFORE_COMMIT only after this assertion.
+        adminCache.removeRoleCodes(carol.getUserId());
         assertThat(admins.getRoleCodes(carol.getUserId())).containsExactly("admin");
 
         clear.setRoleCodes(List.of("operator"));
         admins.saveAdminRoles(clear);
+        adminCache.removeRoleCodes(carol.getUserId());
         assertThat(admins.getRoleCodes(carol.getUserId()))
                 .containsExactlyInAnyOrder("admin", "operator");
 
@@ -223,6 +228,7 @@ class AdminServiceIT {
         clearThroughUpdate.setId(carol.getId());
         clearThroughUpdate.setRoleCodes(List.of());
         admins.updateAdmin(clearThroughUpdate);
+        adminCache.removeRoleCodes(carol.getUserId());
         assertThat(admins.getRoleCodes(carol.getUserId())).containsExactly("admin");
 
         clear.setRoleCodes(List.of("missing"));

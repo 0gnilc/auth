@@ -8,12 +8,12 @@ import org.springframework.core.ResolvableTypeProvider;
 import java.util.Objects;
 
 /**
- * RBAC 授权事件。
+ * 授权事件。
  * <p>
  * 表示会影响授权结果的 RBAC 数据发生了变化。
  */
 @Getter
-public class RbacAuthzEvent<T> implements ResolvableTypeProvider {
+public class AuthorizationEvent<T> implements ResolvableTypeProvider {
     /**
      * 授权数据类型。
      */
@@ -38,59 +38,59 @@ public class RbacAuthzEvent<T> implements ResolvableTypeProvider {
     private Object extra;
 
     /**
-     * 创建携带数据的 RBAC 授权事件。
+     * 创建携带数据的授权事件。
      *
      * @param type   授权数据类型
      * @param action 授权数据变更动作
      * @param data   授权事件数据
      */
-    private RbacAuthzEvent(Type type, Action action, T data) {
+    private AuthorizationEvent(Type type, Action action, T data) {
         this.type = Objects.requireNonNull(type, "type must not be null");
         this.action = Objects.requireNonNull(action, "action must not be null");
         this.data = data;
     }
 
     /**
-     * 创建无数据的 RBAC 授权事件。
+     * 创建无数据的授权事件。
      *
      * @param type   授权数据类型
      * @param action 授权数据变更动作
-     * @return RBAC 授权事件
+     * @return 授权事件
      */
-    public static RbacAuthzEvent<Void> of(Type type, Action action) {
+    public static AuthorizationEvent<Void> of(Type type, Action action) {
         return of(type, action, null);
     }
 
     /**
-     * 创建无数据的 RBAC 授权事件。
+     * 创建无数据的授权事件。
      *
      * @param type 授权数据类型
-     * @return RBAC 授权事件
+     * @return 授权事件
      */
-    public static RbacAuthzEvent<Void> of(Type type) {
+    public static AuthorizationEvent<Void> of(Type type) {
         return of(type, Action.DEFAULT, null);
     }
 
     /**
-     * 创建携带数据的 RBAC 授权事件。
+     * 创建携带数据的授权事件。
      *
      * @param type   授权数据类型
      * @param action 授权数据变更动作
      * @param data   授权事件数据
-     * @return RBAC 授权事件
+     * @return 授权事件
      */
-    public static <T> RbacAuthzEvent<T> of(Type type, Action action, T data) {
-        return new RbacAuthzEvent<>(type, action, data);
+    public static <T> AuthorizationEvent<T> of(Type type, Action action, T data) {
+        return new AuthorizationEvent<>(type, action, data);
     }
 
     @Override
     public ResolvableType getResolvableType() {
         ResolvableType generic = data == null ? ResolvableType.forClass(Void.class) : ResolvableType.forInstance(data);
-        return ResolvableType.forClassWithGenerics(RbacAuthzEvent.class, generic);
+        return ResolvableType.forClassWithGenerics(AuthorizationEvent.class, generic);
     }
 
     /**
-     * RBAC 授权数据类型。
+     * 授权数据类型。
      */
     public enum Type {
         /**
@@ -110,6 +110,10 @@ public class RbacAuthzEvent<T> implements ResolvableTypeProvider {
          */
         ROLE_PERMISSION,
         /**
+         * 角色菜单绑定关系，data 通常表示 roleId。
+         */
+        ROLE_MENU,
+        /**
          * 用户角色绑定关系，data 通常表示 userId。
          */
         USER_ROLE,
@@ -120,7 +124,7 @@ public class RbacAuthzEvent<T> implements ResolvableTypeProvider {
     }
 
     /**
-     * RBAC 授权数据变更动作。
+     * 授权数据变更动作。
      */
     public enum Action {
         DEFAULT,

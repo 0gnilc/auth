@@ -8,7 +8,7 @@ import com.gnilc.auth.authz.rbac.entity.bo.RoleBo;
 import com.gnilc.auth.authz.rbac.entity.bo.PermissionBo;
 import com.gnilc.auth.authz.rbac.entity.bo.RolePermissionBo;
 import com.gnilc.auth.authz.rbac.entity.dto.RolePermissionDto;
-import com.gnilc.auth.authz.rbac.event.RbacAuthzEvent;
+import com.gnilc.auth.authz.rbac.event.AuthorizationEvent;
 import com.gnilc.auth.authz.rbac.service.RolePermissionService;
 import com.gnilc.auth.authz.rbac.service.PermissionService;
 import com.gnilc.auth.authz.rbac.service.RoleService;
@@ -121,9 +121,9 @@ public class RolePermissionServiceImpl extends ServiceImpl<RolePermissionDao, Ro
         if (!bos.isEmpty()) {
             saveBatch(bos);
         }
-        eventPublisher.publishEvent(RbacAuthzEvent.of(
-                RbacAuthzEvent.Type.ROLE_PERMISSION,
-                RbacAuthzEvent.Action.REPLACE,
+        eventPublisher.publishEvent(AuthorizationEvent.of(
+                AuthorizationEvent.Type.ROLE_PERMISSION,
+                AuthorizationEvent.Action.REPLACE,
                 roleId));
     }
 
@@ -163,9 +163,9 @@ public class RolePermissionServiceImpl extends ServiceImpl<RolePermissionDao, Ro
         lambdaUpdate()
                 .eq(RolePermissionBo::getPermissionId, permissionId)
                 .remove();
-        roleIds.forEach(roleId -> eventPublisher.publishEvent(RbacAuthzEvent.of(
-                RbacAuthzEvent.Type.ROLE_PERMISSION,
-                RbacAuthzEvent.Action.REPLACE,
+        roleIds.forEach(roleId -> eventPublisher.publishEvent(AuthorizationEvent.of(
+                AuthorizationEvent.Type.ROLE_PERMISSION,
+                AuthorizationEvent.Action.REPLACE,
                 roleId)));
     }
 }

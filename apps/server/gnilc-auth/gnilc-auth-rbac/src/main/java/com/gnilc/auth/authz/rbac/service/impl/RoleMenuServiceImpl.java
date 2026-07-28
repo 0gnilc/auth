@@ -6,6 +6,7 @@ import com.gnilc.auth.authz.rbac.entity.bo.MenuBo;
 import com.gnilc.auth.authz.rbac.entity.bo.RoleBo;
 import com.gnilc.auth.authz.rbac.entity.bo.RoleMenuBo;
 import com.gnilc.auth.authz.rbac.entity.dto.RoleMenuDto;
+import com.gnilc.auth.authz.rbac.event.AuthorizationEvent;
 import com.gnilc.auth.authz.rbac.service.MenuService;
 import com.gnilc.auth.authz.rbac.service.RoleMenuService;
 import com.gnilc.auth.authz.rbac.service.RoleService;
@@ -13,6 +14,7 @@ import com.gnilc.common.base.Preconditions;
 import com.gnilc.common.i18n.I18nMessageService;
 import com.google.common.collect.Sets;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
@@ -27,13 +29,16 @@ import java.util.stream.Collectors;
 public class RoleMenuServiceImpl extends ServiceImpl<RoleMenusDao, RoleMenuBo> implements RoleMenuService {
     private final MenuService menuService;
     private final RoleService roleService;
+    private final ApplicationEventPublisher eventPublisher;
     private final I18nMessageService messages;
 
     public RoleMenuServiceImpl(@Lazy MenuService menuService,
                                RoleService roleService,
+                               ApplicationEventPublisher eventPublisher,
                                I18nMessageService messages) {
         this.menuService = menuService;
         this.roleService = roleService;
+        this.eventPublisher = eventPublisher;
         this.messages = messages;
     }
 
@@ -110,6 +115,10 @@ public class RoleMenuServiceImpl extends ServiceImpl<RoleMenusDao, RoleMenuBo> i
         if (!bos.isEmpty()) {
             saveBatch(bos);
         }
+        eventPublisher.publishEvent(AuthorizationEvent.of(
+                AuthorizationEvent.Type.ROLE_MENU,
+                AuthorizationEvent.Action.REPLACE,
+                roleId));
     }
 
     @Transactional
@@ -121,6 +130,10 @@ public class RoleMenuServiceImpl extends ServiceImpl<RoleMenusDao, RoleMenuBo> i
         lambdaUpdate()
                 .eq(RoleMenuBo::getRoleId, roleId)
                 .remove();
+        eventPublisher.publishEvent(AuthorizationEvent.of(
+                AuthorizationEvent.Type.ROLE_MENU,
+                AuthorizationEvent.Action.REPLACE,
+                roleId));
     }
 
     @Transactional
@@ -129,8 +142,20 @@ public class RoleMenuServiceImpl extends ServiceImpl<RoleMenusDao, RoleMenuBo> i
         if (CollectionUtils.isEmpty(menuIds)) {
             return;
         }
+        List<Long> roleIds = lambdaQuery()
+                .select(RoleMenuBo::getRoleId)
+                .in(RoleMenuBo::getMenuId, menuIds)
+                .list()
+                .stream()
+                .map(RoleMenuBo::getRoleId)
+                .distinct()
+                .toList();
         lambdaUpdate()
                 .in(RoleMenuBo::getMenuId, menuIds)
                 .remove();
+        roleIds.forEach(roleId -> eventPublisher.publishEvent(AuthorizationEvent.of(
+                AuthorizationEvent.Type.ROLE_MENU,
+                AuthorizationEvent.Action.REPLACE,
+                roleId)));
     }
 }

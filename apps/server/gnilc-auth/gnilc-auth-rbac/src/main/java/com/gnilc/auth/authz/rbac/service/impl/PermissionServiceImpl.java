@@ -9,7 +9,7 @@ import com.gnilc.auth.authz.rbac.entity.bo.PermissionBo;
 import com.gnilc.auth.authz.rbac.entity.dto.PermissionDto;
 import com.gnilc.auth.authz.rbac.entity.dto.PermissionQueryDto;
 import com.gnilc.auth.authz.rbac.entity.vo.PermissionVo;
-import com.gnilc.auth.authz.rbac.event.RbacAuthzEvent;
+import com.gnilc.auth.authz.rbac.event.AuthorizationEvent;
 import com.gnilc.auth.authz.rbac.service.PermissionService;
 import com.gnilc.auth.authz.rbac.service.RolePermissionService;
 import com.gnilc.auth.authz.rbac.service.UserRoleService;
@@ -67,9 +67,9 @@ public class PermissionServiceImpl extends ServiceImpl<PermissionDao, Permission
         bo.setBuiltIn(Boolean.FALSE);
         save(bo);
 
-        eventPublisher.publishEvent(RbacAuthzEvent.of(
-                RbacAuthzEvent.Type.PERMISSION,
-                RbacAuthzEvent.Action.CREATE,
+        eventPublisher.publishEvent(AuthorizationEvent.of(
+                AuthorizationEvent.Type.PERMISSION,
+                AuthorizationEvent.Action.CREATE,
                 bo.getId()));
     }
 
@@ -107,9 +107,9 @@ public class PermissionServiceImpl extends ServiceImpl<PermissionDao, Permission
         bo.setPublicAccess(Boolean.TRUE.equals(publicAccess));
         updateById(bo);
 
-        eventPublisher.publishEvent(RbacAuthzEvent.of(
-                RbacAuthzEvent.Type.PERMISSION,
-                RbacAuthzEvent.Action.UPDATE, permissionId));
+        eventPublisher.publishEvent(AuthorizationEvent.of(
+                AuthorizationEvent.Type.PERMISSION,
+                AuthorizationEvent.Action.UPDATE, permissionId));
     }
 
     @Transactional
@@ -125,9 +125,9 @@ public class PermissionServiceImpl extends ServiceImpl<PermissionDao, Permission
         rolePermissionService.removeByPermissionId(id);
         removeById(id);
 
-        eventPublisher.publishEvent(RbacAuthzEvent.of(
-                RbacAuthzEvent.Type.PERMISSION,
-                RbacAuthzEvent.Action.DELETE, id));
+        eventPublisher.publishEvent(AuthorizationEvent.of(
+                AuthorizationEvent.Type.PERMISSION,
+                AuthorizationEvent.Action.DELETE, id));
     }
 
     @Override

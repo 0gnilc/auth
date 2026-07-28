@@ -1,7 +1,7 @@
 package com.gnilc.auth.authz.rbac.provider.cache;
 
 import com.gnilc.auth.authz.rbac.provider.cache.redis.PermissionCacheRedisResetTransport;
-import com.gnilc.auth.authz.rbac.event.RbacAuthzEvent;
+import com.gnilc.auth.authz.rbac.event.AuthorizationEvent;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -41,7 +41,7 @@ public class PermissionCacheResetEventListener {
      * @param event 携带授权数据 ID 的 RBAC 授权事件
      */
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
-    public void handle(RbacAuthzEvent<Long> event) {
+    public void handle(AuthorizationEvent<Long> event) {
         reset(resetPolicy.commandsFor(event));
     }
 
@@ -51,7 +51,7 @@ public class PermissionCacheResetEventListener {
      * @param event RBAC 授权全量清理事件
      */
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
-    public void handleAll(RbacAuthzEvent<Void> event) {
+    public void handleAll(AuthorizationEvent<Void> event) {
         reset(resetPolicy.commandsForAll(event));
     }
 

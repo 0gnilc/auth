@@ -1,6 +1,6 @@
 package com.gnilc.auth.authz.rbac.provider.cache;
 
-import com.gnilc.auth.authz.rbac.event.RbacAuthzEvent;
+import com.gnilc.auth.authz.rbac.event.AuthorizationEvent;
 import com.gnilc.auth.authz.rbac.service.RolePermissionService;
 import com.gnilc.auth.authz.rbac.service.UserRoleService;
 import org.junit.jupiter.api.Test;
@@ -21,17 +21,20 @@ class PermissionCacheResetPolicyTest {
         when(userRoles.getUserIds(2L)).thenReturn(List.of(7L));
         PermissionCacheResetPolicy policy = new PermissionCacheResetPolicy(rolePermissions, userRoles);
 
-        assertThat(policy.commandsFor(RbacAuthzEvent.of(
-                RbacAuthzEvent.Type.PERMISSION, RbacAuthzEvent.Action.UPDATE, 11L)))
+        assertThat(policy.commandsFor(AuthorizationEvent.of(
+                AuthorizationEvent.Type.PERMISSION, AuthorizationEvent.Action.UPDATE, 11L)))
                 .containsExactly(PermissionCacheResetCommand.targetPermissions(),
                         PermissionCacheResetCommand.publicAccessPermissions(),
                         PermissionCacheResetCommand.userPermissions(7L),
                         PermissionCacheResetCommand.userPermissions(8L));
-        assertThat(policy.commandsFor(RbacAuthzEvent.of(
-                RbacAuthzEvent.Type.ROLE, RbacAuthzEvent.Action.UPDATE, 2L)))
+        assertThat(policy.commandsFor(AuthorizationEvent.of(
+                AuthorizationEvent.Type.ROLE, AuthorizationEvent.Action.UPDATE, 2L)))
                 .containsExactly(PermissionCacheResetCommand.userPermissions(7L));
-        assertThat(policy.commandsForAll(RbacAuthzEvent.of(
-                RbacAuthzEvent.Type.ALL, RbacAuthzEvent.Action.CLEAR)))
+        assertThat(policy.commandsFor(AuthorizationEvent.of(
+                AuthorizationEvent.Type.ROLE_MENU, AuthorizationEvent.Action.REPLACE, 2L)))
+                .isEmpty();
+        assertThat(policy.commandsForAll(AuthorizationEvent.of(
+                AuthorizationEvent.Type.ALL, AuthorizationEvent.Action.CLEAR)))
                 .containsExactly(PermissionCacheResetCommand.all());
     }
 }

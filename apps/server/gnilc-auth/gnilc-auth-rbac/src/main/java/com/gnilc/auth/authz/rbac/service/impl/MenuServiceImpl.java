@@ -11,6 +11,7 @@ import com.gnilc.auth.authz.rbac.entity.dto.MenuDto;
 import com.gnilc.auth.authz.rbac.entity.enums.MenuType;
 import com.gnilc.auth.authz.rbac.entity.vo.MenuRouteVo;
 import com.gnilc.auth.authz.rbac.entity.vo.MenuVo;
+import com.gnilc.auth.authz.rbac.event.MenuEvent;
 import com.gnilc.auth.authz.rbac.service.MenuService;
 import com.gnilc.auth.authz.rbac.service.RoleMenuService;
 import com.gnilc.common.base.Preconditions;
@@ -20,6 +21,7 @@ import com.gnilc.common.utils.BeanPropertyUtils;
 import com.gnilc.common.utils.HttpUrlUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
@@ -45,15 +47,18 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
 
     private final MenuDao menuDao;
     private final RoleMenuService roleMenuService;
+    private final ApplicationEventPublisher eventPublisher;
     private final ObjectMapper objectMapper;
     private final I18nMessageService messages;
 
     public MenuServiceImpl(MenuDao menuDao,
                            RoleMenuService roleMenuService,
+                           ApplicationEventPublisher eventPublisher,
                            ObjectMapper objectMapper,
                            I18nMessageService messages) {
         this.menuDao = menuDao;
         this.roleMenuService = roleMenuService;
+        this.eventPublisher = eventPublisher;
         this.objectMapper = objectMapper;
         this.messages = messages;
     }
@@ -85,6 +90,7 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
     }
 
     @Override
+    @Transactional
     public void createMenu(MenuDto dto) {
         Preconditions.checkArgument(dto != null, messages.get("rbac.menu.information.required"));
         MenuBo bo = new MenuBo();
@@ -93,12 +99,14 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
         bo.setBuiltIn(Boolean.FALSE);
         validateMenu(bo);
         save(bo);
+        eventPublisher.publishEvent(new MenuEvent(MenuEvent.Action.CREATE, bo.getId()));
     }
 
     /**
      * 使用同一个菜单对象完成完整请求的规范化、校验和持久化，确保校验值与落库值一致。
      */
     @Override
+    @Transactional
     public void updateMenu(MenuDto dto) {
         Preconditions.checkArgument(dto != null, messages.get("rbac.menu.information.required"));
         Long menuId = dto.getId();
@@ -114,6 +122,7 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
         BeanPropertyUtils.trimToNull(menu);
         validateMenu(menu);
         updateById(menu);
+        eventPublisher.publishEvent(new MenuEvent(MenuEvent.Action.UPDATE, menuId));
     }
 
     @Transactional
@@ -130,6 +139,7 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
                 messages.get("rbac.menu.builtIn.delete"));
         roleMenuService.removeByMenuIds(menuIds);
         removeByIds(menuIds);
+        eventPublisher.publishEvent(new MenuEvent(MenuEvent.Action.DELETE, id));
     }
 
     @Override

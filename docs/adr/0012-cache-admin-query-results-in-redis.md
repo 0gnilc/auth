@@ -1,0 +1,3 @@
+# Cache Admin query results in Redis
+
+Cache Admin User information, role codes, menu access codes, and navigation routes in Redis using cache-aside reads with fixed-expiry entries and JVM-local striped locks to reduce duplicate database loads; Redis remains a required system component, and the local locks do not provide cross-instance consistency. Data-changing transactions publish owner-scoped events, delete affected entries before commit so a Redis failure rolls back the database change, and schedule a second deletion after commit to close the stale-refill window without introducing a distributed lock.

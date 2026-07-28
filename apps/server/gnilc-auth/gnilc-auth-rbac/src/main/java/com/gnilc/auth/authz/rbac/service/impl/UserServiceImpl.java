@@ -6,7 +6,7 @@ import com.gnilc.auth.authz.rbac.entity.bo.MenuBo;
 import com.gnilc.auth.authz.rbac.entity.bo.PermissionBo;
 import com.gnilc.auth.authz.rbac.entity.bo.RoleBo;
 import com.gnilc.auth.authz.rbac.entity.bo.UserBo;
-import com.gnilc.auth.authz.rbac.event.RbacAuthzEvent;
+import com.gnilc.auth.authz.rbac.event.AuthorizationEvent;
 import com.gnilc.auth.authz.rbac.service.MenuService;
 import com.gnilc.auth.authz.rbac.service.PermissionService;
 import com.gnilc.auth.authz.rbac.service.RoleMenuService;
@@ -56,9 +56,9 @@ public class UserServiceImpl extends ServiceImpl<UserDao, UserBo> implements Use
     @Override
     public boolean removeUser(Long userId) {
         removeById(userId);
-        eventPublisher.publishEvent(RbacAuthzEvent.of(
-                RbacAuthzEvent.Type.USER,
-                RbacAuthzEvent.Action.DELETE,
+        eventPublisher.publishEvent(AuthorizationEvent.of(
+                AuthorizationEvent.Type.USER,
+                AuthorizationEvent.Action.DELETE,
                 userId));
         return true;
     }

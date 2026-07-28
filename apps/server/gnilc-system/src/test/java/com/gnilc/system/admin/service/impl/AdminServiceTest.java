@@ -17,9 +17,12 @@ import com.gnilc.auth.authz.rbac.service.UserService;
 import com.gnilc.common.exception.IllegalConditionException;
 import com.gnilc.common.exception.InvalidArgumentException;
 import com.gnilc.common.i18n.I18nMessageService;
+import com.gnilc.system.admin.cache.AdminCacheService;
 import com.gnilc.system.admin.dao.AdminDao;
 import com.gnilc.system.admin.entity.bo.AdminBo;
 import com.gnilc.system.admin.entity.dto.AdminDto;
+import com.gnilc.system.admin.entity.vo.AdminVo;
+import com.gnilc.system.admin.event.AdminEvent;
 import com.gnilc.system.session.AdminSessionManager;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.AfterEach;
@@ -35,12 +38,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.context.support.ResourceBundleMessageSource;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -49,9 +54,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -65,6 +72,8 @@ class AdminServiceTest {
     @Mock
     private AdminSessionManager sessions;
     @Mock
+    private AdminCacheService cacheService;
+    @Mock
     private RoleService roles;
     @Mock
     private MenuService menus;
@@ -74,10 +83,13 @@ class AdminServiceTest {
     private UserService users;
     @Mock
     private UserRoleService userRoles;
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     private AdminServiceImpl admins;
 
     @BeforeEach
+    @SuppressWarnings("unchecked")
     void setUp() {
         if (TableInfoHelper.getTableInfo(AdminBo.class) == null) {
             TableInfoHelper.initTableInfo(
@@ -91,12 +103,22 @@ class AdminServiceTest {
         I18nMessageService messages = new I18nMessageService(source, "en-US");
         admins = spy(new AdminServiceImpl(
                 sessions,
+                cacheService,
                 roles,
                 menus,
                 roleMenus,
                 users,
                 userRoles,
+                eventPublisher,
                 messages));
+        lenient().when(cacheService.getUserInfo(any(), any()))
+                .thenAnswer(invocation -> ((Supplier<AdminVo>) invocation.getArgument(1)).get());
+        lenient().when(cacheService.getRoleCodes(any(), any()))
+                .thenAnswer(invocation -> ((Supplier<List<String>>) invocation.getArgument(1)).get());
+        lenient().when(cacheService.getMenuAccessCodes(any(), any()))
+                .thenAnswer(invocation -> ((Supplier<List<String>>) invocation.getArgument(1)).get());
+        lenient().when(cacheService.getMenuRoutes(any(), any()))
+                .thenAnswer(invocation -> ((Supplier<List<MenuRouteVo>>) invocation.getArgument(1)).get());
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setUserPrincipal(DefaultAccessPrincipal.of(USER_ID));
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
@@ -136,6 +158,7 @@ class AdminServiceTest {
         assertThat(lambdaUpdate.getParamNameValuePairs())
                 .containsValue("Updated Admin")
                 .containsValue(ADMIN_ID);
+        verify(eventPublisher).publishEvent(new AdminEvent(AdminEvent.Action.UPDATE, USER_ID));
     }
 
     @Test
@@ -187,6 +210,7 @@ class AdminServiceTest {
                 .anyMatch(value -> value instanceof String passwordHash
                         && PASSWORD_ENCODER.matches("Changed#456", passwordHash));
         verify(sessions).cleanupUserSessions(USER_ID);
+        verifyNoInteractions(eventPublisher);
     }
 
     @Test
@@ -210,6 +234,7 @@ class AdminServiceTest {
         when(menus.getMenuRoutes(List.of(31L))).thenReturn(List.of(route));
 
         assertThat(admins.getMenuRoutes()).containsExactly(route);
+        verify(cacheService).getMenuRoutes(any(), any());
         verify(userRoles).getRoleIds(USER_ID);
         verify(roleMenus).getMenuIds(List.of(21L));
         verify(menus).getMenuRoutes(List.of(31L));
@@ -253,6 +278,7 @@ class AdminServiceTest {
         } else {
             verify(sessions, never()).cleanupUserSessions(any());
         }
+        verify(eventPublisher).publishEvent(new AdminEvent(AdminEvent.Action.UPDATE, USER_ID + 1));
     }
 
     @Test

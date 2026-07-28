@@ -4,7 +4,7 @@ import com.gnilc.common.utils.R;
 import com.gnilc.auth.authz.rbac.entity.dto.PermissionDto;
 import com.gnilc.auth.authz.rbac.entity.dto.PermissionQueryDto;
 import com.gnilc.auth.authz.rbac.entity.vo.PermissionVo;
-import com.gnilc.auth.authz.rbac.event.RbacAuthzEvent;
+import com.gnilc.auth.authz.rbac.event.AuthorizationEvent;
 import com.gnilc.auth.authz.rbac.service.PermissionService;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -61,9 +61,9 @@ public class PermissionController {
 
     @PostMapping("/cache/clear-all")
     public R<?> clearAllPermissionCache() {
-        eventPublisher.publishEvent(RbacAuthzEvent.of(
-                RbacAuthzEvent.Type.ALL,
-                RbacAuthzEvent.Action.CLEAR));
+        eventPublisher.publishEvent(AuthorizationEvent.of(
+                AuthorizationEvent.Type.ALL,
+                AuthorizationEvent.Action.CLEAR));
 
         return R.success();
     }
