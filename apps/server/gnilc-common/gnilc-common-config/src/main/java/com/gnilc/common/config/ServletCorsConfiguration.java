@@ -1,4 +1,4 @@
-package com.gnilc.auth.authz.rbac.config;
+package com.gnilc.common.config;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
@@ -8,14 +8,13 @@ import org.springframework.core.Ordered;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
-@Configuration
-public class RbacServletMvcConfigurer implements WebMvcConfigurer {
+@Configuration(value = "servletCorsConfiguration", proxyBeanMethods = false)
+public class ServletCorsConfiguration {
 
-    @Bean("rbacCorsFilterRegistration")
-    @ConditionalOnMissingBean(name = "rbacCorsFilterRegistration")
-    public FilterRegistrationBean<CorsFilter> corsFilterRegistration() {
+    @Bean("servletCorsFilterRegistration")
+    @ConditionalOnMissingBean(value = CorsFilter.class, parameterizedContainer = FilterRegistrationBean.class)
+    public FilterRegistrationBean<CorsFilter> servletCorsFilterRegistration() {
         CorsConfiguration config = new CorsConfiguration();
         config.addAllowedOriginPattern("*");
         config.addAllowedMethod("*");
@@ -33,4 +32,3 @@ public class RbacServletMvcConfigurer implements WebMvcConfigurer {
         return registrationBean;
     }
 }
-

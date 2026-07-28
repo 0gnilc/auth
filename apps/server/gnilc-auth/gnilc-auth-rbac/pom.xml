@@ -20,6 +20,11 @@
 
         <dependency>
             <groupId>com.gnilc.auth</groupId>
+            <artifactId>gnilc-common-config</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.gnilc.auth</groupId>
             <artifactId>gnilc-auth-core</artifactId>
             <version>${project.version}</version>
         </dependency>

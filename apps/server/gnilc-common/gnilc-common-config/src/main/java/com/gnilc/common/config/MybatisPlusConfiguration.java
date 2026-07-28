@@ -1,4 +1,4 @@
-package com.gnilc.auth.authz.rbac.config;
+package com.gnilc.common.config;
 
 import com.baomidou.mybatisplus.annotation.DbType;
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
@@ -8,11 +8,11 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-@Configuration("rbacMybatisPlusConfiguration")
+@Configuration(value = "mybatisPlusConfiguration", proxyBeanMethods = false)
 public class MybatisPlusConfiguration {
 
+    @Bean("mybatisPlusInterceptor")
     @ConditionalOnMissingBean(MybatisPlusInterceptor.class)
-    @Bean("rbacMybatisPlusInterceptor")
     public MybatisPlusInterceptor mybatisPlusInterceptor() {
         MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
         interceptor.addInnerInterceptor(new OptimisticLockerInnerInterceptor());

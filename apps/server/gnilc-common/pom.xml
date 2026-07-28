@@ -14,6 +14,7 @@
 
     <modules>
         <module>gnilc-common-core</module>
+        <module>gnilc-common-config</module>
         <module>gnilc-test-support</module>
     </modules>
 
