@@ -30,6 +30,7 @@ export const overridesPreferences = defineOverridesPreferences({
   },
   widget: {
     lockScreen: false,
+    logoutButtonPosition: 'user-dropdown',
   },
   theme: {
     radius: '0.25',

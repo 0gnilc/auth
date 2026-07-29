@@ -126,15 +126,26 @@ watch(
 </script>
 
 <template>
-  <BasicLayout @clear-preferences-and-logout="handleLogout">
+  <BasicLayout
+    :avatar
+    :text="userStore.userInfo?.nickname"
+    @clear-preferences-and-logout="handleLogout"
+    @logout="handleLogout"
+  >
     <template #user-dropdown>
       <UserDropdown
         :avatar
         :menus
+        :notification-dot="showDot"
+        :notifications
         :text="userStore.userInfo?.nickname"
         :description="userStore.userInfo?.desc"
-        @logout="handleLogout"
         @clear-preferences-and-logout="handleLogout"
+        @logout="handleLogout"
+        @notification-clear="handleNoticeClear"
+        @notification-make-all="handleMakeAll"
+        @notification-read="(item) => item.id && markRead(item.id)"
+        @notification-remove="(item) => item.id && remove(item.id)"
       />
     </template>
     <template #notification>

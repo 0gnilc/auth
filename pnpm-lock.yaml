@@ -1348,6 +1348,9 @@ importers:
 
   packages/effects/layouts:
     dependencies:
+      '@types/sortablejs':
+        specifier: 'catalog:'
+        version: 1.15.9
       '@vben-core/composables':
         specifier: workspace:*
         version: link:../../@core/composables
@@ -1402,6 +1405,9 @@ importers:
       '@vueuse/core':
         specifier: 'catalog:'
         version: 14.3.0(vue@3.5.38(typescript@6.0.3))
+      sortablejs:
+        specifier: 'catalog:'
+        version: 1.15.7
       vue:
         specifier: ^3.5.38
         version: 3.5.38(typescript@6.0.3)
