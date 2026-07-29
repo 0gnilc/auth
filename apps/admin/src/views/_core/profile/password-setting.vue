@@ -65,9 +65,7 @@ const formSchema = computed((): VbenFormSchema[] => {
           const { newPassword } = values;
           return z
             .string({
-              required_error: $t(
-                'page.profile.form.confirmPasswordPlaceholder',
-              ),
+              error: $t('page.profile.form.confirmPasswordPlaceholder'),
             })
             .min(1, {
               message: $t('page.profile.form.confirmPasswordPlaceholder'),

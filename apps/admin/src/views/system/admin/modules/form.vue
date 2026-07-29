@@ -40,7 +40,7 @@ const passwordRule = z
     { message: $t('page.profile.form.passwordComplexity') },
   );
 
-const schema: VbenFormSchema[] = [
+const schema: VbenFormSchema<AdminForm>[] = [
   {
     component: 'Input',
     fieldName: 'id',
@@ -94,8 +94,13 @@ const schema: VbenFormSchema[] = [
   },
   {
     component: 'Switch',
-    componentProps: (values) => ({ disabled: Boolean(values.currentAdmin) }),
     defaultValue: true,
+    dependencies: {
+      resolve: ({ values }) => ({
+        componentProps: { disabled: Boolean(values.currentAdmin) },
+      }),
+      triggerFields: ['currentAdmin'],
+    },
     fieldName: 'status',
     label: $t('page.systemAdmin.form.status'),
   },

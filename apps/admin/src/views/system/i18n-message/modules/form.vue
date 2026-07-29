@@ -44,7 +44,7 @@ const messageKeyRule = z
     message: $t('page.i18nMessage.validation.keyInvalid'),
   });
 
-const schema: VbenFormSchema[] = [
+const schema: VbenFormSchema<MessageForm>[] = [
   { component: 'Input', fieldName: 'editing', hide: true },
   {
     component: 'Select',
@@ -57,7 +57,12 @@ const schema: VbenFormSchema[] = [
   },
   {
     component: 'Input',
-    componentProps: (values) => ({ disabled: Boolean(values.editing) }),
+    dependencies: {
+      resolve: ({ values }) => ({
+        componentProps: { disabled: Boolean(values.editing) },
+      }),
+      triggerFields: ['editing'],
+    },
     fieldName: 'messageKey',
     label: $t('page.i18nMessage.form.messageKey'),
     rules: messageKeyRule,

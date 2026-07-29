@@ -132,18 +132,23 @@ const schema: VbenFormSchema[] = [
   { component: 'Input', fieldName: 'id', hide: true },
   {
     component: 'RadioGroup',
-    componentProps: (values, actions) => ({
-      class: 'flex flex-wrap',
-      disabled: !!values.id,
-      isButton: true,
-      onChange: () => {
-        void actions.setFieldValue('pid', undefined, false);
-      },
-      options: MenuConstants.MenuTypes.map((value) => ({
-        label: $t(`page.systemMenu.types.${value}`),
-        value,
-      })),
-    }),
+    dependencies: {
+      resolve: ({ actions, values }) => ({
+        componentProps: {
+          class: 'flex flex-wrap',
+          disabled: !!values.id,
+          isButton: true,
+          onChange: () => {
+            void actions.setFieldValue('pid', undefined, false);
+          },
+          options: MenuConstants.MenuTypes.map((value) => ({
+            label: $t(`page.systemMenu.types.${value}`),
+            value,
+          })),
+        },
+      }),
+      triggerFields: ['id'],
+    },
     fieldName: 'type',
     formItemClass: 'col-span-full',
     help: $t('page.systemMenu.form.typeImmutable'),
@@ -152,14 +157,19 @@ const schema: VbenFormSchema[] = [
   },
   {
     component: 'TreeSelect',
-    componentProps: (values) => ({
-      checkStrictly: true,
-      data: parentOptions(values as Partial<MenuForm>),
-      defaultExpandAll: true,
-      filterable: true,
-      nodeKey: 'value',
-      props: { children: 'children', disabled: 'disabled', label: 'label' },
-    }),
+    dependencies: {
+      resolve: ({ values }) => ({
+        componentProps: {
+          checkStrictly: true,
+          data: parentOptions(values),
+          defaultExpandAll: true,
+          filterable: true,
+          nodeKey: 'value',
+          props: { children: 'children', disabled: 'disabled', label: 'label' },
+        },
+      }),
+      triggerFields: ['id', 'type'],
+    },
     fieldName: 'pid',
     label: $t('page.systemMenu.form.parent'),
     rules: 'selectRequired',

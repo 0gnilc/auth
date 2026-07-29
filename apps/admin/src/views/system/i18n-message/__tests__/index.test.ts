@@ -33,7 +33,7 @@ describe('internationalization message management grid', () => {
     expect(typeof componentProps).toBe('function');
     expect(
       typeof componentProps === 'function'
-        ? componentProps({}, {} as never)
+        ? componentProps({})
         : componentProps,
     ).toMatchObject({
       options: [
