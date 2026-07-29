@@ -1,3 +1,5 @@
+import process from 'node:process';
+
 import { defineConfig, viteCssLayerPlugin } from '@vben/vite-config';
 
 import ElementPlus from 'unplugin-element-plus/vite';
@@ -15,7 +17,7 @@ export default defineConfig(async () => {
         proxy: {
           '/api': {
             changeOrigin: true,
-            target: 'http://localhost:3666',
+            target: process.env.E2E_API_TARGET ?? 'http://localhost:3666',
             ws: true,
           },
         },

@@ -1,16 +1,13 @@
 package com.gnilc.system.session;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.connection.RedisStringCommands;
-import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.data.redis.core.types.Expiration;
-import org.springframework.data.redis.serializer.RedisSerializer;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 
 import java.time.Duration;
-import java.util.Objects;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -22,6 +19,25 @@ public class AdminSessionRedisCommands {
     private static final String REFRESH_PREFIX = "sys:admin:rt:";
     private static final Duration ACCESS_TOKEN_TTL = Duration.ofDays(7);
     private static final Duration REFRESH_TOKEN_TTL = Duration.ofDays(30);
+    private static final DefaultRedisScript<Long> ROTATE_ACCESS_TOKEN_SCRIPT = new DefaultRedisScript<>("""
+            local paired_access_token = redis.call('GET', KEYS[1])
+            if paired_access_token ~= ARGV[1] then
+                return 0
+            end
+            redis.call('SET', KEYS[1], ARGV[2], 'KEEPTTL')
+            redis.call('DEL', KEYS[2])
+            redis.call('SET', KEYS[3], ARGV[3], 'EX', ARGV[4])
+            return 1
+            """, Long.class);
+    private static final DefaultRedisScript<Long> DELETE_SESSION_SCRIPT = new DefaultRedisScript<>("""
+            local paired_access_token = redis.call('GET', KEYS[1])
+            if not paired_access_token then
+                return 0
+            end
+            redis.call('DEL', ARGV[1] .. paired_access_token)
+            redis.call('DEL', KEYS[1])
+            return 1
+            """, Long.class);
 
     private final StringRedisTemplate redisTemplate;
 
@@ -41,7 +57,7 @@ public class AdminSessionRedisCommands {
     /**
      * 保存访问令牌映射。
      */
-    void saveAccessToken(Long userId, String accessToken, String refreshToken) {
+    private void saveAccessToken(Long userId, String accessToken, String refreshToken) {
         redisTemplate.opsForValue().set(accessKey(userId, accessToken), refreshToken, ACCESS_TOKEN_TTL);
     }
 
@@ -69,36 +85,30 @@ public class AdminSessionRedisCommands {
     /**
      * 替换刷新令牌绑定的访问令牌并保留 TTL。
      */
-    boolean replacePairedAccessTokenKeepingTtl(Long userId, String refreshToken, String accessToken) {
-        String refreshKey = refreshKey(userId, refreshToken);
-        return Boolean.TRUE.equals(redisTemplate.execute((RedisCallback<Boolean>) connection -> {
-            RedisSerializer<String> serializer = redisTemplate.getStringSerializer();
-            byte[] keyBytes = Objects.requireNonNull(serializer.serialize(refreshKey));
-            byte[] valueBytes = Objects.requireNonNull(serializer.serialize(accessToken));
-
-            return connection.stringCommands().set(
-                    keyBytes,
-                    valueBytes,
-                    // 保留刷新令牌 TTL。
-                    Expiration.keepTtl(),
-                    // 仅 refresh key 存在时替换。
-                    RedisStringCommands.SetOption.ifPresent()
-            );
-        }));
+    boolean rotateAccessToken(Long userId, String refreshToken,
+                              String oldAccessToken, String newAccessToken) {
+        Long result = redisTemplate.execute(
+                ROTATE_ACCESS_TOKEN_SCRIPT,
+                List.of(
+                        refreshKey(userId, refreshToken),
+                        accessKey(userId, oldAccessToken),
+                        accessKey(userId, newAccessToken)),
+                oldAccessToken,
+                newAccessToken,
+                refreshToken,
+                Long.toString(ACCESS_TOKEN_TTL.toSeconds()));
+        return Long.valueOf(1L).equals(result);
     }
 
     /**
-     * 删除访问令牌。
+     * 原子删除刷新令牌及其当前绑定的访问令牌。
      */
-    void deleteAccessToken(Long userId, String accessToken) {
-        redisTemplate.delete(accessKey(userId, accessToken));
-    }
-
-    /**
-     * 删除刷新令牌。
-     */
-    void deleteRefreshToken(Long userId, String refreshToken) {
-        redisTemplate.delete(refreshKey(userId, refreshToken));
+    boolean deleteSession(Long userId, String refreshToken) {
+        Long result = redisTemplate.execute(
+                DELETE_SESSION_SCRIPT,
+                List.of(refreshKey(userId, refreshToken)),
+                accessKeyPrefix(userId));
+        return Long.valueOf(1L).equals(result);
     }
 
     /**
@@ -113,7 +123,7 @@ public class AdminSessionRedisCommands {
      * 构造访问令牌 key。
      */
     String accessKey(Long userId, String accessToken) {
-        return ACCESS_PREFIX + userId + ":" + accessToken;
+        return accessKeyPrefix(userId) + accessToken;
     }
 
     /**
@@ -127,7 +137,7 @@ public class AdminSessionRedisCommands {
      * 构造访问令牌清理 pattern。
      */
     String accessPattern(Long userId) {
-        return ACCESS_PREFIX + userId + ":*";
+        return accessKeyPrefix(userId) + "*";
     }
 
     /**
@@ -144,5 +154,9 @@ public class AdminSessionRedisCommands {
         if (!CollectionUtils.isEmpty(keys)) {
             redisTemplate.delete(keys);
         }
+    }
+
+    private String accessKeyPrefix(Long userId) {
+        return ACCESS_PREFIX + userId + ":";
     }
 }

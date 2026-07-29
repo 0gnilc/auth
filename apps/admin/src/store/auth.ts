@@ -49,10 +49,15 @@ export const useAuthStore = defineStore('auth', () => {
         accessStore.setAccessToken(accessToken);
         accessStore.setRefreshToken(refreshToken);
 
-        userInfo = await getUserInfo();
+        try {
+          userInfo = await getUserInfo();
 
-        const { loadDynamicMessages } = await import('#/locales/dynamic');
-        await loadDynamicMessages();
+          const { loadDynamicMessages } = await import('#/locales/dynamic');
+          await loadDynamicMessages();
+        } catch (error) {
+          await resetSessionState();
+          throw error;
+        }
 
         if (accessStore.loginExpired) {
           accessStore.setLoginExpired(false);

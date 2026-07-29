@@ -646,7 +646,7 @@ const [Drawer, drawerApi] = useVbenDrawer({
         ? $t('page.systemMenu.drawer.editTitle')
         : $t('page.systemMenu.drawer.createTitle'),
     });
-    await formApi.resetForm();
+    await formApi.reset();
     await nextTick();
     await formApi.setValues(values, false);
     initialValues.value = await formApi.getValues<MenuForm>();

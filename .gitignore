@@ -8,6 +8,8 @@ dist.war
 .nitro
 .output
 coverage
+playwright-report/
+test-results/
 target/
 *.local
 .cache

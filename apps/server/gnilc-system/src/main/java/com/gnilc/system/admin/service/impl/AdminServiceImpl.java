@@ -49,8 +49,10 @@ import java.util.Optional;
 public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements AdminService {
     private static final String ADMIN_DEFAULT_ROLE_CODE = "admin";
     private static final String DEFAULT_HOME_PATH = "/dashboard";
+    private static final int USERNAME_MAX_LENGTH = 255;
     private static final int NICKNAME_MAX_LENGTH = 255;
     private static final int PROFILE_TEXT_MAX_LENGTH = 500;
+    private static final int HOME_PATH_MAX_LENGTH = 500;
     private static final BCryptPasswordEncoder PASSWORD_ENCODER = new BCryptPasswordEncoder();
 
     private final AdminSessionManager sessionManager;
@@ -280,6 +282,7 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
         Preconditions.checkArgument(StringUtils.isNotBlank(password), messages.get("system.admin.password.required"));
         Preconditions.checkArgument(StringUtils.isNotBlank(dto.getNickname()),
                 messages.get("system.admin.nickname.required"));
+        validateAdminFieldLengths(dto);
         validateStrongPassword(password);
         Preconditions.checkArgument(getAdminByUsername(username) == null,
                 messages.get("system.admin.username.exists"));
@@ -314,6 +317,7 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
                 messages.get("system.admin.username.required"));
         Preconditions.checkArgument(!nicknameSpecified || StringUtils.isNotBlank(dto.getNickname()),
                 messages.get("system.admin.nickname.required"));
+        validateAdminFieldLengths(dto);
         if (username != null && !username.equals(bo.getUsername())) {
             Preconditions.checkArgument(getAdminByUsername(username) == null,
                     messages.get("system.admin.username.exists"));
@@ -436,6 +440,24 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
                 && password.chars().anyMatch(ch -> !Character.isLetterOrDigit(ch));
         Preconditions.checkArgument(valid,
                 messages.get("system.admin.password.weak"));
+    }
+
+    private void validateAdminFieldLengths(AdminDto dto) {
+        Preconditions.checkArgument(dto.getUsername() == null
+                        || dto.getUsername().length() <= USERNAME_MAX_LENGTH,
+                messages.get("system.admin.username.tooLong", USERNAME_MAX_LENGTH));
+        Preconditions.checkArgument(dto.getNickname() == null
+                        || dto.getNickname().length() <= NICKNAME_MAX_LENGTH,
+                messages.get("system.admin.nickname.tooLong", NICKNAME_MAX_LENGTH));
+        Preconditions.checkArgument(dto.getAvatar() == null
+                        || dto.getAvatar().length() <= PROFILE_TEXT_MAX_LENGTH,
+                messages.get("system.admin.avatar.tooLong", PROFILE_TEXT_MAX_LENGTH));
+        Preconditions.checkArgument(dto.getDesc() == null
+                        || dto.getDesc().length() <= PROFILE_TEXT_MAX_LENGTH,
+                messages.get("system.admin.description.tooLong", PROFILE_TEXT_MAX_LENGTH));
+        Preconditions.checkArgument(dto.getHomePath() == null
+                        || dto.getHomePath().length() <= HOME_PATH_MAX_LENGTH,
+                messages.get("system.admin.homePath.tooLong", HOME_PATH_MAX_LENGTH));
     }
 
     /**

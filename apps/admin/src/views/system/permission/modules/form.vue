@@ -152,7 +152,7 @@ const [Drawer, drawerApi] = useVbenDrawer({
         ? $t('page.systemPermission.drawer.editTitle')
         : $t('page.systemPermission.drawer.createTitle'),
     });
-    await formApi.resetForm();
+    await formApi.reset();
     await nextTick();
     await formApi.setValues(values, false);
     initialValues.value = await formApi.getValues<PermissionForm>();

@@ -47,6 +47,7 @@
     "reinstall": "pnpm run clean -- --del-lock && pnpm install",
     "test": "turbo run test",
     "test:admin": "vitest run --dom",
+    "test:e2e": "playwright test",
     "test:server": "pnpm --filter=@app/server run test",
     "verify:server": "pnpm --filter=@app/server run verify",
     "update:deps": "npx taze -r -w",

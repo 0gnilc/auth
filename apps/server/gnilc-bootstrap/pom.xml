@@ -33,6 +33,24 @@
     </dependencies>
 
     <build>
+        <testResources>
+            <testResource>
+                <directory>src/test/resources</directory>
+            </testResource>
+            <testResource>
+                <directory>${maven.multiModuleProjectDirectory}/deploy/sql</directory>
+                <targetPath>sql/schema</targetPath>
+                <includes>
+                    <include>01_rbac.sql</include>
+                    <include>02_admin.sql</include>
+                    <include>03_framework_permissions.sql</include>
+                    <include>04_rbac_permissions.sql</include>
+                    <include>05_admin_permissions.sql</include>
+                    <include>06_i18n.sql</include>
+                    <include>07_rbac_admin.sql</include>
+                </includes>
+            </testResource>
+        </testResources>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>

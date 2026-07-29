@@ -1,5 +1,6 @@
 package com.gnilc.system.admin.api;
 
+import com.gnilc.common.exception.RestExceptionHandlingConfiguration;
 import com.gnilc.system.admin.support.AdminApiTestConfiguration;
 import com.gnilc.system.admin.support.AdminApiTestSupport;
 import com.gnilc.system.support.SystemContainerContextInitializer;
@@ -12,13 +13,20 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ContextConfiguration;
 
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasItem;
 
 @ApiTest
-@Import(AdminApiTestConfiguration.class)
+@Import({
+        AdminApiTestConfiguration.class,
+        RestExceptionHandlingConfiguration.class
+})
 @ContextConfiguration(
         classes = SystemTestApplication.class,
         initializers = SystemContainerContextInitializer.class)
@@ -111,6 +119,148 @@ class AdminManagementApiIT extends AdminApiTestSupport {
         assertThat(jdbc.queryForObject(
                 "select count(*) from sys_admin where id = ? and del = 0", Integer.class, adminId))
                 .isZero();
+    }
+
+    @Test
+    void duplicateSubmissionAndInvalidRolesDoNotCreateDuplicatesOrReplaceValidBindings() {
+        String auth = bearer(loginAsDefaultAdmin().accessToken());
+        Map<String, Object> request = adminRequest("repeat-user");
+
+        postAdmin(auth, "/api/sys/admin/create", request).body("code", equalTo(0));
+        postAdmin(auth, "/api/sys/admin/create", request).body("code", equalTo(10001));
+
+        Long adminId = jdbc.queryForObject(
+                "select id from sys_admin where username = 'repeat-user' and del = 0", Long.class);
+        Long userId = jdbc.queryForObject(
+                "select user_id from sys_admin where id = ?", Long.class, adminId);
+        assertThat(jdbc.queryForObject(
+                "select count(*) from sys_admin where username = 'repeat-user' and del = 0",
+                Integer.class)).isEqualTo(1);
+
+        postAdmin(auth, "/api/sys/admin/roles/save",
+                Map.of("id", adminId,
+                        "roleCodes", List.of("rbac:manager", "rbac:manager")))
+                .body("code", equalTo(0));
+        assertThat(activeRoleCodes(userId)).containsExactlyInAnyOrder("admin", "rbac:manager");
+        assertThat(activeRoleBindingCount(userId)).isEqualTo(2);
+
+        postAdmin(auth, "/api/sys/admin/roles/save",
+                Map.of("id", adminId, "roleCodes", List.of("missing-role")))
+                .body("code", equalTo(10002));
+        assertThat(activeRoleCodes(userId)).containsExactlyInAnyOrder("admin", "rbac:manager");
+    }
+
+    @Test
+    void currentAdministratorCannotDisableOrRemoveItself() {
+        TokenPair pair = loginAsDefaultAdmin();
+        String auth = bearer(pair.accessToken());
+        Long adminId = jdbc.queryForObject(
+                "select id from sys_admin where username = 'admin' and del = 0", Long.class);
+
+        postAdmin(auth, "/api/sys/admin/update", Map.of("id", adminId, "status", false))
+                .body("code", equalTo(10002));
+        given()
+                .header("Authorization", auth)
+                .post("/api/sys/admin/remove/{id}", adminId)
+                .then()
+                .statusCode(200)
+                .body("code", equalTo(10002));
+
+        assertThat(jdbc.queryForObject(
+                "select status from sys_admin where id = ? and del = 0", Boolean.class, adminId))
+                .isTrue();
+        given()
+                .header("Authorization", auth)
+                .get("/api/sys/admin/user-info")
+                .then()
+                .statusCode(200)
+                .body("data.username", equalTo("admin"));
+    }
+
+    @Test
+    void createRejectsFieldsBeyondDatabaseLimitsWithoutLeavingPartialUsers() {
+        String auth = bearer(loginAsDefaultAdmin().accessToken());
+        int adminCountBefore = countRows("sys_admin");
+        int userCountBefore = countRows("az_user");
+        List<Map<String, Object>> invalidRequests = List.of(
+                adminRequest("u".repeat(256)),
+                adminRequest("long-nickname", "n".repeat(256), null, null, null),
+                adminRequest("long-avatar", "Valid", "a".repeat(501), null, null),
+                adminRequest("long-description", "Valid", null, "d".repeat(501), null),
+                adminRequest("long-home", "Valid", null, null, "/" + "h".repeat(500)));
+
+        for (Map<String, Object> request : invalidRequests) {
+            postAdmin(auth, "/api/sys/admin/create", request)
+                    .body("code", equalTo(10001));
+        }
+
+        assertThat(countRows("sys_admin")).isEqualTo(adminCountBefore);
+        assertThat(countRows("az_user")).isEqualTo(userCountBefore);
+    }
+
+    @Test
+    void updateRejectsFieldsBeyondDatabaseLimitsWithoutChangingTheAdministrator() {
+        String auth = bearer(loginAsDefaultAdmin().accessToken());
+        postAdmin(auth, "/api/sys/admin/create", adminRequest("bounded-update"))
+                .body("code", equalTo(0));
+        Long adminId = jdbc.queryForObject(
+                "select id from sys_admin where username = 'bounded-update' and del = 0", Long.class);
+        List<Map<String, Object>> invalidUpdates = List.of(
+                Map.of("id", adminId, "username", "u".repeat(256)),
+                Map.of("id", adminId, "nickname", "n".repeat(256)),
+                Map.of("id", adminId, "avatar", "a".repeat(501)),
+                Map.of("id", adminId, "desc", "d".repeat(501)),
+                Map.of("id", adminId, "homePath", "/" + "h".repeat(500)));
+
+        for (Map<String, Object> request : invalidUpdates) {
+            postAdmin(auth, "/api/sys/admin/update", request)
+                    .body("code", equalTo(10001));
+        }
+
+        Map<String, Object> stored = jdbc.queryForMap("""
+                select username, nickname, avatar, description, home_path
+                  from sys_admin
+                 where id = ? and del = 0
+                """, adminId);
+        assertThat(stored)
+                .containsEntry("username", "bounded-update")
+                .containsEntry("nickname", "API User")
+                .containsEntry("home_path", "/dashboard");
+        assertThat(stored.get("avatar")).isNull();
+        assertThat(stored.get("description")).isNull();
+    }
+
+    private io.restassured.response.ValidatableResponse postAdmin(
+            String auth, String path, Object body) {
+        return given()
+                .header("Authorization", auth)
+                .contentType(ContentType.JSON)
+                .body(body)
+                .post(path)
+                .then()
+                .statusCode(200);
+    }
+
+    private Map<String, Object> adminRequest(String username) {
+        return adminRequest(username, "API User", null, null, null);
+    }
+
+    private Map<String, Object> adminRequest(String username, String nickname,
+                                             String avatar, String description, String homePath) {
+        Map<String, Object> request = new LinkedHashMap<>();
+        request.put("username", username);
+        request.put("password", "Strong#123");
+        request.put("nickname", nickname);
+        request.put("avatar", avatar);
+        request.put("desc", description);
+        request.put("homePath", homePath);
+        request.put("status", true);
+        request.put("roleCodes", List.of());
+        return request;
+    }
+
+    private int countRows(String table) {
+        return jdbc.queryForObject("select count(*) from " + table, Integer.class);
     }
 
     private int activeRoleBindingCount(Long userId) {

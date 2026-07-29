@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -38,16 +37,16 @@ class AdminSessionManagerTest {
         String oldAccess = codec.issue(7L);
         when(redis.hasRefreshToken(7L, refresh)).thenReturn(true);
         when(redis.getPairedAccessToken(7L, refresh)).thenReturn(oldAccess);
-        when(redis.replacePairedAccessTokenKeepingTtl(
+        when(redis.rotateAccessToken(
                 org.mockito.ArgumentMatchers.eq(7L),
-                org.mockito.ArgumentMatchers.eq(refresh), anyString())).thenReturn(true);
+                org.mockito.ArgumentMatchers.eq(refresh),
+                org.mockito.ArgumentMatchers.eq(oldAccess), anyString())).thenReturn(true);
 
         AdminSessionTokenPair pair = sessions.refreshSession(refresh);
 
         assertThat(pair.getRefreshToken()).isEqualTo(refresh);
         assertThat(pair.getAccessToken()).isNotEqualTo(oldAccess);
-        verify(redis).deleteAccessToken(7L, oldAccess);
-        verify(redis).saveAccessToken(7L, pair.getAccessToken(), refresh);
+        verify(redis).rotateAccessToken(7L, refresh, oldAccess, pair.getAccessToken());
     }
 
     @Test
@@ -55,26 +54,22 @@ class AdminSessionManagerTest {
         String refresh = codec.issue(8L);
         when(redis.hasRefreshToken(8L, refresh)).thenReturn(true);
         when(redis.getPairedAccessToken(8L, refresh)).thenReturn("old");
-        when(redis.replacePairedAccessTokenKeepingTtl(
+        when(redis.rotateAccessToken(
                 org.mockito.ArgumentMatchers.eq(8L),
-                org.mockito.ArgumentMatchers.eq(refresh), anyString())).thenReturn(false);
+                org.mockito.ArgumentMatchers.eq(refresh),
+                org.mockito.ArgumentMatchers.eq("old"), anyString())).thenReturn(false);
 
         assertThat(sessions.refreshSession(refresh)).isNull();
-        verify(redis, never()).saveAccessToken(
-                org.mockito.ArgumentMatchers.anyLong(), anyString(), anyString());
     }
 
     @Test
     void logoutRevokesRefreshTokenAndItsPairedAccessToken() {
         String refresh = codec.issue(9L);
-        String access = codec.issue(9L);
-        when(redis.hasRefreshToken(9L, refresh)).thenReturn(true);
-        when(redis.getPairedAccessToken(9L, refresh)).thenReturn(access);
+        when(redis.deleteSession(9L, refresh)).thenReturn(true);
 
         assertThat(sessions.logout(refresh)).isTrue();
 
-        verify(redis).deleteAccessToken(9L, access);
-        verify(redis).deleteRefreshToken(9L, refresh);
+        verify(redis).deleteSession(9L, refresh);
         sessions.cleanupUserSessions(9L);
         verify(redis).deleteUserSessions(9L);
     }

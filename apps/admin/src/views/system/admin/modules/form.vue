@@ -180,7 +180,7 @@ const [Drawer, drawerApi] = useVbenDrawer({
         ? $t('page.systemAdmin.drawer.editTitle')
         : $t('page.systemAdmin.drawer.createTitle'),
     });
-    await formApi.resetForm();
+    await formApi.reset();
     await nextTick();
     await formApi.setValues(values, false);
     initialValues.value = await formApi.getValues<AdminForm>();

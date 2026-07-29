@@ -161,7 +161,7 @@ const [Drawer, drawerApi] = useVbenDrawer({
         ? $t('page.i18nMessage.drawer.editTitle')
         : $t('page.i18nMessage.drawer.createTitle'),
     });
-    await formApi.resetForm();
+    await formApi.reset();
     await nextTick();
     await formApi.setValues(values, false);
     initialValues.value = await formApi.getValues<MessageForm>();
