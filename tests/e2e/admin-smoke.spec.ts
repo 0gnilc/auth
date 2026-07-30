@@ -255,36 +255,89 @@ test('baseline administrators cannot see or call management capabilities', async
   expect(removeBody.code).toBe(0);
 });
 
-test('a dynamic Message Key is saved and removed as its own resource', async ({
+test('a dynamic Message Key is created without overwriting an existing resource', async ({
   page,
 }) => {
   const messageKey = `e2e.message.key${Date.now()}`;
+  const retryKey = `e2e.message.retry${Date.now()}`;
   const managerSession = await loginSuccessfully(page, 'admin', '123456');
   const headers = { Authorization: `Bearer ${managerSession.accessToken}` };
-  const saveResponse = await page.request.post('/api/sys/i18n-message/save', {
-    data: {
-      category: 'admin',
-      messageKey,
-      values: [
-        { locale: 'en-US', value: 'E2E message' },
-        { locale: 'zh-CN', value: 'E2E message zh-CN' },
-      ],
-    },
-    headers,
-  });
-  const saveBody = await readApiResponse<{ messageKey: string }>(saveResponse);
-  expect(saveBody.data.messageKey).toBe(messageKey);
 
   await page.goto('/system/i18n-message');
-  await expect(page.getByText(messageKey, { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: /Create|新增/ }).click();
+  const drawer = page.getByRole('dialog').filter({
+    hasText: /Create internationalization message|新增国际化消息/,
+  });
+  await drawer.getByLabel(/Message Key/).fill(messageKey);
+  await drawer.getByLabel('en-US').fill('E2E original message');
+  await drawer.getByLabel('zh-CN').fill('E2E 原始消息');
+  const createResponsePromise = page.waitForResponse((response) =>
+    response.url().endsWith('/api/sys/i18n-message/create'),
+  );
+  await drawer.getByRole('button', { name: /Confirm|确认/ }).click();
+  const createResponse = await createResponsePromise;
+  const createBody = await readApiResponse<{
+    category: string;
+    messageKey: string;
+  }>(createResponse);
+  expect(createBody.code).toBe(0);
+  expect(createBody.data.messageKey).toBe(messageKey);
+  await expect(drawer).toBeHidden();
+
+  const pageResponsePromise = page.waitForResponse((response) =>
+    response.url().endsWith('/api/sys/i18n-message/page'),
+  );
+  await page
+    .getByRole('textbox', { name: 'Message Key', exact: true })
+    .fill(messageKey);
+  await page.getByRole('button', { name: /^(Search|搜索)$/ }).click();
+  await pageResponsePromise;
+  await expect(rowContaining(page, messageKey)).toContainText(
+    'E2E original message',
+  );
+
+  await page.getByRole('button', { name: /Create|新增/ }).click();
+  await drawer.getByLabel(/Message Key/).fill(messageKey);
+  await drawer.getByLabel('en-US').fill('E2E replacement message');
+  await drawer.getByLabel('zh-CN').fill('E2E 替换消息');
+  const duplicateResponsePromise = page.waitForResponse((response) =>
+    response.url().endsWith('/api/sys/i18n-message/create'),
+  );
+  await drawer.getByRole('button', { name: /Confirm|确认/ }).click();
+  const duplicateResponse = await duplicateResponsePromise;
+  const duplicateBody = await readApiResponse(duplicateResponse);
+  expect(duplicateBody.code).toBe(10_001);
+  await expect(
+    page.getByText(/Message key already exists|Message key已存在/),
+  ).toBeVisible();
+  await expect(drawer).toBeVisible();
+  await expect(drawer.getByLabel(/Message Key/)).toHaveValue(messageKey);
+  await expect(drawer.getByLabel('en-US')).toHaveValue(
+    'E2E replacement message',
+  );
+
+  await drawer.getByLabel(/Message Key/).fill(retryKey);
+  const retryResponsePromise = page.waitForResponse((response) =>
+    response.url().endsWith('/api/sys/i18n-message/create'),
+  );
+  await drawer.getByRole('button', { name: /Confirm|确认/ }).click();
+  const retryResponse = await retryResponsePromise;
+  const retryBody = await readApiResponse(retryResponse);
+  expect(retryBody.code).toBe(0);
+  await expect(drawer).toBeHidden();
+
   const valuesResponse = await page.request.post(
     `/api/sys/i18n-message/values/${encodeURIComponent(messageKey)}`,
     { headers },
   );
   const valuesBody = await readApiResponse(valuesResponse);
   expect(valuesBody.data).toMatchObject({
-    category: 'admin',
+    category: createBody.data.category,
     messageKey,
+    values: expect.arrayContaining([
+      { locale: 'en-US', value: 'E2E original message' },
+      { locale: 'zh-CN', value: 'E2E 原始消息' },
+    ]),
   });
 
   const removeResponse = await page.request.post(
@@ -293,4 +346,11 @@ test('a dynamic Message Key is saved and removed as its own resource', async ({
   );
   const removeBody = await readApiResponse(removeResponse);
   expect(removeBody.code).toBe(0);
+
+  const removeRetryResponse = await page.request.post(
+    `/api/sys/i18n-message/remove/${encodeURIComponent(retryKey)}`,
+    { headers },
+  );
+  const removeRetryBody = await readApiResponse(removeRetryResponse);
+  expect(removeRetryBody.code).toBe(0);
 });

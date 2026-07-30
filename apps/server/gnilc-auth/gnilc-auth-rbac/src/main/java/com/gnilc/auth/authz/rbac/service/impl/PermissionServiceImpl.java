@@ -43,20 +43,13 @@ public class PermissionServiceImpl extends ServiceImpl<PermissionDao, Permission
     @Transactional
     @Override
     public void createPermission(PermissionDto dto) {
-        Preconditions.checkArgument(dto != null, messages.get("rbac.permission.information.required"));
-        BeanPropertyUtils.trimToNull(dto);
+        validatePermission(dto, false);
         String name = dto.getName();
         String code = dto.getCode();
         String targetIdentifier = dto.getTargetIdentifier();
         String targetQualifier = dto.getTargetQualifier();
         String remark = dto.getRemark();
         Boolean publicAccess = dto.getPublicAccess();
-        Preconditions.checkArgument(StringUtils.isNotBlank(name), messages.get("rbac.permission.name.required"));
-        Preconditions.checkArgument(StringUtils.isNotBlank(code), messages.get("rbac.permission.code.required"));
-        Preconditions.checkArgument(StringUtils.isNotBlank(targetIdentifier),
-                messages.get("rbac.permission.targetIdentifier.required"));
-        Preconditions.checkArgument(getPermissionByCode(code) == null,
-                messages.get("rbac.permission.code.exists"));
         PermissionBo bo = new PermissionBo();
         bo.setName(name);
         bo.setCode(code);
@@ -77,8 +70,7 @@ public class PermissionServiceImpl extends ServiceImpl<PermissionDao, Permission
     @Transactional
     @Override
     public void updatePermission(PermissionDto dto) {
-        Preconditions.checkArgument(dto != null, messages.get("rbac.permission.information.required"));
-        BeanPropertyUtils.trimToNull(dto);
+        PermissionBo bo = validatePermission(dto, true);
         Long permissionId = dto.getId();
         String name = dto.getName();
         String code = dto.getCode();
@@ -86,19 +78,6 @@ public class PermissionServiceImpl extends ServiceImpl<PermissionDao, Permission
         String targetQualifier = dto.getTargetQualifier();
         String remark = dto.getRemark();
         Boolean publicAccess = dto.getPublicAccess();
-        Preconditions.checkArgument(permissionId != null, messages.get("rbac.permission.selection.required"));
-        PermissionBo bo = getById(permissionId);
-        Preconditions.checkCondition(bo != null, messages.get("rbac.permission.notFound"));
-        Preconditions.checkCondition(!Boolean.TRUE.equals(bo.getBuiltIn()),
-                messages.get("rbac.permission.builtIn.modify"));
-        if (StringUtils.isNotBlank(code) && !code.equals(bo.getCode())) {
-            PermissionBo sameBo = getPermissionByCode(code);
-            Preconditions.checkArgument(sameBo == null, messages.get("rbac.permission.code.exists"));
-        }
-        Preconditions.checkArgument(StringUtils.isNotBlank(name), messages.get("rbac.permission.name.required"));
-        Preconditions.checkArgument(StringUtils.isNotBlank(code), messages.get("rbac.permission.code.required"));
-        Preconditions.checkArgument(StringUtils.isNotBlank(targetIdentifier),
-                messages.get("rbac.permission.targetIdentifier.required"));
         bo.setName(name);
         bo.setCode(code);
         bo.setTargetIdentifier(targetIdentifier);
@@ -185,5 +164,44 @@ public class PermissionServiceImpl extends ServiceImpl<PermissionDao, Permission
         PermissionVo vo = new PermissionVo();
         BeanUtils.copyProperties(bo, vo);
         return vo;
+    }
+
+    private PermissionBo validatePermission(PermissionDto dto, boolean update) {
+        Preconditions.checkArgument(dto != null, messages.get("rbac.permission.information.required"));
+        BeanPropertyUtils.trimToNull(dto);
+        PermissionBo permission = null;
+        if (update) {
+            Preconditions.checkArgument(dto.getId() != null,
+                    messages.get("rbac.permission.selection.required"));
+            permission = getById(dto.getId());
+            Preconditions.checkCondition(permission != null, messages.get("rbac.permission.notFound"));
+            Preconditions.checkCondition(!Boolean.TRUE.equals(permission.getBuiltIn()),
+                    messages.get("rbac.permission.builtIn.modify"));
+        }
+        String code = dto.getCode();
+        String name = dto.getName();
+        String targetIdentifier = dto.getTargetIdentifier();
+        String targetQualifier = dto.getTargetQualifier();
+        String remark = dto.getRemark();
+        Preconditions.checkArgument(StringUtils.isNotBlank(name), messages.get("rbac.permission.name.required"));
+        Preconditions.checkArgument(StringUtils.isNotBlank(code), messages.get("rbac.permission.code.required"));
+        Preconditions.checkArgument(StringUtils.isNotBlank(targetIdentifier),
+                messages.get("rbac.permission.targetIdentifier.required"));
+        Preconditions.checkArgument(code.codePointCount(0, code.length()) <= 255,
+                messages.get("rbac.field.tooLong", "code", 255));
+        Preconditions.checkArgument(name.codePointCount(0, name.length()) <= 255,
+                messages.get("rbac.field.tooLong", "name", 255));
+        Preconditions.checkArgument(targetIdentifier.codePointCount(0, targetIdentifier.length()) <= 500,
+                messages.get("rbac.field.tooLong", "targetIdentifier", 500));
+        Preconditions.checkArgument(targetQualifier == null
+                        || targetQualifier.codePointCount(0, targetQualifier.length()) <= 100,
+                messages.get("rbac.field.tooLong", "targetQualifier", 100));
+        Preconditions.checkArgument(remark == null || remark.codePointCount(0, remark.length()) <= 500,
+                messages.get("rbac.field.tooLong", "remark", 500));
+        if (!update || !code.equals(permission.getCode())) {
+            Preconditions.checkArgument(getPermissionByCode(code) == null,
+                    messages.get("rbac.permission.code.exists"));
+        }
+        return permission;
     }
 }

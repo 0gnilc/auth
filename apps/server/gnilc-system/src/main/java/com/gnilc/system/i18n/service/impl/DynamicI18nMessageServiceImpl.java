@@ -3,6 +3,7 @@ package com.gnilc.system.i18n.service.impl;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.gnilc.common.base.Preconditions;
+import com.gnilc.common.exception.InvalidArgumentException;
 import com.gnilc.common.i18n.I18nMessageService;
 import com.gnilc.common.i18n.SupportedLocale;
 import com.gnilc.common.utils.PageResult;
@@ -17,6 +18,7 @@ import com.gnilc.system.i18n.entity.vo.I18nMessageVo;
 import com.gnilc.system.i18n.entity.vo.I18nMessageItemVo;
 import com.gnilc.system.i18n.service.DynamicI18nMessageService;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -131,7 +133,12 @@ public class DynamicI18nMessageServiceImpl extends ServiceImpl<I18nMessageDao, I
         Map<String, String> values = new LinkedHashMap<>();
         applyValues(values, target.values());
 
-        persistRows(target.category(), target.messageKey(), List.of(), values);
+        try {
+            persistRows(target.category(), target.messageKey(), List.of(), values);
+        } catch (DuplicateKeyException exception) {
+            throw new InvalidArgumentException(
+                    messages.get("system.i18n.targetKey.exists"), exception);
+        }
         return new I18nMessageVo(target.category(), target.messageKey(), toValues(values));
     }
 
@@ -147,9 +154,8 @@ public class DynamicI18nMessageServiceImpl extends ServiceImpl<I18nMessageDao, I
                 LinkedHashMap::new));
         applyValues(mergedValues, target.values());
 
-        if (sourceRows.isEmpty() && mergedValues.isEmpty()) {
-            Preconditions.checkArgument(false, messages.get("system.i18n.save.empty"));
-        }
+        Preconditions.checkArgument(!sourceRows.isEmpty() || !mergedValues.isEmpty(),
+                messages.get("system.i18n.save.empty"));
 
         persistRows(target.category(), target.messageKey(), sourceRows, mergedValues);
         return new I18nMessageVo(target.category(), target.messageKey(), toValues(mergedValues));
@@ -220,11 +226,8 @@ public class DynamicI18nMessageServiceImpl extends ServiceImpl<I18nMessageDao, I
     }
 
     private void validatePathConflict(String targetKey) {
-        // A full locking read serializes namespace validation and inserts under
-        // MySQL InnoDB next-key locking, including the empty-table gap.
         List<String> existingKeys = lambdaQuery()
                 .select(I18nMessageBo::getMessageKey)
-                .last("FOR UPDATE")
                 .list()
                 .stream()
                 .map(I18nMessageBo::getMessageKey)

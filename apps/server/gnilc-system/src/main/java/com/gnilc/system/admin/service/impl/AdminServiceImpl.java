@@ -160,13 +160,15 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
         Preconditions.checkArgument(dto != null, messages.get("system.admin.profile.required"));
         String nickname = StringUtils.trimToNull(dto.getNickname());
         Preconditions.checkArgument(nickname != null, messages.get("system.admin.nickname.required"));
-        Preconditions.checkArgument(nickname.length() <= NICKNAME_MAX_LENGTH,
+        Preconditions.checkArgument(nickname.codePointCount(0, nickname.length()) <= NICKNAME_MAX_LENGTH,
                 messages.get("system.admin.nickname.tooLong", NICKNAME_MAX_LENGTH));
         String avatar = StringUtils.trimToNull(dto.getAvatar());
-        Preconditions.checkArgument(avatar == null || avatar.length() <= PROFILE_TEXT_MAX_LENGTH,
+        Preconditions.checkArgument(avatar == null
+                        || avatar.codePointCount(0, avatar.length()) <= PROFILE_TEXT_MAX_LENGTH,
                 messages.get("system.admin.avatar.tooLong", PROFILE_TEXT_MAX_LENGTH));
         String description = StringUtils.trimToNull(dto.getDesc());
-        Preconditions.checkArgument(description == null || description.length() <= PROFILE_TEXT_MAX_LENGTH,
+        Preconditions.checkArgument(description == null
+                        || description.codePointCount(0, description.length()) <= PROFILE_TEXT_MAX_LENGTH,
                 messages.get("system.admin.description.tooLong", PROFILE_TEXT_MAX_LENGTH));
 
         AdminBo bo = getAdminByUserId(AccessPrincipalUtils.getUserId());
@@ -274,18 +276,9 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
     @Override
     @Transactional
     public void createAdmin(AdminDto dto) {
-        Preconditions.checkArgument(dto != null, messages.get("system.admin.information.required"));
-        BeanPropertyUtils.trimToNull(dto, "password");
+        validateAdmin(dto, false);
         String username = dto.getUsername();
         String password = dto.getPassword();
-        Preconditions.checkArgument(StringUtils.isNotBlank(username), messages.get("system.admin.username.required"));
-        Preconditions.checkArgument(StringUtils.isNotBlank(password), messages.get("system.admin.password.required"));
-        Preconditions.checkArgument(StringUtils.isNotBlank(dto.getNickname()),
-                messages.get("system.admin.nickname.required"));
-        validateAdminFieldLengths(dto);
-        validateStrongPassword(password);
-        Preconditions.checkArgument(getAdminByUsername(username) == null,
-                messages.get("system.admin.username.exists"));
         Long userId = userService.createUser();
         AdminBo bo = new AdminBo();
         bo.setUserId(userId);
@@ -306,27 +299,9 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
     @Override
     @Transactional
     public void updateAdmin(AdminDto dto) {
-        Preconditions.checkArgument(dto != null, messages.get("system.admin.information.required"));
-        boolean usernameSpecified = dto.getUsername() != null;
-        boolean nicknameSpecified = dto.getNickname() != null;
-        BeanPropertyUtils.trimToNull(dto, "password");
-        AdminBo bo = getAdmin(dto.getId());
-        Preconditions.checkCondition(bo != null, messages.get("system.admin.notFound"));
-        String username = dto.getUsername();
-        Preconditions.checkArgument(!usernameSpecified || StringUtils.isNotBlank(username),
-                messages.get("system.admin.username.required"));
-        Preconditions.checkArgument(!nicknameSpecified || StringUtils.isNotBlank(dto.getNickname()),
-                messages.get("system.admin.nickname.required"));
-        validateAdminFieldLengths(dto);
-        if (username != null && !username.equals(bo.getUsername())) {
-            Preconditions.checkArgument(getAdminByUsername(username) == null,
-                    messages.get("system.admin.username.exists"));
-        }
+        AdminBo bo = validateAdmin(dto, true);
         boolean wasEnabled = Boolean.TRUE.equals(bo.getStatus())
                 && Boolean.FALSE.equals(dto.getStatus());
-        Preconditions.checkCondition(
-                !(wasEnabled && Objects.equals(bo.getUserId(), AccessPrincipalUtils.getUserId())),
-                messages.get("system.admin.current.disable"));
         BeanPropertyUtils.copyNonNullProperties(dto, bo);
         if (dto.isAvatarSpecified()) {
             bo.setAvatar(dto.getAvatar());
@@ -338,7 +313,6 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
         // 单独处理密码。
         String password = dto.getPassword();
         if (StringUtils.isNotBlank(password)) {
-            validateStrongPassword(password);
             bo.setPassword(PASSWORD_ENCODER.encode(password));
         } else {
             bo.setPassword(null);
@@ -442,22 +416,56 @@ public class AdminServiceImpl extends ServiceImpl<AdminDao, AdminBo> implements 
                 messages.get("system.admin.password.weak"));
     }
 
-    private void validateAdminFieldLengths(AdminDto dto) {
+    private AdminBo validateAdmin(AdminDto dto, boolean update) {
+        Preconditions.checkArgument(dto != null, messages.get("system.admin.information.required"));
+        boolean usernameSpecified = dto.getUsername() != null;
+        boolean nicknameSpecified = dto.getNickname() != null;
+        BeanPropertyUtils.trimToNull(dto, "password");
+        AdminBo admin = update ? getAdmin(dto.getId()) : null;
+        if (update) {
+            Preconditions.checkCondition(admin != null, messages.get("system.admin.notFound"));
+            Preconditions.checkArgument(!usernameSpecified || StringUtils.isNotBlank(dto.getUsername()),
+                    messages.get("system.admin.username.required"));
+            Preconditions.checkArgument(!nicknameSpecified || StringUtils.isNotBlank(dto.getNickname()),
+                    messages.get("system.admin.nickname.required"));
+        } else {
+            Preconditions.checkArgument(StringUtils.isNotBlank(dto.getUsername()),
+                    messages.get("system.admin.username.required"));
+            Preconditions.checkArgument(StringUtils.isNotBlank(dto.getPassword()),
+                    messages.get("system.admin.password.required"));
+            Preconditions.checkArgument(StringUtils.isNotBlank(dto.getNickname()),
+                    messages.get("system.admin.nickname.required"));
+        }
         Preconditions.checkArgument(dto.getUsername() == null
-                        || dto.getUsername().length() <= USERNAME_MAX_LENGTH,
+                        || dto.getUsername().codePointCount(0, dto.getUsername().length()) <= USERNAME_MAX_LENGTH,
                 messages.get("system.admin.username.tooLong", USERNAME_MAX_LENGTH));
         Preconditions.checkArgument(dto.getNickname() == null
-                        || dto.getNickname().length() <= NICKNAME_MAX_LENGTH,
+                        || dto.getNickname().codePointCount(0, dto.getNickname().length()) <= NICKNAME_MAX_LENGTH,
                 messages.get("system.admin.nickname.tooLong", NICKNAME_MAX_LENGTH));
         Preconditions.checkArgument(dto.getAvatar() == null
-                        || dto.getAvatar().length() <= PROFILE_TEXT_MAX_LENGTH,
+                        || dto.getAvatar().codePointCount(0, dto.getAvatar().length()) <= PROFILE_TEXT_MAX_LENGTH,
                 messages.get("system.admin.avatar.tooLong", PROFILE_TEXT_MAX_LENGTH));
         Preconditions.checkArgument(dto.getDesc() == null
-                        || dto.getDesc().length() <= PROFILE_TEXT_MAX_LENGTH,
+                        || dto.getDesc().codePointCount(0, dto.getDesc().length()) <= PROFILE_TEXT_MAX_LENGTH,
                 messages.get("system.admin.description.tooLong", PROFILE_TEXT_MAX_LENGTH));
         Preconditions.checkArgument(dto.getHomePath() == null
-                        || dto.getHomePath().length() <= HOME_PATH_MAX_LENGTH,
+                        || dto.getHomePath().codePointCount(0, dto.getHomePath().length()) <= HOME_PATH_MAX_LENGTH,
                 messages.get("system.admin.homePath.tooLong", HOME_PATH_MAX_LENGTH));
+        String username = dto.getUsername();
+        if (!update || username != null && !username.equals(admin.getUsername())) {
+            Preconditions.checkArgument(getAdminByUsername(username) == null,
+                    messages.get("system.admin.username.exists"));
+        }
+        if (update) {
+            boolean disablesCurrentAdmin = Boolean.TRUE.equals(admin.getStatus())
+                    && Boolean.FALSE.equals(dto.getStatus())
+                    && Objects.equals(admin.getUserId(), AccessPrincipalUtils.getUserId());
+            Preconditions.checkCondition(!disablesCurrentAdmin, messages.get("system.admin.current.disable"));
+        }
+        if (!update || StringUtils.isNotBlank(dto.getPassword())) {
+            validateStrongPassword(dto.getPassword());
+        }
+        return admin;
     }
 
     /**

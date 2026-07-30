@@ -80,14 +80,10 @@ public class RoleServiceImpl extends ServiceImpl<RoleDao, RoleBo> implements Rol
     @Transactional
     @Override
     public void createRole(RoleDto dto) {
-        Preconditions.checkArgument(dto != null, messages.get("rbac.role.information.required"));
-        BeanPropertyUtils.trimToNull(dto);
+        validateRole(dto, false);
         String name = dto.getName();
         String code = dto.getCode();
         String remark = dto.getRemark();
-        Preconditions.checkArgument(StringUtils.isNotBlank(code), messages.get("rbac.role.code.required"));
-        Preconditions.checkArgument(StringUtils.isNotBlank(name), messages.get("rbac.role.name.required"));
-        Preconditions.checkArgument(getRoleByCode(code) == null, messages.get("rbac.role.code.exists"));
         RoleBo bo = new RoleBo();
         bo.setName(name);
         bo.setCode(code);
@@ -114,22 +110,11 @@ public class RoleServiceImpl extends ServiceImpl<RoleDao, RoleBo> implements Rol
     @Transactional
     @Override
     public void updateRole(RoleDto dto) {
-        Preconditions.checkArgument(dto != null, messages.get("rbac.role.information.required"));
-        BeanPropertyUtils.trimToNull(dto);
+        RoleBo bo = validateRole(dto, true);
         Long roleId = dto.getId();
         String name = dto.getName();
         String code = dto.getCode();
         String remark = dto.getRemark();
-        Preconditions.checkArgument(roleId != null, messages.get("rbac.role.selection.required"));
-        RoleBo bo = getById(roleId);
-        Preconditions.checkCondition(bo != null, messages.get("rbac.role.notFound"));
-        Preconditions.checkCondition(!Boolean.TRUE.equals(bo.getBuiltIn()), messages.get("rbac.role.builtIn.modify"));
-        Preconditions.checkArgument(StringUtils.isNotBlank(code), messages.get("rbac.role.code.required"));
-        Preconditions.checkArgument(StringUtils.isNotBlank(name), messages.get("rbac.role.name.required"));
-        if (StringUtils.isNotBlank(code) && !code.equals(bo.getCode())) {
-            RoleBo sameBo = getRoleByCode(code);
-            Preconditions.checkArgument(sameBo == null, messages.get("rbac.role.code.exists"));
-        }
         bo.setName(name);
         bo.setCode(code);
         bo.setRemark(remark);
@@ -148,7 +133,7 @@ public class RoleServiceImpl extends ServiceImpl<RoleDao, RoleBo> implements Rol
         RoleBo bo = getById(id);
         Preconditions.checkCondition(bo != null, messages.get("rbac.role.notFound"));
         Preconditions.checkCondition(!Boolean.TRUE.equals(bo.getBuiltIn()), messages.get("rbac.role.builtIn.delete"));
-        bo.setCode(deletedCode(bo.getCode(), id));
+        bo.setCode(bo.getCode() + "_del_" + id);
         updateById(bo);
         rolePermissionService.removeByRoleId(id);
         roleMenuService.removeByRoleId(id);
@@ -171,8 +156,32 @@ public class RoleServiceImpl extends ServiceImpl<RoleDao, RoleBo> implements Rol
         return listByIds(roleIds);
     }
 
-    private String deletedCode(String code, Long id) {
-        return code + "_del_" + id;
+    private RoleBo validateRole(RoleDto dto, boolean update) {
+        Preconditions.checkArgument(dto != null, messages.get("rbac.role.information.required"));
+        BeanPropertyUtils.trimToNull(dto);
+        RoleBo role = null;
+        if (update) {
+            Preconditions.checkArgument(dto.getId() != null, messages.get("rbac.role.selection.required"));
+            role = getById(dto.getId());
+            Preconditions.checkCondition(role != null, messages.get("rbac.role.notFound"));
+            Preconditions.checkCondition(!Boolean.TRUE.equals(role.getBuiltIn()),
+                    messages.get("rbac.role.builtIn.modify"));
+        }
+        String code = dto.getCode();
+        String name = dto.getName();
+        String remark = dto.getRemark();
+        Preconditions.checkArgument(StringUtils.isNotBlank(code), messages.get("rbac.role.code.required"));
+        Preconditions.checkArgument(StringUtils.isNotBlank(name), messages.get("rbac.role.name.required"));
+        Preconditions.checkArgument(code.codePointCount(0, code.length()) <= 255,
+                messages.get("rbac.field.tooLong", "code", 255));
+        Preconditions.checkArgument(name.codePointCount(0, name.length()) <= 255,
+                messages.get("rbac.field.tooLong", "name", 255));
+        Preconditions.checkArgument(remark == null || remark.codePointCount(0, remark.length()) <= 500,
+                messages.get("rbac.field.tooLong", "remark", 500));
+        if (!update || !code.equals(role.getCode())) {
+            Preconditions.checkArgument(getRoleByCode(code) == null, messages.get("rbac.role.code.exists"));
+        }
+        return role;
     }
 
     private RoleVo toRoleVo(RoleBo bo) {

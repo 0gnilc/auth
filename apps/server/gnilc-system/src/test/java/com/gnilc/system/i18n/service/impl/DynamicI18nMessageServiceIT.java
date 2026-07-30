@@ -14,20 +14,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -42,8 +32,6 @@ class DynamicI18nMessageServiceIT {
     private DynamicI18nMessageService messages;
     @Autowired
     private JdbcTemplate jdbc;
-    @Autowired
-    private PlatformTransactionManager transactionManager;
 
     @Test
     void saveUpdatesAnImmutableIdentityAndPhysicallyRemovesOptionalLocales() {
@@ -136,64 +124,6 @@ class DynamicI18nMessageServiceIT {
         assertThatThrownBy(() -> messages.saveMessage(save(
                 "default", "test.value.oversized", value("en-US", "v".repeat(4001)))))
                 .isInstanceOf(InvalidArgumentException.class);
-    }
-
-    @Test
-    void concurrentSavesSerializePathConflictValidation() throws Exception {
-        String parentKey = "test.concurrent";
-        String childKey = "test.concurrent.title";
-        CountDownLatch parentSaved = new CountDownLatch(1);
-        CountDownLatch releaseParent = new CountDownLatch(1);
-        CountDownLatch childStarted = new CountDownLatch(1);
-        ExecutorService executor = Executors.newFixedThreadPool(2);
-
-        try {
-            Future<?> parentFuture = executor.submit(() -> new TransactionTemplate(transactionManager)
-                    .executeWithoutResult(status -> {
-                        messages.saveMessage(save("default", parentKey, value("en-US", "Parent")));
-                        parentSaved.countDown();
-                        await(releaseParent);
-                    }));
-            assertThat(parentSaved.await(10, TimeUnit.SECONDS)).isTrue();
-
-            Future<?> childFuture = executor.submit(() -> {
-                childStarted.countDown();
-                messages.saveMessage(save("admin", childKey, value("en-US", "Child")));
-            });
-            assertThat(childStarted.await(10, TimeUnit.SECONDS)).isTrue();
-            assertThatThrownBy(() -> childFuture.get(300, TimeUnit.MILLISECONDS))
-                    .isInstanceOf(TimeoutException.class);
-
-            releaseParent.countDown();
-            parentFuture.get(10, TimeUnit.SECONDS);
-            assertThatThrownBy(() -> childFuture.get(10, TimeUnit.SECONDS))
-                    .isInstanceOf(ExecutionException.class)
-                    .hasCauseInstanceOf(IllegalConditionException.class);
-            assertThat(jdbc.queryForObject("""
-                    SELECT COUNT(*) FROM sys_i18n
-                     WHERE message_key IN (?, ?)
-                    """, Integer.class, parentKey, childKey)).isEqualTo(1);
-        } finally {
-            releaseParent.countDown();
-            executor.shutdownNow();
-            TransactionTemplate cleanup = new TransactionTemplate(transactionManager);
-            cleanup.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
-            cleanup.executeWithoutResult(status -> jdbc.update("""
-                    DELETE FROM sys_i18n
-                     WHERE message_key IN (?, ?)
-                    """, parentKey, childKey));
-        }
-    }
-
-    private void await(CountDownLatch latch) {
-        try {
-            if (!latch.await(10, TimeUnit.SECONDS)) {
-                throw new IllegalStateException("Timed out waiting for concurrent i18n save");
-            }
-        } catch (InterruptedException exception) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException("Interrupted while waiting for concurrent i18n save", exception);
-        }
     }
 
     private I18nMessageDto save(

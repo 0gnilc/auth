@@ -194,6 +194,7 @@ class MenuServiceImplTest {
         doReturn(root).when(menus).getById(1L);
         when(menuDao.getSubtreeIds(1L, true)).thenReturn(subtreeIds);
         doReturn(List.of(root)).when(menus).getMenus(subtreeIds);
+        doReturn(true).when(menus).updateById(any(MenuBo.class));
         doReturn(true).when(menus).removeByIds(subtreeIds);
 
         menus.removeMenu(1L);
@@ -202,6 +203,8 @@ class MenuServiceImplTest {
         verify(roleMenuService).removeByMenuIds(subtreeIds);
         verify(menus).removeByIds(subtreeIds);
         verify(eventPublisher).publishEvent(new MenuEvent(MenuEvent.Action.DELETE, 1L));
+        assertThat(root.getName()).isEqualTo("Root_del_1");
+        assertThat(root.getPath()).isEqualTo("/root_del_1");
     }
 
     @Test

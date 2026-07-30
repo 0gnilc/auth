@@ -9,6 +9,7 @@ import com.gnilc.common.exception.InvalidArgumentException;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
@@ -52,6 +53,23 @@ class PermissionServiceImplTest extends RbacMessageTestSupport {
     }
 
     @Test
+    void createPermissionRejectsFieldsBeyondDatabaseLimits() {
+        PermissionServiceImpl permissions = new PermissionServiceImpl(
+                mock(ApplicationEventPublisher.class),
+                mock(UserRoleService.class),
+                mock(RolePermissionService.class),
+                messages());
+        PermissionDto dto = new PermissionDto();
+        dto.setCode("reports:read");
+        dto.setName("Read reports");
+        dto.setTargetIdentifier("/" + "r".repeat(500));
+
+        assertThatThrownBy(() -> permissions.createPermission(dto))
+                .isInstanceOf(InvalidArgumentException.class)
+                .hasMessage("Field targetIdentifier must not exceed 500 characters.");
+    }
+
+    @Test
     void removePermissionClearsRoleBindings() {
         RolePermissionService rolePermissions = mock(RolePermissionService.class);
         PermissionServiceImpl permissions = spy(new PermissionServiceImpl(
@@ -61,7 +79,8 @@ class PermissionServiceImplTest extends RbacMessageTestSupport {
                 messages()));
         PermissionBo permission = new PermissionBo();
         permission.setId(2L);
-        permission.setCode("report:read");
+        String originalCode = "\uD83D\uDE00".repeat(255);
+        permission.setCode(originalCode);
         permission.setBuiltIn(false);
         doReturn(permission).when(permissions).getById(2L);
         doReturn(true).when(permissions).updateById(permission);
@@ -71,5 +90,6 @@ class PermissionServiceImplTest extends RbacMessageTestSupport {
 
         verify(rolePermissions).removeByPermissionId(2L);
         verify(permissions).removeById(2L);
+        assertThat(permission.getCode()).isEqualTo(originalCode + "_del_2");
     }
 }

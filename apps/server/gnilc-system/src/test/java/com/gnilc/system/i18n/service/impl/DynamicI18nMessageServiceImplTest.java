@@ -19,6 +19,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.context.support.ResourceBundleMessageSource;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -104,6 +105,21 @@ class DynamicI18nMessageServiceImplTest {
                 .isInstanceOf(InvalidArgumentException.class)
                 .hasMessage("Message key已存在");
         verify(dao, never()).insert(any(I18nMessageBo.class));
+    }
+
+    @Test
+    void createTranslatesConcurrentDuplicateInsertToExistingKeyError() {
+        stubLambdaQuery();
+        when(dao.selectList(any())).thenReturn(List.of(), List.of());
+        DuplicateKeyException duplicate = new DuplicateKeyException("duplicate key");
+        when(dao.insert(any(I18nMessageBo.class))).thenThrow(duplicate);
+
+        assertThatThrownBy(() -> service.createMessage(save("menu.concurrent.title",
+                value("en-US", "Concurrent"))))
+                .isInstanceOf(InvalidArgumentException.class)
+                .hasMessage("Message key已存在")
+                .hasCause(duplicate);
+        verify(dao).insert(any(I18nMessageBo.class));
     }
 
     @Test

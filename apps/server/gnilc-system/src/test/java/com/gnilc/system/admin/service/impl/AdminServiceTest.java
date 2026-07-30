@@ -306,6 +306,23 @@ class AdminServiceTest {
         verify(admins, never()).removeById(ADMIN_ID);
     }
 
+    @Test
+    void removeAdminPreservesUnicodeBoundariesInTheReleasedUsername() {
+        AdminBo target = currentAdmin();
+        target.setUserId(USER_ID + 1);
+        String originalUsername = "\uD83D\uDE00".repeat(255);
+        target.setUsername(originalUsername);
+        doReturn(target).when(admins).getById(ADMIN_ID);
+        doReturn(true).when(admins).updateById(target);
+        doReturn(true).when(admins).removeById(ADMIN_ID);
+
+        admins.removeAdmin(ADMIN_ID);
+
+        assertThat(target.getUsername()).isEqualTo(originalUsername + "_del_41");
+        verify(admins).updateById(target);
+        verify(admins).removeById(ADMIN_ID);
+    }
+
     private static Stream<Arguments> statusTransitions() {
         return Stream.of(
                 Arguments.of(true, false, true),

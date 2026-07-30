@@ -230,6 +230,32 @@ class AdminManagementApiIT extends AdminApiTestSupport {
         assertThat(stored.get("description")).isNull();
     }
 
+    @Test
+    void maximumLengthUsernameCanBeRemovedAndRecreated() {
+        String auth = bearer(loginAsDefaultAdmin().accessToken());
+        String username = "u".repeat(255);
+
+        postAdmin(auth, "/api/sys/admin/create", adminRequest(username))
+                .body("code", equalTo(0));
+        Long adminId = jdbc.queryForObject(
+                "select id from sys_admin where username = ? and del = 0",
+                Long.class,
+                username);
+        given()
+                .header("Authorization", auth)
+                .post("/api/sys/admin/remove/{id}", adminId)
+                .then()
+                .statusCode(200)
+                .body("code", equalTo(0));
+
+        postAdmin(auth, "/api/sys/admin/create", adminRequest(username))
+                .body("code", equalTo(0));
+        assertThat(jdbc.queryForObject(
+                "select count(*) from sys_admin where username = ? and del = 0",
+                Integer.class,
+                username)).isEqualTo(1);
+    }
+
     private io.restassured.response.ValidatableResponse postAdmin(
             String auth, String path, Object body) {
         return given()

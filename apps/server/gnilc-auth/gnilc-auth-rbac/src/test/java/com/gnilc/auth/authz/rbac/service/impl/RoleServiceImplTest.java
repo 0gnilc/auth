@@ -9,6 +9,7 @@ import com.gnilc.common.exception.InvalidArgumentException;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
@@ -48,6 +49,23 @@ class RoleServiceImplTest extends RbacMessageTestSupport {
     }
 
     @Test
+    void createRoleRejectsFieldsBeyondDatabaseLimits() {
+        RoleServiceImpl roles = new RoleServiceImpl(
+                mock(ApplicationEventPublisher.class),
+                mock(UserRoleService.class),
+                mock(RolePermissionService.class),
+                mock(RoleMenuService.class),
+                messages());
+        RoleDto dto = new RoleDto();
+        dto.setCode("r".repeat(256));
+        dto.setName("Oversized role");
+
+        assertThatThrownBy(() -> roles.createRole(dto))
+                .isInstanceOf(InvalidArgumentException.class)
+                .hasMessage("Field code must not exceed 255 characters.");
+    }
+
+    @Test
     void removeRoleClearsAllRelationships() {
         UserRoleService userRoles = mock(UserRoleService.class);
         RolePermissionService rolePermissions = mock(RolePermissionService.class);
@@ -60,7 +78,8 @@ class RoleServiceImplTest extends RbacMessageTestSupport {
                 messages()));
         RoleBo role = new RoleBo();
         role.setId(7L);
-        role.setCode("operator");
+        String originalCode = "\uD83D\uDE00".repeat(255);
+        role.setCode(originalCode);
         role.setBuiltIn(false);
         doReturn(role).when(roles).getById(7L);
         doReturn(true).when(roles).updateById(role);
@@ -72,5 +91,6 @@ class RoleServiceImplTest extends RbacMessageTestSupport {
         verify(roleMenus).removeByRoleId(7L);
         verify(userRoles).removeByRoleId(7L);
         verify(roles).removeById(7L);
+        assertThat(role.getCode()).isEqualTo(originalCode + "_del_7");
     }
 }

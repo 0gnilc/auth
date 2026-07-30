@@ -68,6 +68,11 @@ class RbacSchemaIT {
                 "az_user_role",
                 "az_role_permission",
                 "az_role_menu");
+        assertThat(columnLength("az_role", "code")).isEqualTo(320);
+        assertThat(columnLength("az_permission", "code")).isEqualTo(320);
+        assertThat(columnLength("az_menu", "access_code")).isEqualTo(320);
+        assertThat(columnLength("az_menu", "name")).isEqualTo(320);
+        assertThat(columnLength("az_menu", "path")).isEqualTo(560);
     }
 
     @Test
@@ -127,6 +132,16 @@ class RbacSchemaIT {
                   from information_schema.tables
                  where table_schema = database()
                 """, String.class);
+    }
+
+    private Integer columnLength(String table, String column) {
+        return jdbc.queryForObject("""
+                SELECT character_maximum_length
+                  FROM information_schema.columns
+                 WHERE table_schema = database()
+                   AND table_name = ?
+                   AND column_name = ?
+                """, Integer.class, table, column);
     }
 
     private void runScript() {

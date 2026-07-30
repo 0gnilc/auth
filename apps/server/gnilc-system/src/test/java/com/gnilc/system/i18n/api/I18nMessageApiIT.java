@@ -13,6 +13,13 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ContextConfiguration;
 
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -205,5 +212,107 @@ class I18nMessageApiIT extends AdminApiTestSupport {
                 .statusCode(200)
                 .body("code", equalTo(10001))
                 .body("error", equalTo("The internationalization key must not exceed 191 characters."));
+    }
+
+    @Test
+    void createRejectsInvalidValueCollectionsWithoutPersistingPartialLocales() {
+        String auth = bearer(loginAsDefaultAdmin().accessToken());
+        List<String> invalidBodies = List.of(
+                """
+                        {"category":"admin","messageKey":"api.invalid.null","values":null}
+                        """,
+                """
+                        {"category":"admin","messageKey":"api.invalid.locale","values":[
+                          {"locale":"fr-FR","value":"Unsupported"},
+                          {"locale":"en-US","value":"Fallback"}
+                        ]}
+                        """,
+                """
+                        {"category":"admin","messageKey":"api.invalid.duplicate","values":[
+                          {"locale":"en-US","value":"First"},
+                          {"locale":"en-US","value":"Second"}
+                        ]}
+                        """,
+                """
+                        {"category":"admin","messageKey":"api.invalid.fallback","values":[
+                          {"locale":"zh-CN","value":"缺少兜底"}
+                        ]}
+                        """,
+                """
+                        {"category":"admin","messageKey":"api.invalid.value","values":[
+                          {"locale":"en-US","value":"%s"}
+                        ]}
+                        """.formatted("v".repeat(4001)));
+
+        for (String body : invalidBodies) {
+            given()
+                    .header("Authorization", auth)
+                    .header("Accept-Language", "en-US")
+                    .contentType(ContentType.JSON)
+                    .body(body)
+                    .post("/api/sys/i18n-message/create")
+                    .then()
+                    .statusCode(200)
+                    .body("code", equalTo(10001));
+        }
+
+        assertThat(jdbc.queryForObject("""
+                SELECT COUNT(*) FROM sys_i18n
+                 WHERE message_key LIKE 'api.invalid.%'
+                """, Integer.class)).isZero();
+    }
+
+    @Test
+    void concurrentDuplicateCreatesPersistExactlyOneMessage() throws Exception {
+        String auth = bearer(loginAsDefaultAdmin().accessToken());
+        String body = """
+                {
+                  "category":"admin",
+                  "messageKey":"api.concurrent.create",
+                  "values":[{"locale":"en-US","value":"Original"}]
+                }
+                """;
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+
+        try {
+            Future<Integer> first = executor.submit(() -> createConcurrently(auth, body, ready, start));
+            Future<Integer> second = executor.submit(() -> createConcurrently(auth, body, ready, start));
+            assertThat(ready.await(10, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+
+            assertThat(List.of(
+                    first.get(10, TimeUnit.SECONDS),
+                    second.get(10, TimeUnit.SECONDS)))
+                    .containsExactlyInAnyOrder(0, 10001);
+            assertThat(jdbc.queryForObject("""
+                    SELECT COUNT(*) FROM sys_i18n
+                     WHERE message_key = 'api.concurrent.create'
+                    """, Integer.class)).isEqualTo(1);
+        } finally {
+            start.countDown();
+            executor.shutdownNow();
+        }
+    }
+
+    private int createConcurrently(
+            String auth,
+            String body,
+            CountDownLatch ready,
+            CountDownLatch start) throws InterruptedException {
+        ready.countDown();
+        if (!start.await(10, TimeUnit.SECONDS)) {
+            throw new IllegalStateException("Concurrent create was not released");
+        }
+        return given()
+                .header("Authorization", auth)
+                .contentType(ContentType.JSON)
+                .body(body)
+                .post("/api/sys/i18n-message/create")
+                .then()
+                .statusCode(200)
+                .extract()
+                .path("code");
     }
 }
