@@ -27,6 +27,7 @@ describe('dateUtils', () => {
   });
 
   afterEach(() => {
+    vi.unstubAllEnvs();
     vi.restoreAllMocks();
   });
 
@@ -119,11 +120,19 @@ describe('dateUtils', () => {
   // getSystemTimezone
   // ===============================
   describe('getSystemTimezone', () => {
-    it('should return a valid IANA timezone string', () => {
-      const tz = getSystemTimezone();
-      expect(typeof tz).toBe('string');
-      expect(tz).toMatch(/^[A-Z]+\/[A-Z_]+/i);
-    });
+    it.each(['UTC', 'Asia/Shanghai', 'America/New_York'])(
+      'should return a valid IANA timezone string when TZ=%s',
+      (systemTimezone) => {
+        vi.stubEnv('TZ', systemTimezone);
+
+        const tz = getSystemTimezone();
+
+        expect(tz).toBe(systemTimezone);
+        expect(() =>
+          new Intl.DateTimeFormat('en-US', { timeZone: tz }).format(),
+        ).not.toThrow();
+      },
+    );
   });
 
   // ===============================
