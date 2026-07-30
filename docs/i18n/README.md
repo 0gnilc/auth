@@ -486,6 +486,7 @@ POST /sys/i18n-message/bundle/{category}
 POST /sys/i18n-message/categories
 POST /sys/i18n-message/page
 POST /sys/i18n-message/values/{messageKey}
+POST /sys/i18n-message/create
 POST /sys/i18n-message/save
 POST /sys/i18n-message/remove/{messageKey}
 ```
@@ -511,7 +512,9 @@ POST /sys/i18n-message/remove/{messageKey}
 
 查询的 `messageKey` 不存在时，接口仍返回成功，但现有 `R.data` 为 `null`；标准的前端 `load` 因而返回 `null` 并保留当前草稿。查询结果为 `null` 或 `I18nMessage.values = []` 都表示没有可回填的语言值，组件保留现有输入；只有返回至少一种语言时才先清空全部语言输入，再回填查询结果。
 
-`POST /sys/i18n-message/save` 统一处理新增、修改语言值和移动分类，不区分 `create` 和 `update`。Message Key 是不可变更的全局消息身份，管理页面编辑时只读；需要更换 Key 时先删除再新增。保存相同 Key 表示更新同一条消息，提交不同分类时在同一事务内更新该 Key 的全部语言行；另一 Key 与目标 Key 的祖先/后代路径冲突必须全局拒绝，检查与写入属于同一事务。
+`POST /sys/i18n-message/create` 只创建尚不存在的 Message Key；目标 Key 已存在时返回参数错误，不修改已有分类或语言值。国际化消息管理 Drawer 的新增操作使用该接口，避免过期列表或重复操作覆盖已有消息。
+
+`POST /sys/i18n-message/save` 保持原有行为，统一处理新增、修改语言值和移动分类。Message Key 是不可变更的全局消息身份，管理页面编辑时只读；需要更换 Key 时先删除再新增。保存相同 Key 表示更新同一条消息，提交不同分类时在同一事务内更新该 Key 的全部语言行；另一 Key 与目标 Key 的祖先/后代路径冲突必须全局拒绝，检查与写入属于同一事务。
 
 `save.values` 采用局部保存语义：只覆盖请求中提交的语言，未提交语言保持不变。同一请求内每个 locale 最多出现一次，且必须属于代码层支持的语言；重复 locale 或不支持的 locale 使整个请求参数校验失败，不使用数组先后顺序决定覆盖值。该校验在所有数据库操作之前完成，失败时不写入任何记录。每个非空 `value` 最长 4,000 个字符；数据库仍使用 `text`，由前端提供即时提示、后端执行最终长度校验。超过该上限的长内容不属于 UI 国际化消息，应由独立内容模块管理。提交语言的 `value` 去除首尾空白后为空时，表示删除该语言记录，不保存空字符串；未出现在 `values` 中的语言仍保持不变。`en-US` 必须在每次保存中提交非空值，作为所有消息的兜底语言；其他语言允许为空。当前语言和 `en-US` 都缺失时，前端显示原始 key。
 
@@ -668,11 +671,12 @@ async function saveMenuTitle(message: I18nMessage) {
 POST /sys/i18n-message/page
 POST /sys/i18n-message/categories
 POST /sys/i18n-message/values/{messageKey}
+POST /sys/i18n-message/create
 POST /sys/i18n-message/save
 POST /sys/i18n-message/remove/{messageKey}
 ```
 
-新增 Drawer 必须选择分类，默认使用 `/categories` 返回的第一项 `default`；返回空列表时保持空并禁止新增。编辑 Drawer 中分类可修改，Message Key 只读；修改 Key 必须删除后重新新增。`en-US` 必填且排在第一项，其他语言可以为空；清空非英文语言表示删除该语言值。整条消息删除另行确认。
+新增 Drawer 必须选择分类，默认使用 `/categories` 返回的第一项 `default`；返回空列表时保持空并禁止新增，提交时调用 `/create`。编辑 Drawer 调用 `/save`，分类可修改，Message Key 只读；修改 Key 必须删除后重新新增。`en-US` 必填且排在第一项，其他语言可以为空；清空非英文语言表示删除该语言值。整条消息删除另行确认。
 
 保存消息时，只要修改前或修改后的分类是 `admin`，就调用 `reloadDynamicMessages()`；删除 `admin` 消息时也调用，删除 `default` 消息时不调用。重载固定请求 `/bundle/admin`，按“数据库 bundle 在前、本地静态 JSON 在后”重建每个支持语言的完整消息对象，再通过 `setLocaleMessage()` 替换运行时消息，最后刷新管理列表。操作只涉及 `default` 时只刷新管理列表，也不通知其他浏览器。
 
@@ -690,7 +694,7 @@ System（CATALOG）
 权限按使用目的分开：
 
 - `/sys/i18n-message/bundle/{category}` 为非公开接口，授予内置 `admin` 基线角色，供所有已登录管理端加载动态语言包。
-- `/sys/i18n-message/categories`、`/sys/i18n-message/page`、`/sys/i18n-message/values/{messageKey}`、`/sys/i18n-message/save` 和 `/sys/i18n-message/remove/{messageKey}` 均为非公开接口，只授予新增的 `i18n:manager` 角色。
+- `/sys/i18n-message/categories`、`/sys/i18n-message/page`、`/sys/i18n-message/values/{messageKey}`、`/sys/i18n-message/create`、`/sys/i18n-message/save` 和 `/sys/i18n-message/remove/{messageKey}` 均为非公开接口，只授予新增的 `i18n:manager` 角色。
 - `System` 目录和 `/system/i18n-message` 子菜单都绑定 `i18n:manager` 角色，满足菜单层级闭包；后续系统管理页面可以复用该目录。
 - `i18n:manager` 是 `built_in = 1` 的内置角色，角色代码和角色本身不可修改、删除；用户、菜单和权限关系仍按现有 RBAC 机制维护。
 - 初始化脚本恢复该角色及其默认菜单、权限关系，并只为默认 `admin` 账号恢复初始绑定；其他后台管理员不会自动获得国际化配置维护权限。

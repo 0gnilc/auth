@@ -218,12 +218,14 @@ Controller、Service、实现类、前端 API、调用点、测试和初始化�
 - `POST /sys/i18n-message/values/{messageKey}` 只按全局 Message Key 查询。
 - `POST /sys/i18n-message/remove/{messageKey}` 只按全局 Message Key 删除。
 - 查询和删除 Controller 直接使用 `@PathVariable`，不再创建无意义的 `I18nMessageClientDto` 一类包装 DTO。
+- `POST /sys/i18n-message/create` 显式提交必填 `category`、`messageKey` 和 `values`，只允许创建尚不存在的 Message Key。
 - `POST /sys/i18n-message/save` 显式提交必填 `category`、`messageKey` 和 `values`。
 - 分页项、单条查询和保存结果统一包含 `category`、`messageKey`、`values`。
 
 ### 7.3 页面与保存规则
 
 - 页面采用分页 Grid 和直接编辑 Drawer，不在管理 Drawer 内嵌 `I18nMessageInput`。
+- 管理 Drawer 新增时调用 `/create`，编辑时继续调用 `/save`，避免过期列表上的新增操作覆盖已有消息。
 - `en-US` 必填并作为兜底语言；其他语言可以为空。
 - 清空某种非英文语言表示删除该语言值；不能清空英文。
 - 整条消息删除必须单独确认。

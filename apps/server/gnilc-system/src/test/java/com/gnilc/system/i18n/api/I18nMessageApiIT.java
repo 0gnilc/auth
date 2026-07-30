@@ -66,12 +66,39 @@ class I18nMessageApiIT extends AdminApiTestSupport {
                           ]
                         }
                         """)
-                .post("/api/sys/i18n-message/save")
+                .post("/api/sys/i18n-message/create")
                 .then()
                 .statusCode(200)
                 .body("code", equalTo(0))
                 .body("data.category", equalTo("default"))
                 .body("data.values", hasSize(2));
+
+        given()
+                .header("Authorization", auth)
+                .contentType(ContentType.JSON)
+                .body("""
+                        {
+                          "category":"admin",
+                          "messageKey":"api.message.title",
+                          "values":[
+                            {"locale":"en-US","value":"Replacement"}
+                          ]
+                        }
+                        """)
+                .post("/api/sys/i18n-message/create")
+                .then()
+                .statusCode(200)
+                .body("code", equalTo(10001))
+                .body("error", equalTo(
+                        "The target internationalization key api.message.title already exists."));
+
+        given()
+                .header("Authorization", auth)
+                .post("/api/sys/i18n-message/values/api.message.title")
+                .then()
+                .statusCode(200)
+                .body("data.category", equalTo("default"))
+                .body("data.values[1].value", equalTo("API message"));
 
         given()
                 .header("Authorization", auth)

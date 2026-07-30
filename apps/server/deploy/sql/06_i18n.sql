@@ -549,6 +549,9 @@ INSERT INTO az_permission (create_time, code, name, target_identifier, target_qu
 SELECT UTC_TIMESTAMP(6), 'POST:/sys/i18n-message/values/{messageKey}', 'POST:/sys/i18n-message/values/{messageKey}', '/sys/i18n-message/values/{messageKey}', 'POST', 0
 WHERE NOT EXISTS (SELECT 1 FROM az_permission WHERE code = 'POST:/sys/i18n-message/values/{messageKey}');
 INSERT INTO az_permission (create_time, code, name, target_identifier, target_qualifier, public_access)
+SELECT UTC_TIMESTAMP(6), 'POST:/sys/i18n-message/create', 'POST:/sys/i18n-message/create', '/sys/i18n-message/create', 'POST', 0
+WHERE NOT EXISTS (SELECT 1 FROM az_permission WHERE code = 'POST:/sys/i18n-message/create');
+INSERT INTO az_permission (create_time, code, name, target_identifier, target_qualifier, public_access)
 SELECT UTC_TIMESTAMP(6), 'POST:/sys/i18n-message/save', 'POST:/sys/i18n-message/save', '/sys/i18n-message/save', 'POST', 0
 WHERE NOT EXISTS (SELECT 1 FROM az_permission WHERE code = 'POST:/sys/i18n-message/save');
 INSERT INTO az_permission (create_time, code, name, target_identifier, target_qualifier, public_access)
@@ -562,6 +565,7 @@ WHERE code IN (
     'POST:/sys/i18n-message/categories',
     'POST:/sys/i18n-message/page',
     'POST:/sys/i18n-message/values/{messageKey}',
+    'POST:/sys/i18n-message/create',
     'POST:/sys/i18n-message/save',
     'POST:/sys/i18n-message/remove/{messageKey}'
 );
@@ -592,6 +596,7 @@ WHERE p.code IN (
     'POST:/sys/i18n-message/categories',
     'POST:/sys/i18n-message/page',
     'POST:/sys/i18n-message/values/{messageKey}',
+    'POST:/sys/i18n-message/create',
     'POST:/sys/i18n-message/save',
     'POST:/sys/i18n-message/remove/{messageKey}'
 )

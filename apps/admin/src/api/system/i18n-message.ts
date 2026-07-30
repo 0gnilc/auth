@@ -42,6 +42,13 @@ export async function getI18nMessageValues(messageKey: string) {
   );
 }
 
+export async function createI18nMessage(data: I18nMessageApi.MessageItem) {
+  return requestClient.post<I18nMessageApi.MessageItem>(
+    '/sys/i18n-message/create',
+    data,
+  );
+}
+
 export async function saveI18nMessage(data: I18nMessageApi.MessageItem) {
   return requestClient.post<I18nMessageApi.MessageItem>(
     '/sys/i18n-message/save',

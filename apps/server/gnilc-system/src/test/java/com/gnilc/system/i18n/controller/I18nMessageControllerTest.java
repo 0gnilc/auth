@@ -96,10 +96,22 @@ class I18nMessageControllerTest {
     }
 
     @Test
-    void saveAndRemoveRoutesDelegateUnifiedCommands() throws Exception {
+    void createSaveAndRemoveRoutesDelegateDistinctCommands() throws Exception {
         I18nMessageVo saved = message("admin", "menu.home.title", "首页", "Home");
+        when(service.createMessage(any(I18nMessageDto.class))).thenReturn(saved);
         when(service.saveMessage(any(I18nMessageDto.class))).thenReturn(saved);
 
+        mvc.perform(post("/sys/i18n-message/create")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "category": "admin",
+                                  "messageKey": "menu.home.title",
+                                  "values": [{"locale":"en-US","value":"Home"}]
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.messageKey").value("menu.home.title"));
         mvc.perform(post("/sys/i18n-message/save")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -115,28 +127,33 @@ class I18nMessageControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0));
 
+        verify(service).createMessage(any(I18nMessageDto.class));
         verify(service).saveMessage(any(I18nMessageDto.class));
         verify(service).removeMessage("menu.home.title");
     }
 
     @Test
     void invalidNestedRequestFieldsReturnLocalizedFieldErrorsWithoutCallingService() throws Exception {
-        mvc.perform(post("/sys/i18n-message/save")
-                        .header(ACCEPT_LANGUAGE, "en-US-POSIX")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "category": "",
-                                  "messageKey": "",
-                                  "values": [{"locale":"","value":"title"}]
-                                }
-                                """))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(10001))
-                .andExpect(jsonPath("$.data[*].field", hasItems("category", "messageKey", "values[0].locale")))
-                .andExpect(jsonPath("$.data[*].code", hasItems("NotBlank", "NotBlank", "NotBlank")))
-                .andExpect(jsonPath("$.data[*].message", hasItems(
-                        "分类不能为空。", "国际化 key 不能为空。", "语言不能为空。")));
+        for (String operation : List.of("create", "save")) {
+            mvc.perform(post("/sys/i18n-message/" + operation)
+                            .header(ACCEPT_LANGUAGE, "en-US-POSIX")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                      "category": "",
+                                      "messageKey": "",
+                                      "values": [{"locale":"","value":"title"}]
+                                    }
+                                    """))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.code").value(10001))
+                    .andExpect(jsonPath("$.data[*].field", hasItems(
+                            "category", "messageKey", "values[0].locale")))
+                    .andExpect(jsonPath("$.data[*].code", hasItems(
+                            "NotBlank", "NotBlank", "NotBlank")))
+                    .andExpect(jsonPath("$.data[*].message", hasItems(
+                            "分类不能为空。", "国际化 key 不能为空。", "语言不能为空。")));
+        }
 
         verifyNoInteractions(service);
     }
@@ -158,6 +175,15 @@ class I18nMessageControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(10001))
                 .andExpect(jsonPath("$.error").value("invalid key"));
+
+        when(service.createMessage(any(I18nMessageDto.class)))
+                .thenThrow(new InvalidArgumentException("existing key"));
+        mvc.perform(post("/sys/i18n-message/create")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"category\":\"admin\",\"messageKey\":\"menu.title\",\"values\":[]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(10001))
+                .andExpect(jsonPath("$.error").value("existing key"));
     }
 
     private I18nMessageVo message(String category, String key, String zhCn, String enUs) {
