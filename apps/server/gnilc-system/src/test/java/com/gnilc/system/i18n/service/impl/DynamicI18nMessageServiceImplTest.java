@@ -102,7 +102,7 @@ class DynamicI18nMessageServiceImplTest {
         assertThatThrownBy(() -> service.createMessage(save("menu.home.title",
                 value("en-US", "Replacement"))))
                 .isInstanceOf(InvalidArgumentException.class)
-                .hasMessage("目标国际化 key menu.home.title 已存在。");
+                .hasMessage("Message key已存在");
         verify(dao, never()).insert(any(I18nMessageBo.class));
     }
 
