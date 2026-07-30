@@ -1,6 +1,6 @@
 package com.gnilc.system.admin.api;
 
-import com.gnilc.auth.authz.rbac.provider.cache.PermissionCache;
+import com.gnilc.auth.authz.rbac.provider.cache.PermissionCacheService;
 import com.gnilc.common.exception.RestExceptionHandlingConfiguration;
 import com.gnilc.system.admin.support.AdminApiTestConfiguration;
 import com.gnilc.system.admin.support.AdminApiTestSupport;
@@ -35,7 +35,7 @@ class AdminAuthApiIT extends AdminApiTestSupport {
     @Autowired
     private JdbcTemplate jdbc;
     @Autowired
-    private PermissionCache permissionCache;
+    private PermissionCacheService cacheService;
 
     @Test
     void loginRepeatedRefreshAndLogoutRunThroughTheRealHttpAndRedisStack() {
@@ -251,7 +251,7 @@ class AdminAuthApiIT extends AdminApiTestSupport {
                                'LimitedRepository', 'LimitedEmpty', 'LimitedDisabledChild')
                   and del = 0
                 """, limitedRoleId);
-        permissionCache.resetAll();
+        cacheService.resetAll();
         TokenPair pair = loginAsLimitedAdmin();
 
         given()

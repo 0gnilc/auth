@@ -5,22 +5,22 @@ import org.springframework.stereotype.Component;
 /**
  * 权限缓存重置命令执行器。
  * <p>
- * 将标准化重置命令映射为 {@link PermissionCache} 上的具体重置动作。
+ * 将标准化重置命令映射为 {@link PermissionCacheService} 上的具体重置动作。
  */
 @Component
 public class PermissionCacheResetExecutor {
     /**
      * provider 权限缓存。
      */
-    private final PermissionCache permissionCache;
+    private final PermissionCacheService cacheService;
 
     /**
      * 创建缓存重置执行器。
      *
-     * @param permissionCache provider 权限缓存
+     * @param cacheService provider 权限缓存服务
      */
-    public PermissionCacheResetExecutor(PermissionCache permissionCache) {
-        this.permissionCache = permissionCache;
+    public PermissionCacheResetExecutor(PermissionCacheService cacheService) {
+        this.cacheService = cacheService;
     }
 
     /**
@@ -33,14 +33,14 @@ public class PermissionCacheResetExecutor {
             return;
         }
         switch (command.getTarget()) {
-            case TARGET_PERMISSIONS -> permissionCache.resetTargetPermissions();
-            case PUBLIC_ACCESS_PERMISSIONS -> permissionCache.resetPublicAccessPermissions();
+            case TARGET_PERMISSIONS -> cacheService.resetTargetPermissions();
+            case PUBLIC_ACCESS_PERMISSIONS -> cacheService.resetPublicAccessPermissions();
             case USER_PERMISSIONS -> {
                 if (command.getUserId() != null) {
-                    permissionCache.resetUserPermissions(command.getUserId());
+                    cacheService.resetUserPermissions(command.getUserId());
                 }
             }
-            case ALL -> permissionCache.resetAll();
+            case ALL -> cacheService.resetAll();
         }
     }
 }

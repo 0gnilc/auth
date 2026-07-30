@@ -5,7 +5,7 @@ import com.gnilc.auth.authz.context.AccessEnvironment;
 import com.gnilc.auth.authz.context.AccessIdentity;
 import com.gnilc.auth.authz.context.AccessTarget;
 import com.gnilc.auth.authz.provider.Permission;
-import com.gnilc.auth.authz.rbac.provider.cache.PermissionCache;
+import com.gnilc.auth.authz.rbac.provider.cache.PermissionCacheService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -19,30 +19,30 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class RbacGrantedPermissionsProviderTest {
-    private final PermissionCache cache = mock(PermissionCache.class);
+    private final PermissionCacheService cacheService = mock(PermissionCacheService.class);
     private final RbacGrantedPermissionsProvider provider = new RbacGrantedPermissionsProvider();
 
     @BeforeEach
     void injectCache() {
-        ReflectionTestUtils.setField(provider, "cache", cache);
+        ReflectionTestUtils.setField(provider, "cacheService", cacheService);
     }
 
     @Test
     void mergesUserAndPublicPermissions() {
         Permission own = new Permission("admin:read");
         Permission publicPermission = new Permission("public");
-        when(cache.loadUserPermissions(42L)).thenReturn(List.of(own, publicPermission));
-        when(cache.loadPublicAccessPermissions()).thenReturn(List.of(publicPermission));
+        when(cacheService.loadUserPermissions(42L)).thenReturn(List.of(own, publicPermission));
+        when(cacheService.loadPublicAccessPermissions()).thenReturn(List.of(publicPermission));
 
         assertThat(provider.provide(servletContext("42", "/admin")))
                 .containsExactly(own, publicPermission);
-        verify(cache).loadUserPermissions(42L);
+        verify(cacheService).loadUserPermissions(42L);
     }
 
     @Test
     void nonNumericOrAnonymousIdentityReceivesOnlyPublicPermissions() {
         Permission permission = new Permission("public");
-        when(cache.loadPublicAccessPermissions()).thenReturn(List.of(permission));
+        when(cacheService.loadPublicAccessPermissions()).thenReturn(List.of(permission));
 
         assertThat(provider.provide(servletContext("service-account", "/public")))
                 .containsExactly(permission);

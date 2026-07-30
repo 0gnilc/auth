@@ -1,6 +1,6 @@
 package com.gnilc.system.admin.support;
 
-import com.gnilc.auth.authz.rbac.provider.cache.PermissionCache;
+import com.gnilc.auth.authz.rbac.provider.cache.PermissionCacheService;
 import com.gnilc.test.cleanup.BaselineDataSeeder;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -20,7 +20,7 @@ public class AdminApiTestConfiguration {
     @Bean
     BaselineDataSeeder adminApiBaselineDataSeeder(DataSource dataSource,
                                                   JdbcTemplate jdbc,
-                                                  PermissionCache permissionCache) {
+                                                  PermissionCacheService cacheService) {
         return () -> {
             new ResourceDatabasePopulator(new ClassPathResource("sql/schema/02_admin.sql"))
                     .execute(dataSource);
@@ -50,7 +50,7 @@ public class AdminApiTestConfiguration {
                     insert into az_user_role (del, create_time, user_id, role_id)
                     values (0, now(), ?, ?)
                     """, LIMITED_USER_ID, limitedRoleId);
-            permissionCache.resetAll();
+            cacheService.resetAll();
         };
     }
 }

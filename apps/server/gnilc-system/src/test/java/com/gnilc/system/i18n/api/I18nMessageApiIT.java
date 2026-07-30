@@ -1,6 +1,6 @@
 package com.gnilc.system.i18n.api;
 
-import com.gnilc.auth.authz.rbac.provider.cache.PermissionCache;
+import com.gnilc.auth.authz.rbac.provider.cache.PermissionCacheService;
 import com.gnilc.system.admin.support.AdminApiTestConfiguration;
 import com.gnilc.system.admin.support.AdminApiTestSupport;
 import com.gnilc.system.support.SystemContainerContextInitializer;
@@ -28,7 +28,7 @@ class I18nMessageApiIT extends AdminApiTestSupport {
     @Autowired
     private JdbcTemplate jdbc;
     @Autowired
-    private PermissionCache permissionCache;
+    private PermissionCacheService cacheService;
 
     @Test
     void defaultAdministratorCanManageAndReloadDynamicMessages() {
@@ -128,7 +128,7 @@ class I18nMessageApiIT extends AdminApiTestSupport {
                 INSERT INTO az_user_role (del, create_time, user_id, role_id)
                 VALUES (0, NOW(), ?, ?)
                 """, limitedUserId, adminRoleId);
-        permissionCache.resetAll();
+        cacheService.resetAll();
 
         TokenPair limited = loginAsLimitedAdmin();
         given()

@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit;
  * <p>
  * 该模块只负责本地缓存读写和延迟二次重置；重置策略和 Redis 传输由 reset 模块处理。
  */
-public class LocalPermissionCache implements PermissionCache {
+public class LocalPermissionCacheService implements PermissionCacheService {
     private static final String TARGET_PERMISSIONS_CACHE_KEY = "TARGET_PERMISSIONS";
     private static final String PUBLIC_ACCESS_PERMISSIONS_CACHE_KEY = "PUBLIC_ACCESS_PERMISSIONS";
     /**
@@ -58,7 +58,7 @@ public class LocalPermissionCache implements PermissionCache {
      *
      * @param cacheLoader 权限数据加载器
      */
-    public LocalPermissionCache(PermissionCacheLoader cacheLoader) {
+    public LocalPermissionCacheService(PermissionCacheLoader cacheLoader) {
         this.cacheLoader = cacheLoader;
     }
 

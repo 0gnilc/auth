@@ -2,9 +2,9 @@ package com.gnilc.auth.authz.rbac.config;
 
 import com.baomidou.mybatisplus.autoconfigure.MybatisPlusAutoConfiguration;
 import com.gnilc.auth.authz.config.AuthorizationAutoConfiguration;
-import com.gnilc.auth.authz.rbac.provider.cache.LocalPermissionCache;
-import com.gnilc.auth.authz.rbac.provider.cache.PermissionCache;
+import com.gnilc.auth.authz.rbac.provider.cache.LocalPermissionCacheService;
 import com.gnilc.auth.authz.rbac.provider.cache.PermissionCacheLoader;
+import com.gnilc.auth.authz.rbac.provider.cache.PermissionCacheService;
 import com.gnilc.auth.authz.rbac.provider.cache.redis.PermissionCacheRedisConfiguration;
 import com.gnilc.auth.authz.servlet.config.ServletAuthorizationAutoConfiguration;
 import com.gnilc.common.config.LongNumberJacksonConfiguration;
@@ -38,8 +38,8 @@ import org.springframework.context.annotation.*;
 public class ServletRbacAuthorizationAutoConfiguration {
 
     @Bean
-    @ConditionalOnMissingBean(PermissionCache.class)
-    public PermissionCache permissionCache(PermissionCacheLoader cacheLoader) {
-        return new LocalPermissionCache(cacheLoader);
+    @ConditionalOnMissingBean(PermissionCacheService.class)
+    public PermissionCacheService permissionCacheService(PermissionCacheLoader cacheLoader) {
+        return new LocalPermissionCacheService(cacheLoader);
     }
 }
