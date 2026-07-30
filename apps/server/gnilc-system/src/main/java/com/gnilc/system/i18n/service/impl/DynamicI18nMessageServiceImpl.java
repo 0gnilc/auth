@@ -124,26 +124,44 @@ public class DynamicI18nMessageServiceImpl extends ServiceImpl<I18nMessageDao, I
 
     @Transactional
     @Override
+    public I18nMessageVo createMessage(I18nMessageDto dto) {
+        ValidatedMessage target = validateMessage(dto);
+        Preconditions.checkArgument(findRows(target.messageKey()).isEmpty(),
+                messages.get("system.i18n.targetKey.exists", target.messageKey()));
+        Map<String, String> values = new LinkedHashMap<>();
+        applyValues(values, target.values());
+
+        persistRows(target.category(), target.messageKey(), List.of(), values);
+        return new I18nMessageVo(target.category(), target.messageKey(), toValues(values));
+    }
+
+    @Transactional
+    @Override
     public I18nMessageVo saveMessage(I18nMessageDto dto) {
-        Preconditions.checkArgument(dto != null, messages.get("system.i18n.message.required"));
-        String targetCategory = requireCategory(dto.getCategory());
-        String targetKey = requireKey(dto.getMessageKey());
-        List<I18nMessageValueDto> submittedValues = validateValues(dto.getValues());
-        validatePathConflict(targetKey);
-        List<I18nMessageBo> sourceRows = findRows(targetKey);
+        ValidatedMessage target = validateMessage(dto);
+        List<I18nMessageBo> sourceRows = findRows(target.messageKey());
         Map<String, String> mergedValues = sourceRows.stream().collect(Collectors.toMap(
                 I18nMessageBo::getLocale,
                 I18nMessageBo::getI18nValue,
                 (left, right) -> right,
                 LinkedHashMap::new));
-        applyValues(mergedValues, submittedValues);
+        applyValues(mergedValues, target.values());
 
         if (sourceRows.isEmpty() && mergedValues.isEmpty()) {
             Preconditions.checkArgument(false, messages.get("system.i18n.save.empty"));
         }
 
-        persistRows(targetCategory, targetKey, sourceRows, mergedValues);
-        return new I18nMessageVo(targetCategory, targetKey, toValues(mergedValues));
+        persistRows(target.category(), target.messageKey(), sourceRows, mergedValues);
+        return new I18nMessageVo(target.category(), target.messageKey(), toValues(mergedValues));
+    }
+
+    private ValidatedMessage validateMessage(I18nMessageDto dto) {
+        Preconditions.checkArgument(dto != null, messages.get("system.i18n.message.required"));
+        String targetCategory = requireCategory(dto.getCategory());
+        String targetKey = requireKey(dto.getMessageKey());
+        List<I18nMessageValueDto> submittedValues = validateValues(dto.getValues());
+        validatePathConflict(targetKey);
+        return new ValidatedMessage(targetCategory, targetKey, submittedValues);
     }
 
     @Transactional
@@ -269,6 +287,12 @@ public class DynamicI18nMessageServiceImpl extends ServiceImpl<I18nMessageDao, I
         row.setLocale(locale);
         row.setI18nValue(value);
         return row;
+    }
+
+    private record ValidatedMessage(
+            String category,
+            String messageKey,
+            List<I18nMessageValueDto> values) {
     }
 
     private List<I18nMessageValueVo> toValues(Collection<I18nMessageBo> rows) {

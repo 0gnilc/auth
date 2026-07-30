@@ -50,6 +50,12 @@ public class I18nMessageController {
         return R.success(i18nMessageService.getMessageValues(messageKey));
     }
 
+    @PostMapping("/create")
+    public R<I18nMessageVo> createMessage(
+            @Valid @RequestBody I18nMessageDto dto) {
+        return R.success(i18nMessageService.createMessage(dto));
+    }
+
     @PostMapping("/save")
     public R<I18nMessageVo> saveMessage(
             @Valid @RequestBody I18nMessageDto dto) {

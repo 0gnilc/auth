@@ -20,6 +20,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.support.ResourceBundleMessageSource;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.stream.Stream;
@@ -28,7 +29,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -52,13 +55,12 @@ class DynamicI18nMessageServiceImplTest {
         messageSource.setBasenames("i18n/system/messages");
         messageSource.setDefaultEncoding("UTF-8");
         service = spy(new DynamicI18nMessageServiceImpl(new I18nMessageService(messageSource, "zh-CN")));
+        ReflectionTestUtils.setField(service, "baseMapper", dao);
     }
 
     @Test
     void getValuesUsesMapperAndReturnsSupportedLocaleOrder() {
-        doAnswer(invocation -> new LambdaQueryChainWrapper<>(
-                dao, Wrappers.lambdaQuery(I18nMessageBo.class)))
-                .when(service).lambdaQuery();
+        stubLambdaQuery();
         when(dao.selectList(any())).thenReturn(List.of(
                 row("en-US", "Home"),
                 row("zh-CN", "首页")));
@@ -71,6 +73,37 @@ class DynamicI18nMessageServiceImplTest {
                 .extracting(value -> value.getLocale() + ":" + value.getValue())
                 .containsExactly("zh-CN:首页", "en-US:Home");
         verify(dao).selectList(any());
+    }
+
+    @Test
+    void createPersistsANewMessage() {
+        stubLambdaQuery();
+        when(dao.selectList(any())).thenReturn(List.of(), List.of());
+        when(dao.insert(any(I18nMessageBo.class))).thenReturn(1);
+
+        var message = service.createMessage(save("menu.create.title",
+                value("zh-CN", "新增"), value("en-US", "Create")));
+
+        assertThat(message.getCategory()).isEqualTo("admin");
+        assertThat(message.getMessageKey()).isEqualTo("menu.create.title");
+        assertThat(message.getValues())
+                .extracting(value -> value.getLocale() + ":" + value.getValue())
+                .containsExactly("zh-CN:新增", "en-US:Create");
+        verify(dao, times(2)).insert(any(I18nMessageBo.class));
+    }
+
+    @Test
+    void createRejectsAnExistingMessageWithoutWriting() {
+        stubLambdaQuery();
+        when(dao.selectList(any())).thenReturn(
+                List.of(row("en-US", "Home")),
+                List.of(row("en-US", "Home")));
+
+        assertThatThrownBy(() -> service.createMessage(save("menu.home.title",
+                value("en-US", "Replacement"))))
+                .isInstanceOf(InvalidArgumentException.class)
+                .hasMessage("Message key已存在");
+        verify(dao, never()).insert(any(I18nMessageBo.class));
     }
 
     @Test
@@ -101,6 +134,12 @@ class DynamicI18nMessageServiceImplTest {
         assertThatThrownBy(() -> service.getMessageValues(messageKey))
                 .isInstanceOf(InvalidArgumentException.class);
         verifyNoInteractions(dao);
+    }
+
+    private void stubLambdaQuery() {
+        doAnswer(invocation -> new LambdaQueryChainWrapper<>(
+                dao, Wrappers.lambdaQuery(I18nMessageBo.class)))
+                .when(service).lambdaQuery();
     }
 
     private I18nMessageBo row(String locale, String value) {

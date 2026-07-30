@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   createAdmin,
+  createI18nMessage,
   createMenu,
   createPermission,
   createRole,
@@ -173,6 +174,7 @@ describe('system management API contracts', () => {
     await getI18nMessageCategories();
     await getI18nMessagePage({ category: 'default', key: 'menu.example' });
     await getI18nMessageValues('menu.example.title');
+    await createI18nMessage(data);
     await saveI18nMessage(data);
     await removeI18nMessage('menu.example.title');
     await getI18nMessageBundle();
@@ -181,6 +183,7 @@ describe('system management API contracts', () => {
       ['/sys/i18n-message/categories'],
       ['/sys/i18n-message/page', { category: 'default', key: 'menu.example' }],
       ['/sys/i18n-message/values/menu.example.title'],
+      ['/sys/i18n-message/create', data],
       ['/sys/i18n-message/save', data],
       ['/sys/i18n-message/remove/menu.example.title'],
       ['/sys/i18n-message/bundle/admin'],

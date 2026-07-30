@@ -10,7 +10,7 @@ import { isEqual, trimToNull } from '@vben/utils';
 import { ElMessage } from 'element-plus';
 
 import { useVbenForm, z } from '#/adapter/form';
-import { saveI18nMessage } from '#/api';
+import { createI18nMessage, saveI18nMessage } from '#/api';
 import { $t } from '#/locales';
 import { reloadDynamicMessages } from '#/locales/dynamic';
 
@@ -115,7 +115,10 @@ const [Drawer, drawerApi] = useVbenDrawer({
     trimToNull(values);
     drawerApi.lock();
     try {
-      await saveI18nMessage({
+      const persistMessage = values.editing
+        ? saveI18nMessage
+        : createI18nMessage;
+      await persistMessage({
         category: values.category,
         messageKey: values.messageKey,
         values: [

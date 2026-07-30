@@ -140,7 +140,7 @@ class I18nMessageSchemaIT {
         assertThat(jdbc.queryForObject("""
                 SELECT COUNT(*) FROM az_permission
                  WHERE code LIKE 'POST:/sys/i18n-message/%' AND public_access = 0
-                """, Integer.class)).isEqualTo(6);
+                """, Integer.class)).isEqualTo(7);
         assertThat(jdbc.queryForObject("""
                 SELECT COUNT(*)
                   FROM az_role_permission rp
@@ -160,10 +160,11 @@ class I18nMessageSchemaIT {
                        'POST:/sys/i18n-message/categories',
                        'POST:/sys/i18n-message/page',
                        'POST:/sys/i18n-message/values/{messageKey}',
+                       'POST:/sys/i18n-message/create',
                        'POST:/sys/i18n-message/save',
                        'POST:/sys/i18n-message/remove/{messageKey}')
                    AND rp.del = 0
-                """, Integer.class)).isEqualTo(5);
+                """, Integer.class)).isEqualTo(6);
         assertThat(jdbc.queryForObject("""
                 SELECT COUNT(*)
                   FROM az_role_menu rm
