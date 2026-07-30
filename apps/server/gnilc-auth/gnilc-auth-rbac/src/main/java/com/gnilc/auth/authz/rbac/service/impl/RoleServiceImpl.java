@@ -173,11 +173,11 @@ public class RoleServiceImpl extends ServiceImpl<RoleDao, RoleBo> implements Rol
         Preconditions.checkArgument(StringUtils.isNotBlank(code), messages.get("rbac.role.code.required"));
         Preconditions.checkArgument(StringUtils.isNotBlank(name), messages.get("rbac.role.name.required"));
         Preconditions.checkArgument(code.codePointCount(0, code.length()) <= 255,
-                messages.get("rbac.field.tooLong", "code", 255));
+                messages.get("rbac.role.code.tooLong", 255));
         Preconditions.checkArgument(name.codePointCount(0, name.length()) <= 255,
-                messages.get("rbac.field.tooLong", "name", 255));
+                messages.get("rbac.role.name.tooLong", 255));
         Preconditions.checkArgument(remark == null || remark.codePointCount(0, remark.length()) <= 500,
-                messages.get("rbac.field.tooLong", "remark", 500));
+                messages.get("rbac.role.remark.tooLong", 500));
         if (!update || !code.equals(role.getCode())) {
             Preconditions.checkArgument(getRoleByCode(code) == null, messages.get("rbac.role.code.exists"));
         }

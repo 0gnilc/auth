@@ -62,7 +62,7 @@ class RoleServiceImplTest extends RbacMessageTestSupport {
 
         assertThatThrownBy(() -> roles.createRole(dto))
                 .isInstanceOf(InvalidArgumentException.class)
-                .hasMessage("Field code must not exceed 255 characters.");
+                .hasMessage("Role code must not exceed 255 characters.");
     }
 
     @Test

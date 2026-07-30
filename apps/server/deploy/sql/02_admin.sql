@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS sys_admin (
     create_time datetime(6) NOT NULL COMMENT '创建时间（UTC）',
     update_time datetime(6) DEFAULT NULL COMMENT '更新时间（UTC）',
     user_id bigint NOT NULL COMMENT 'RBAC 全局用户 ID',
-    username varchar(320) NOT NULL COMMENT '登录用户名，业务长度上限 255，预留逻辑删除后缀空间',
+    username varchar(320) NOT NULL COMMENT '登录用户名',
     password varchar(100) NOT NULL COMMENT 'BCrypt 密码哈希',
     nickname varchar(255) NOT NULL COMMENT '昵称',
     avatar varchar(500) DEFAULT NULL COMMENT '头像地址',
@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS sys_admin (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='后台管理员';
 
 ALTER TABLE sys_admin
-    MODIFY COLUMN username varchar(320) NOT NULL COMMENT '登录用户名，业务长度上限 255，预留逻辑删除后缀空间';
+    MODIFY COLUMN username varchar(320) NOT NULL COMMENT '登录用户名';
 ALTER TABLE sys_admin ALTER COLUMN home_path SET DEFAULT '/dashboard';
 
 UPDATE az_role

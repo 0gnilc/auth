@@ -66,7 +66,7 @@ class PermissionServiceImplTest extends RbacMessageTestSupport {
 
         assertThatThrownBy(() -> permissions.createPermission(dto))
                 .isInstanceOf(InvalidArgumentException.class)
-                .hasMessage("Field targetIdentifier must not exceed 500 characters.");
+                .hasMessage("Access target identifier must not exceed 500 characters.");
     }
 
     @Test

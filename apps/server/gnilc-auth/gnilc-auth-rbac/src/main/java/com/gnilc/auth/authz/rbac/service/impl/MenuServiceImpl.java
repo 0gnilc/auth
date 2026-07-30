@@ -138,7 +138,17 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
         Preconditions.checkCondition(subtree.stream()
                         .noneMatch(menu -> Boolean.TRUE.equals(menu.getBuiltIn())),
                 messages.get("rbac.menu.builtIn.delete"));
-        subtree.forEach(this::releaseUniqueFields);
+        subtree.forEach(menu -> {
+            String suffix = "_del_" + menu.getId();
+            menu.setName(menu.getName() + suffix);
+            if (menu.getPath() != null) {
+                menu.setPath(menu.getPath() + suffix);
+            }
+            if (menu.getAccessCode() != null) {
+                menu.setAccessCode(menu.getAccessCode() + suffix);
+            }
+            updateById(menu);
+        });
         roleMenuService.removeByMenuIds(menuIds);
         removeByIds(menuIds);
         eventPublisher.publishEvent(new MenuEvent(MenuEvent.Action.DELETE, id));
@@ -277,37 +287,37 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
         Preconditions.checkArgument(StringUtils.isNotBlank(name), messages.get("rbac.menu.name.required"));
         Preconditions.checkArgument(StringUtils.isNotBlank(title), messages.get("rbac.menu.title.required"));
         Preconditions.checkArgument(name.codePointCount(0, name.length()) <= 255,
-                messages.get("rbac.field.tooLong", "name", 255));
+                messages.get("rbac.menu.name.tooLong", 255));
         Preconditions.checkArgument(title.codePointCount(0, title.length()) <= 255,
-                messages.get("rbac.field.tooLong", "title", 255));
+                messages.get("rbac.menu.title.tooLong", 255));
         Preconditions.checkArgument(accessCode == null || accessCode.codePointCount(0, accessCode.length()) <= 255,
-                messages.get("rbac.field.tooLong", "accessCode", 255));
+                messages.get("rbac.menu.accessCode.tooLong", 255));
         Preconditions.checkArgument(path == null || path.codePointCount(0, path.length()) <= 500,
-                messages.get("rbac.field.tooLong", "path", 500));
+                messages.get("rbac.menu.path.tooLong", 500));
         Preconditions.checkArgument(component == null || component.codePointCount(0, component.length()) <= 255,
-                messages.get("rbac.field.tooLong", "component", 255));
+                messages.get("rbac.menu.component.tooLong", 255));
         Preconditions.checkArgument(bo.getRedirect() == null
                         || bo.getRedirect().codePointCount(0, bo.getRedirect().length()) <= 500,
-                messages.get("rbac.field.tooLong", "redirect", 500));
+                messages.get("rbac.menu.redirect.tooLong", 500));
         Preconditions.checkArgument(bo.getActivePath() == null
                         || bo.getActivePath().codePointCount(0, bo.getActivePath().length()) <= 500,
-                messages.get("rbac.field.tooLong", "activePath", 500));
+                messages.get("rbac.menu.activePath.tooLong", 500));
         Preconditions.checkArgument(bo.getBadge() == null
                         || bo.getBadge().codePointCount(0, bo.getBadge().length()) <= 100,
-                messages.get("rbac.field.tooLong", "badge", 100));
+                messages.get("rbac.menu.badge.tooLong", 100));
         Preconditions.checkArgument(bo.getBadgeType() == null
                         || bo.getBadgeType().codePointCount(0, bo.getBadgeType().length()) <= 16,
-                messages.get("rbac.field.tooLong", "badgeType", 16));
+                messages.get("rbac.menu.badgeType.tooLong", 16));
         Preconditions.checkArgument(bo.getBadgeVariants() == null
                         || bo.getBadgeVariants().codePointCount(0, bo.getBadgeVariants().length()) <= 32,
-                messages.get("rbac.field.tooLong", "badgeVariants", 32));
+                messages.get("rbac.menu.badgeVariants.tooLong", 32));
         Preconditions.checkArgument(bo.getIcon() == null
                         || bo.getIcon().codePointCount(0, bo.getIcon().length()) <= 255,
-                messages.get("rbac.field.tooLong", "icon", 255));
+                messages.get("rbac.menu.icon.tooLong", 255));
         Preconditions.checkArgument(iframeSrc == null || iframeSrc.codePointCount(0, iframeSrc.length()) <= 500,
-                messages.get("rbac.field.tooLong", "iframeSrc", 500));
+                messages.get("rbac.menu.iframeSrc.tooLong", 500));
         Preconditions.checkArgument(link == null || link.codePointCount(0, link.length()) <= 500,
-                messages.get("rbac.field.tooLong", "link", 500));
+                messages.get("rbac.menu.link.tooLong", 500));
         switch (type) {
             case CATALOG ->
                     Preconditions.checkArgument(StringUtils.isNotBlank(path), messages.get("rbac.menu.path.required"));
@@ -341,18 +351,6 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
         MenuBo accessBo = getMenuByAccessCode(accessCode);
         Preconditions.checkArgument(accessBo == null || Objects.equals(accessBo.getId(), menuId),
                 messages.get("rbac.menu.accessCode.exists"));
-    }
-
-    private void releaseUniqueFields(MenuBo menu) {
-        String suffix = "_del_" + menu.getId();
-        menu.setName(menu.getName() + suffix);
-        if (menu.getPath() != null) {
-            menu.setPath(menu.getPath() + suffix);
-        }
-        if (menu.getAccessCode() != null) {
-            menu.setAccessCode(menu.getAccessCode() + suffix);
-        }
-        updateById(menu);
     }
 
     /**

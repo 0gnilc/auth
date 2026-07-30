@@ -188,16 +188,16 @@ public class PermissionServiceImpl extends ServiceImpl<PermissionDao, Permission
         Preconditions.checkArgument(StringUtils.isNotBlank(targetIdentifier),
                 messages.get("rbac.permission.targetIdentifier.required"));
         Preconditions.checkArgument(code.codePointCount(0, code.length()) <= 255,
-                messages.get("rbac.field.tooLong", "code", 255));
+                messages.get("rbac.permission.code.tooLong", 255));
         Preconditions.checkArgument(name.codePointCount(0, name.length()) <= 255,
-                messages.get("rbac.field.tooLong", "name", 255));
+                messages.get("rbac.permission.name.tooLong", 255));
         Preconditions.checkArgument(targetIdentifier.codePointCount(0, targetIdentifier.length()) <= 500,
-                messages.get("rbac.field.tooLong", "targetIdentifier", 500));
+                messages.get("rbac.permission.targetIdentifier.tooLong", 500));
         Preconditions.checkArgument(targetQualifier == null
                         || targetQualifier.codePointCount(0, targetQualifier.length()) <= 100,
-                messages.get("rbac.field.tooLong", "targetQualifier", 100));
+                messages.get("rbac.permission.targetQualifier.tooLong", 100));
         Preconditions.checkArgument(remark == null || remark.codePointCount(0, remark.length()) <= 500,
-                messages.get("rbac.field.tooLong", "remark", 500));
+                messages.get("rbac.permission.remark.tooLong", 500));
         if (!update || !code.equals(permission.getCode())) {
             Preconditions.checkArgument(getPermissionByCode(code) == null,
                     messages.get("rbac.permission.code.exists"));

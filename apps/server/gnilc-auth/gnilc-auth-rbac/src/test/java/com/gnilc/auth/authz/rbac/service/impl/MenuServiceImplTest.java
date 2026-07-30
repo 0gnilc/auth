@@ -166,6 +166,16 @@ class MenuServiceImplTest {
     }
 
     @Test
+    void createMenuRejectsAnOversizedNameWithASpecificMessage() {
+        MenuDto menu = completeMenu(MenuType.CATALOG, 0L);
+        menu.setName("m".repeat(256));
+
+        assertThatThrownBy(() -> menus.createMenu(menu))
+                .isInstanceOf(InvalidArgumentException.class)
+                .hasMessage("Menu name must not exceed 255 characters.");
+    }
+
+    @Test
     void getMenusWithAncestorsRejectsAnInvalidSelectionBeforeReturningAClosure() {
         doReturn(List.of(menu(1L, 0L, MenuType.CATALOG, "Root", "/root", 1)))
                 .when(menus).list();
