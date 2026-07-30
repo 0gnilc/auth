@@ -40,7 +40,7 @@ const passwordRule = z
     { message: $t('page.profile.form.passwordComplexity') },
   );
 
-const schema: VbenFormSchema[] = [
+const schema: VbenFormSchema<AdminForm>[] = [
   {
     component: 'Input',
     fieldName: 'id',
@@ -94,8 +94,13 @@ const schema: VbenFormSchema[] = [
   },
   {
     component: 'Switch',
-    componentProps: (values) => ({ disabled: Boolean(values.currentAdmin) }),
     defaultValue: true,
+    dependencies: {
+      resolve: ({ values }) => ({
+        componentProps: { disabled: Boolean(values.currentAdmin) },
+      }),
+      triggerFields: ['currentAdmin'],
+    },
     fieldName: 'status',
     label: $t('page.systemAdmin.form.status'),
   },
@@ -175,7 +180,7 @@ const [Drawer, drawerApi] = useVbenDrawer({
         ? $t('page.systemAdmin.drawer.editTitle')
         : $t('page.systemAdmin.drawer.createTitle'),
     });
-    await formApi.resetForm();
+    await formApi.reset();
     await nextTick();
     await formApi.setValues(values, false);
     initialValues.value = await formApi.getValues<AdminForm>();

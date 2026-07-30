@@ -62,11 +62,10 @@ public class AdminSessionManager {
             return null;
         }
         String accessToken = tokenCodec.issue(userId);
-        if (!redisCommands.replacePairedAccessTokenKeepingTtl(userId, refreshToken, accessToken)) {
+        if (!redisCommands.rotateAccessToken(
+                userId, refreshToken, oldAccessToken, accessToken)) {
             return null;
         }
-        redisCommands.deleteAccessToken(userId, oldAccessToken);
-        redisCommands.saveAccessToken(userId, accessToken, refreshToken);
         return AdminSessionTokenPair.of(accessToken, refreshToken);
     }
 
@@ -74,12 +73,11 @@ public class AdminSessionManager {
      * 登出当前会话。
      */
     public boolean logout(String refreshToken) {
-        Long userId = validateRefreshToken(refreshToken);
+        Long userId = parseUserId(refreshToken);
         if (userId == null) {
             return false;
         }
-        deleteRefreshSession(userId, refreshToken);
-        return true;
+        return redisCommands.deleteSession(userId, refreshToken);
     }
 
     /**
@@ -98,17 +96,6 @@ public class AdminSessionManager {
             return null;
         }
         return redisCommands.hasRefreshToken(userId, refreshToken) ? userId : null;
-    }
-
-    /**
-     * 删除刷新令牌及其访问令牌。
-     */
-    private void deleteRefreshSession(Long userId, String refreshToken) {
-        String pairedAccessToken = redisCommands.getPairedAccessToken(userId, refreshToken);
-        if (pairedAccessToken != null && !pairedAccessToken.isBlank()) {
-            redisCommands.deleteAccessToken(userId, pairedAccessToken);
-        }
-        redisCommands.deleteRefreshToken(userId, refreshToken);
     }
 
     /**

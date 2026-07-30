@@ -51,15 +51,15 @@ public class LocalPermissionCache implements PermissionCache {
         return thread;
     });
 
-    private final PermissionCacheLoader permissionCacheLoader;
+    private final PermissionCacheLoader cacheLoader;
 
     /**
      * 创建本地权限缓存。
      *
-     * @param permissionCacheLoader 权限数据加载器
+     * @param cacheLoader 权限数据加载器
      */
-    public LocalPermissionCache(PermissionCacheLoader permissionCacheLoader) {
-        this.permissionCacheLoader = permissionCacheLoader;
+    public LocalPermissionCache(PermissionCacheLoader cacheLoader) {
+        this.cacheLoader = cacheLoader;
     }
 
     @Override
@@ -73,7 +73,7 @@ public class LocalPermissionCache implements PermissionCache {
             if (cached != null) {
                 return cached;
             }
-            List<TargetPermission> loaded = Optional.ofNullable(permissionCacheLoader.loadTargetPermissions()).orElse(List.of());
+            List<TargetPermission> loaded = Optional.ofNullable(cacheLoader.loadTargetPermissions()).orElse(List.of());
             targetPermissionsCache.put(TARGET_PERMISSIONS_CACHE_KEY, loaded);
             return loaded;
         }
@@ -99,7 +99,7 @@ public class LocalPermissionCache implements PermissionCache {
             if (cached != null) {
                 return cached;
             }
-            List<Permission> loaded = Optional.ofNullable(permissionCacheLoader.loadUserPermissions(userId)).orElse(List.of());
+            List<Permission> loaded = Optional.ofNullable(cacheLoader.loadUserPermissions(userId)).orElse(List.of());
             userPermissionsCache.put(userId, loaded);
             return loaded;
         }
@@ -125,7 +125,7 @@ public class LocalPermissionCache implements PermissionCache {
             if (cached != null) {
                 return cached;
             }
-            List<Permission> loaded = Optional.ofNullable(permissionCacheLoader.loadPublicAccessPermissions()).orElse(List.of());
+            List<Permission> loaded = Optional.ofNullable(cacheLoader.loadPublicAccessPermissions()).orElse(List.of());
             publicAccessPermissionsCache.put(PUBLIC_ACCESS_PERMISSIONS_CACHE_KEY, loaded);
             return loaded;
         }

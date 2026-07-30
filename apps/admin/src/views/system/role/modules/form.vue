@@ -100,7 +100,7 @@ const [Drawer, drawerApi] = useVbenDrawer({
         ? $t('page.systemRole.drawer.editTitle')
         : $t('page.systemRole.drawer.createTitle'),
     });
-    await formApi.resetForm();
+    await formApi.reset();
     await nextTick();
     await formApi.setValues(values, false);
     initialValues.value = await formApi.getValues<RoleForm>();

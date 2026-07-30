@@ -14,6 +14,12 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -75,15 +81,93 @@ class AdminSessionCacheIT {
     }
 
     @Test
-    void replacingADeletedRefreshKeyDoesNotRecreateIt() {
+    void rotatingADeletedRefreshKeyDoesNotRecreateIt() {
         String refreshKey = commands.refreshKey(42L, "missing-refresh-token");
 
-        boolean replaced = commands.replacePairedAccessTokenKeepingTtl(
-                42L, "missing-refresh-token", "replacement-access-token");
+        boolean replaced = commands.rotateAccessToken(
+                42L, "missing-refresh-token", "old-access-token", "replacement-access-token");
 
         assertThat(replaced).isFalse();
         assertThat(redis.hasKey(refreshKey)).isFalse();
         assertThat(redis.opsForValue().get(refreshKey)).isNull();
+    }
+
+    @Test
+    void concurrentRefreshAllowsOnlyOneNewAccessToken() {
+        int requestCount = 16;
+        AdminSessionTokenPair session = sessions.createSession(43L);
+        ExecutorService executor = Executors.newFixedThreadPool(requestCount);
+        CountDownLatch ready = new CountDownLatch(requestCount);
+        CountDownLatch start = new CountDownLatch(1);
+        List<CompletableFuture<AdminSessionTokenPair>> futures = new ArrayList<>();
+
+        try {
+            for (int i = 0; i < requestCount; i++) {
+                futures.add(CompletableFuture.supplyAsync(() -> {
+                    ready.countDown();
+                    await(ready);
+                    await(start);
+                    return sessions.refreshSession(session.getRefreshToken());
+                }, executor));
+            }
+            start.countDown();
+
+            List<AdminSessionTokenPair> successfulRefreshes = futures.stream()
+                    .map(CompletableFuture::join)
+                    .filter(java.util.Objects::nonNull)
+                    .toList();
+
+            assertThat(successfulRefreshes).hasSize(1);
+            assertThat(sessions.validateAccessToken(session.getAccessToken())).isNull();
+            assertThat(sessions.validateAccessToken(successfulRefreshes.get(0).getAccessToken()))
+                    .isEqualTo(43L);
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    void concurrentRefreshAndLogoutLeaveNoValidAccessToken() {
+        int sessionCount = 64;
+        List<AdminSessionTokenPair> initialSessions = new ArrayList<>();
+        for (int i = 0; i < sessionCount; i++) {
+            initialSessions.add(sessions.createSession(44L));
+        }
+        ExecutorService executor = Executors.newFixedThreadPool(sessionCount * 2);
+        CountDownLatch ready = new CountDownLatch(sessionCount * 2);
+        CountDownLatch start = new CountDownLatch(1);
+        List<CompletableFuture<AdminSessionTokenPair>> refreshes = new ArrayList<>();
+        List<CompletableFuture<Boolean>> logouts = new ArrayList<>();
+
+        try {
+            for (AdminSessionTokenPair session : initialSessions) {
+                refreshes.add(CompletableFuture.supplyAsync(() -> {
+                    ready.countDown();
+                    await(ready);
+                    await(start);
+                    return sessions.refreshSession(session.getRefreshToken());
+                }, executor));
+                logouts.add(CompletableFuture.supplyAsync(() -> {
+                    ready.countDown();
+                    await(ready);
+                    await(start);
+                    return sessions.logout(session.getRefreshToken());
+                }, executor));
+            }
+            start.countDown();
+
+            List<AdminSessionTokenPair> refreshedSessions = refreshes.stream()
+                    .map(CompletableFuture::join)
+                    .filter(java.util.Objects::nonNull)
+                    .toList();
+            assertThat(logouts).allSatisfy(future -> assertThat(future.join()).isTrue());
+            assertThat(initialSessions).allSatisfy(session ->
+                    assertThat(sessions.validateAccessToken(session.getAccessToken())).isNull());
+            assertThat(refreshedSessions).allSatisfy(session ->
+                    assertThat(sessions.validateAccessToken(session.getAccessToken())).isNull());
+        } finally {
+            executor.shutdownNow();
+        }
     }
 
     @Test
@@ -105,5 +189,14 @@ class AdminSessionCacheIT {
         assertThat(actualSeconds).isPositive();
         assertThat(actualSeconds).isGreaterThan(expected.minusSeconds(10).getSeconds());
         assertThat(actualSeconds).isLessThanOrEqualTo(expected.getSeconds());
+    }
+
+    private static void await(CountDownLatch latch) {
+        try {
+            assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new AssertionError("Interrupted while waiting for concurrent refresh", e);
+        }
     }
 }

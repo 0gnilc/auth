@@ -13,20 +13,20 @@ public class DefaultPermissionCache implements PermissionCache {
     /**
      * 权限数据加载器。
      */
-    private final PermissionCacheLoader permissionCacheLoader;
+    private final PermissionCacheLoader cacheLoader;
 
     /**
      * 创建默认权限缓存。
      *
-     * @param permissionCacheLoader 权限数据加载器
+     * @param cacheLoader 权限数据加载器
      */
-    public DefaultPermissionCache(PermissionCacheLoader permissionCacheLoader) {
-        this.permissionCacheLoader = permissionCacheLoader;
+    public DefaultPermissionCache(PermissionCacheLoader cacheLoader) {
+        this.cacheLoader = cacheLoader;
     }
 
     @Override
     public List<TargetPermission> loadTargetPermissions() {
-        return permissionCacheLoader.loadTargetPermissions();
+        return cacheLoader.loadTargetPermissions();
     }
 
     @Override
@@ -36,7 +36,7 @@ public class DefaultPermissionCache implements PermissionCache {
 
     @Override
     public List<Permission> loadUserPermissions(Long userId) {
-        return permissionCacheLoader.loadUserPermissions(userId);
+        return cacheLoader.loadUserPermissions(userId);
     }
 
     @Override
@@ -46,7 +46,7 @@ public class DefaultPermissionCache implements PermissionCache {
 
     @Override
     public List<Permission> loadPublicAccessPermissions() {
-        return permissionCacheLoader.loadPublicAccessPermissions();
+        return cacheLoader.loadPublicAccessPermissions();
     }
 
     @Override

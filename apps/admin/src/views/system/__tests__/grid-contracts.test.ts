@@ -17,7 +17,9 @@ const runtime = vi.hoisted(() => ({
     getMenuTree: vi.fn(),
     getPermissionList: vi.fn(),
     getRoleList: vi.fn(),
+    updateAdmin: vi.fn(),
   },
+  confirm: vi.fn(),
   gridConfigs: [] as Array<Record<string, any>>,
 }));
 
@@ -94,7 +96,7 @@ vi.mock('element-plus', async () => {
   const Empty = defineComponent({ render: () => null });
   return {
     ElMessage: { success: vi.fn(), warning: vi.fn() },
-    ElMessageBox: { confirm: vi.fn() },
+    ElMessageBox: { confirm: runtime.confirm },
     ElPopover: Empty,
     ElTag: Empty,
   };
@@ -136,6 +138,8 @@ describe('system management grid contracts', () => {
     });
     runtime.api.getPermissionList.mockResolvedValue([{ id: 'permission-1' }]);
     runtime.api.getRoleList.mockResolvedValue([{ id: 'role-1' }]);
+    runtime.api.updateAdmin.mockResolvedValue(undefined);
+    runtime.confirm.mockResolvedValue(undefined);
     runtime.api.getMenuTree.mockResolvedValue([
       {
         accessCode: null,
@@ -208,5 +212,37 @@ describe('system management grid contracts', () => {
       list: [expect.objectContaining({ rowKey: 'menu.title' })],
       total: 3,
     });
+  });
+
+  it('keeps an admin status switch unchanged on cancel or failure and permits retry', async () => {
+    const admin = await captureGrid(AdminPage);
+    const statusColumn = admin.gridOptions.columns.find(
+      (column: Record<string, any>) => column.field === 'status',
+    );
+    const beforeChange = statusColumn.cellRender.attrs.beforeChange as (
+      status: boolean,
+      row: Record<string, any>,
+    ) => Promise<boolean>;
+    const row = { id: '2', userId: '2', username: 'operator' };
+
+    runtime.confirm.mockRejectedValueOnce(new Error('cancelled'));
+    await expect(beforeChange(false, row)).resolves.toBe(false);
+    expect(runtime.api.updateAdmin).not.toHaveBeenCalled();
+
+    runtime.api.updateAdmin.mockRejectedValueOnce(new Error('timeout'));
+    await expect(beforeChange(false, row)).resolves.toBe(false);
+    expect(runtime.api.updateAdmin).toHaveBeenCalledOnce();
+
+    await expect(beforeChange(false, row)).resolves.toBe(true);
+    expect(runtime.api.updateAdmin).toHaveBeenCalledTimes(2);
+    expect(runtime.api.updateAdmin).toHaveBeenLastCalledWith({
+      id: '2',
+      status: false,
+    });
+
+    await expect(
+      beforeChange(false, { ...row, id: '1', userId: '1' }),
+    ).resolves.toBe(false);
+    expect(runtime.confirm).toHaveBeenCalledTimes(3);
   });
 });
