@@ -108,7 +108,6 @@ function refresh() {
             {
               auth: 'system:permission:update',
               disabled: row.builtIn,
-              icon: 'lucide:edit',
               text: $t('page.rbacCommon.edit'),
               tooltip: row.builtIn
                 ? $t('page.rbacCommon.builtInProtected')
@@ -121,7 +120,6 @@ function refresh() {
               auth: 'system:permission:remove',
               danger: true,
               disabled: row.builtIn,
-              icon: 'lucide:trash-2',
               text: $t('page.rbacCommon.remove'),
               popConfirm: {
                 title: $t('page.systemPermission.messages.removeConfirm', {

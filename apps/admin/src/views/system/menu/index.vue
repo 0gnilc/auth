@@ -15,7 +15,7 @@ import { useVbenVxeGrid, VbenTableAction } from '#/adapter/vxe-table';
 import { getMenuTree, getRoleList, getRoleMenuIds, removeMenu } from '#/api';
 import { $t } from '#/locales';
 
-import { useColumns, useGridFormSchema } from './data';
+import { menuTypeTagTypes, useColumns, useGridFormSchema } from './data';
 import Form from './modules/form.vue';
 
 const menuTree = ref<MenuApi.Menu[]>([]);
@@ -167,7 +167,7 @@ function refresh() {
       </template>
 
       <template #type="{ row }">
-        <ElTag effect="plain">
+        <ElTag :type="menuTypeTagTypes[row.type]" effect="plain">
           {{ $t(`page.systemMenu.types.${row.type}`) }}
         </ElTag>
       </template>
@@ -192,14 +192,12 @@ function refresh() {
             {
               auth: 'system:menu:create',
               disabled: !canAppend(row),
-              icon: 'lucide:list-plus',
               text: $t('page.systemMenu.actions.append'),
               onClick: () => onCreate(row.id),
             },
             {
               auth: 'system:menu:update',
               disabled: row.builtIn,
-              icon: 'lucide:edit',
               text: $t('page.rbacCommon.edit'),
               tooltip: row.builtIn
                 ? $t('page.rbacCommon.builtInProtected')
@@ -212,7 +210,6 @@ function refresh() {
               auth: 'system:menu:remove',
               danger: true,
               disabled: row.builtIn || hasBuiltInDescendant(row),
-              icon: 'lucide:trash-2',
               text: $t('page.rbacCommon.remove'),
               onClick: () => onDelete(row),
             },

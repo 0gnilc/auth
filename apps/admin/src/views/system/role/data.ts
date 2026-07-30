@@ -67,7 +67,7 @@ export function useColumns(): VxeTableGridColumns<RoleApi.Role> {
       fixed: 'right',
       slots: { default: 'action' },
       title: $t('page.rbacCommon.actions'),
-      width: 260,
+      width: 280,
     },
   ];
 }
