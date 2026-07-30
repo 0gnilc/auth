@@ -215,13 +215,11 @@ function refresh() {
           :actions="[
             {
               auth: 'system:admin:update',
-              icon: 'lucide:edit',
               text: $t('page.rbacCommon.edit'),
               onClick: () => onEdit(row),
             },
             {
               auth: 'system:admin:manage-roles',
-              icon: 'lucide:users',
               text: $t('page.systemAdmin.actions.roles'),
               onClick: () => onRoles(row),
             },
@@ -231,7 +229,6 @@ function refresh() {
               auth: 'system:admin:remove',
               danger: true,
               disabled: isCurrentAdmin(row),
-              icon: 'lucide:trash-2',
               text: $t('page.rbacCommon.remove'),
               popConfirm: {
                 title: $t('page.systemAdmin.messages.removeConfirm', {

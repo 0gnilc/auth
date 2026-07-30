@@ -6,6 +6,17 @@ import { $t } from '#/locales';
 
 export type MenuType = MenuApi.Menu['type'];
 
+export const menuTypeTagTypes = {
+  button: 'danger',
+  catalog: 'primary',
+  embedded: 'success',
+  link: 'info',
+  menu: 'warning',
+} as const satisfies Record<
+  MenuType,
+  'danger' | 'info' | 'primary' | 'success' | 'warning'
+>;
+
 export interface MenuForm {
   accessCode: null | string;
   activePath: null | string;
@@ -128,7 +139,7 @@ export function useColumns(): VxeTableGridColumns<MenuApi.Menu> {
       fixed: 'right',
       slots: { default: 'action' },
       title: $t('page.rbacCommon.actions'),
-      width: 230,
+      width: 190,
     },
   ];
 }

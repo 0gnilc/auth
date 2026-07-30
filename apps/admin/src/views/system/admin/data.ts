@@ -77,7 +77,7 @@ export function useColumns(
       fixed: 'right',
       slots: { default: 'action' },
       title: $t('page.rbacCommon.actions'),
-      width: 210,
+      width: 200,
     },
   ];
 }

@@ -65,7 +65,7 @@ export function useColumns(): VxeTableGridColumns<I18nMessageApi.MessageItem> {
       fixed: 'right' as const,
       slots: { default: 'action' },
       title: $t('page.i18nMessage.table.operations'),
-      width: 150,
+      width: 120,
     },
   ];
 }

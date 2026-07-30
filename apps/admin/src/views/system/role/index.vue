@@ -150,7 +150,6 @@ function refresh() {
             {
               auth: 'system:role:update',
               disabled: row.builtIn,
-              icon: 'lucide:edit',
               text: $t('page.rbacCommon.edit'),
               tooltip: row.builtIn
                 ? $t('page.rbacCommon.builtInProtected')
@@ -160,14 +159,12 @@ function refresh() {
             {
               auth: 'system:role:manage-permissions',
               disabled: row.builtIn,
-              icon: 'lucide:key-round',
               text: $t('page.systemRole.actions.permissions'),
               onClick: () => onPermissions(row),
             },
             {
               auth: 'system:role:manage-menus',
               disabled: row.builtIn,
-              icon: 'lucide:list-tree',
               text: $t('page.systemRole.actions.menus'),
               onClick: () => onMenus(row),
             },
@@ -177,7 +174,6 @@ function refresh() {
               auth: 'system:role:remove',
               danger: true,
               disabled: row.builtIn,
-              icon: 'lucide:trash-2',
               text: $t('page.rbacCommon.remove'),
               popConfirm: {
                 title: $t('page.systemRole.messages.removeConfirm', {

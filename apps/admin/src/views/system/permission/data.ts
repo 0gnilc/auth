@@ -78,7 +78,7 @@ export function useColumns(): VxeTableGridColumns<PermissionApi.Permission> {
       fixed: 'right',
       slots: { default: 'action' },
       title: $t('page.rbacCommon.actions'),
-      width: 150,
+      width: 120,
     },
   ];
 }

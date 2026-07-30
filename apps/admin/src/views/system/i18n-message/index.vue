@@ -146,7 +146,6 @@ onMounted(async () => {
           :actions="[
             {
               auth: 'system:i18n-message:save',
-              icon: 'lucide:edit',
               text: $t('page.rbacCommon.edit'),
               onClick: () => openForm(row),
             },
@@ -155,7 +154,6 @@ onMounted(async () => {
             {
               auth: 'system:i18n-message:remove',
               danger: true,
-              icon: 'lucide:trash-2',
               text: $t('page.i18nMessage.actions.remove'),
               popConfirm: {
                 title: $t('page.i18nMessage.messages.removeConfirm', {
