@@ -178,7 +178,7 @@ class AdminManagementApiIT extends AdminApiTestSupport {
     }
 
     @Test
-    void createRejectsFieldsBeyondDatabaseLimitsWithoutLeavingPartialUsers() {
+    void createRejectsFieldsBeyondBusinessLimitsWithoutLeavingPartialUsers() {
         String auth = bearer(loginAsDefaultAdmin().accessToken());
         int adminCountBefore = countRows("sys_admin");
         int userCountBefore = countRows("az_user");
@@ -199,7 +199,7 @@ class AdminManagementApiIT extends AdminApiTestSupport {
     }
 
     @Test
-    void updateRejectsFieldsBeyondDatabaseLimitsWithoutChangingTheAdministrator() {
+    void updateRejectsFieldsBeyondBusinessLimitsWithoutChangingTheAdministrator() {
         String auth = bearer(loginAsDefaultAdmin().accessToken());
         postAdmin(auth, "/api/sys/admin/create", adminRequest("bounded-update"))
                 .body("code", equalTo(0));
@@ -228,6 +228,31 @@ class AdminManagementApiIT extends AdminApiTestSupport {
                 .containsEntry("home_path", "/dashboard");
         assertThat(stored.get("avatar")).isNull();
         assertThat(stored.get("description")).isNull();
+    }
+
+    @Test
+    void exactMaximumProfileLengthsAreAcceptedWithoutTruncation() {
+        String auth = bearer(loginAsDefaultAdmin().accessToken());
+        String nickname = "\uD83D\uDE00".repeat(255);
+        String avatarPrefix = "https://example.test/";
+        String avatar = avatarPrefix + "a".repeat(500 - avatarPrefix.length());
+        String description = "\uD83D\uDE00".repeat(500);
+        String homePath = "/" + "h".repeat(499);
+
+        postAdmin(auth, "/api/sys/admin/create", adminRequest(
+                "maximum-profile", nickname, avatar, description, homePath))
+                .body("code", equalTo(0));
+
+        Map<String, Object> stored = jdbc.queryForMap("""
+                select nickname, avatar, description, home_path
+                  from sys_admin
+                 where username = 'maximum-profile' and del = 0
+                """);
+        assertThat(stored)
+                .containsEntry("nickname", nickname)
+                .containsEntry("avatar", avatar)
+                .containsEntry("description", description)
+                .containsEntry("home_path", homePath);
     }
 
     @Test

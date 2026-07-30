@@ -137,7 +137,7 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
         List<MenuBo> subtree = getMenus(menuIds);
         Preconditions.checkCondition(subtree.stream()
                         .noneMatch(menu -> Boolean.TRUE.equals(menu.getBuiltIn())),
-                messages.get("rbac.menu.builtIn.delete"));
+                messages.get("rbac.menu.builtIn.descendant.delete"));
         subtree.forEach(menu -> {
             String suffix = "_del_" + menu.getId();
             menu.setName(menu.getName() + suffix);

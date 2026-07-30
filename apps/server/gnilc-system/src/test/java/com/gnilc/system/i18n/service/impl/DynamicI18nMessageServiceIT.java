@@ -112,15 +112,19 @@ class DynamicI18nMessageServiceIT {
     }
 
     @Test
-    void saveUsesTheExactFourThousandCharacterValueBoundary() {
-        String maximum = "v".repeat(4000);
-        messages.saveMessage(save("default", "test.value.maximum",
-                value("en-US", maximum)));
+    void saveUsesTheExactKeyAndValueMaximumBoundaries() {
+        String maximumKey = "k".repeat(191);
+        String maximumValue = "v".repeat(4000);
+        messages.saveMessage(save("default", maximumKey,
+                value("en-US", maximumValue)));
 
-        assertThat(messages.getMessageValues("test.value.maximum").getValues())
-                .singleElement()
-                .extracting(value -> value.getValue().length())
-                .isEqualTo(4000);
+        assertThat(messages.getMessageValues(maximumKey)).satisfies(message -> {
+            assertThat(message.getMessageKey()).hasSize(191);
+            assertThat(message.getValues())
+                    .singleElement()
+                    .extracting(value -> value.getValue().length())
+                    .isEqualTo(4000);
+        });
         assertThatThrownBy(() -> messages.saveMessage(save(
                 "default", "test.value.oversized", value("en-US", "v".repeat(4001)))))
                 .isInstanceOf(InvalidArgumentException.class);

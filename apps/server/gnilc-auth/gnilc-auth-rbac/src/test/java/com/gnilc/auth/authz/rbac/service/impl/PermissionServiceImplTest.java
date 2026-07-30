@@ -2,19 +2,29 @@ package com.gnilc.auth.authz.rbac.service.impl;
 
 import com.gnilc.auth.authz.rbac.entity.bo.PermissionBo;
 import com.gnilc.auth.authz.rbac.entity.dto.PermissionDto;
+import com.gnilc.auth.authz.rbac.event.AuthorizationEvent;
 import com.gnilc.auth.authz.rbac.service.RolePermissionService;
 import com.gnilc.auth.authz.rbac.service.UserRoleService;
 import com.gnilc.common.exception.IllegalConditionException;
 import com.gnilc.common.exception.InvalidArgumentException;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.context.ApplicationEventPublisher;
+
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 class PermissionServiceImplTest extends RbacMessageTestSupport {
     @Test
@@ -52,21 +62,52 @@ class PermissionServiceImplTest extends RbacMessageTestSupport {
                 .hasMessage("Built-in permissions cannot be deleted.");
     }
 
-    @Test
-    void createPermissionRejectsFieldsBeyondDatabaseLimits() {
-        PermissionServiceImpl permissions = new PermissionServiceImpl(
-                mock(ApplicationEventPublisher.class),
-                mock(UserRoleService.class),
-                mock(RolePermissionService.class),
-                messages());
-        PermissionDto dto = new PermissionDto();
-        dto.setCode("reports:read");
-        dto.setName("Read reports");
-        dto.setTargetIdentifier("/" + "r".repeat(500));
+    @ParameterizedTest(name = "rejects blank required field {0}")
+    @MethodSource("permissionRequiredFields")
+    void createPermissionRejectsWhitespaceOnlyRequiredFields(String field, String message) {
+        PermissionFixture fixture = permissionFixture();
+        PermissionDto dto = validPermission();
+        setField(dto, field, "   ");
 
-        assertThatThrownBy(() -> permissions.createPermission(dto))
+        assertThatThrownBy(() -> fixture.service().createPermission(dto))
                 .isInstanceOf(InvalidArgumentException.class)
-                .hasMessage("Access target identifier must not exceed 500 characters.");
+                .hasMessage(message);
+        verifyNoPermissionWrite(fixture);
+    }
+
+    @ParameterizedTest(name = "accepts exact {0} business limit")
+    @MethodSource("permissionLengthBoundaries")
+    void createPermissionAcceptsExactBusinessLimits(
+            String field,
+            int maximum,
+            String character,
+            String ignoredMessage) {
+        PermissionFixture fixture = permissionFixture();
+        PermissionDto dto = validPermission();
+        setField(dto, field, character.repeat(maximum));
+        doReturn(null).when(fixture.service()).getPermissionByCode(dto.getCode());
+
+        fixture.service().createPermission(dto);
+
+        verify(fixture.service()).save(any(PermissionBo.class));
+        verify(fixture.publisher()).publishEvent(any(AuthorizationEvent.class));
+    }
+
+    @ParameterizedTest(name = "rejects {0} beyond business limit")
+    @MethodSource("permissionLengthBoundaries")
+    void createPermissionRejectsFieldsBeyondBusinessLimits(
+            String field,
+            int maximum,
+            String character,
+            String message) {
+        PermissionFixture fixture = permissionFixture();
+        PermissionDto dto = validPermission();
+        setField(dto, field, character.repeat(maximum + 1));
+
+        assertThatThrownBy(() -> fixture.service().createPermission(dto))
+                .isInstanceOf(InvalidArgumentException.class)
+                .hasMessage(message);
+        verifyNoPermissionWrite(fixture);
     }
 
     @Test
@@ -91,5 +132,69 @@ class PermissionServiceImplTest extends RbacMessageTestSupport {
         verify(rolePermissions).removeByPermissionId(2L);
         verify(permissions).removeById(2L);
         assertThat(permission.getCode()).isEqualTo(originalCode + "_del_2");
+    }
+
+    private PermissionFixture permissionFixture() {
+        ApplicationEventPublisher publisher = mock(ApplicationEventPublisher.class);
+        PermissionServiceImpl service = spy(new PermissionServiceImpl(
+                publisher,
+                mock(UserRoleService.class),
+                mock(RolePermissionService.class),
+                messages()));
+        doAnswer(invocation -> {
+            ((PermissionBo) invocation.getArgument(0)).setId(20L);
+            return true;
+        }).when(service).save(any(PermissionBo.class));
+        return new PermissionFixture(service, publisher);
+    }
+
+    private PermissionDto validPermission() {
+        PermissionDto dto = new PermissionDto();
+        dto.setCode("reports:read");
+        dto.setName("Read reports");
+        dto.setTargetIdentifier("/reports/**");
+        dto.setTargetQualifier("GET");
+        dto.setRemark("Allows reports to be read");
+        dto.setPublicAccess(false);
+        return dto;
+    }
+
+    private void verifyNoPermissionWrite(PermissionFixture fixture) {
+        verify(fixture.service(), never()).save(any(PermissionBo.class));
+        verify(fixture.service(), never()).updateById(any(PermissionBo.class));
+        verifyNoInteractions(fixture.publisher());
+    }
+
+    private static void setField(PermissionDto dto, String field, String value) {
+        switch (field) {
+            case "code" -> dto.setCode(value);
+            case "name" -> dto.setName(value);
+            case "targetIdentifier" -> dto.setTargetIdentifier(value);
+            case "targetQualifier" -> dto.setTargetQualifier(value);
+            case "remark" -> dto.setRemark(value);
+            default -> throw new IllegalArgumentException("Unknown permission field: " + field);
+        }
+    }
+
+    private static Stream<Arguments> permissionRequiredFields() {
+        return Stream.of(
+                Arguments.of("code", "Permission code is required."),
+                Arguments.of("name", "Permission name is required."),
+                Arguments.of("targetIdentifier", "Access target identifier is required."));
+    }
+
+    private static Stream<Arguments> permissionLengthBoundaries() {
+        return Stream.of(
+                Arguments.of("code", 255, "p", "Permission code must not exceed 255 characters."),
+                Arguments.of("name", 255, "\uD83D\uDE00", "Permission name must not exceed 255 characters."),
+                Arguments.of("targetIdentifier", 500, "t",
+                        "Access target identifier must not exceed 500 characters."),
+                Arguments.of("targetQualifier", 100, "q", "Target qualifier must not exceed 100 characters."),
+                Arguments.of("remark", 500, "m", "Permission description must not exceed 500 characters."));
+    }
+
+    private record PermissionFixture(
+            PermissionServiceImpl service,
+            ApplicationEventPublisher publisher) {
     }
 }
