@@ -93,7 +93,7 @@ class AdminSessionCacheIT {
     }
 
     @Test
-    void concurrentRefreshAllowsOnlyOneNewAccessToken() {
+    void concurrentRefreshLeavesOnlyOneValidNewAccessToken() {
         int requestCount = 16;
         AdminSessionTokenPair session = sessions.createSession(43L);
         ExecutorService executor = Executors.newFixedThreadPool(requestCount);
@@ -116,11 +116,20 @@ class AdminSessionCacheIT {
                     .map(CompletableFuture::join)
                     .filter(java.util.Objects::nonNull)
                     .toList();
+            List<AdminSessionTokenPair> validRefreshes = successfulRefreshes.stream()
+                    .filter(refreshed -> sessions.validateAccessToken(refreshed.getAccessToken()) != null)
+                    .toList();
 
-            assertThat(successfulRefreshes).hasSize(1);
+            assertThat(successfulRefreshes).isNotEmpty();
             assertThat(sessions.validateAccessToken(session.getAccessToken())).isNull();
-            assertThat(sessions.validateAccessToken(successfulRefreshes.get(0).getAccessToken()))
-                    .isEqualTo(43L);
+            assertThat(validRefreshes).singleElement().satisfies(refreshed -> {
+                assertThat(refreshed.getRefreshToken()).isEqualTo(session.getRefreshToken());
+                assertThat(sessions.validateAccessToken(refreshed.getAccessToken())).isEqualTo(43L);
+                assertThat(redis.opsForValue().get(commands.refreshKey(43L, session.getRefreshToken())))
+                        .isEqualTo(refreshed.getAccessToken());
+                assertThat(redis.keys(commands.accessPattern(43L)))
+                        .containsExactly(commands.accessKey(43L, refreshed.getAccessToken()));
+            });
         } finally {
             executor.shutdownNow();
         }
