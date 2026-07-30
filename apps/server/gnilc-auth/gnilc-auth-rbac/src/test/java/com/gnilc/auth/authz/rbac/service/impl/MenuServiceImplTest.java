@@ -173,6 +173,7 @@ class MenuServiceImplTest {
         assertThatThrownBy(() -> menus.createMenu(menu))
                 .isInstanceOf(InvalidArgumentException.class)
                 .hasMessage("Menu name must not exceed 255 characters.");
+        verify(menus, never()).save(any(MenuBo.class));
     }
 
     @Test
