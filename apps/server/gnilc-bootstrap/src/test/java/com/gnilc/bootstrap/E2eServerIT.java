@@ -11,7 +11,7 @@ import java.util.concurrent.CountDownLatch;
 
 /** Keeps the complete application alive while Playwright exercises it. */
 @SpringBootTest(
-        classes = AuthApplication.class,
+        classes = AuthBootApplication.class,
         properties = "server.port=3766",
         webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT)
 @ActiveProfiles("test")

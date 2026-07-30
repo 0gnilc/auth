@@ -15,7 +15,7 @@ import org.springframework.test.context.ContextConfiguration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest(classes = AuthApplication.class)
+@SpringBootTest(classes = AuthBootApplication.class)
 @ActiveProfiles("test")
 @ContextConfiguration(initializers = BootstrapContainerContextInitializer.class)
 class ApplicationContextIT {
