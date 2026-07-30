@@ -9,7 +9,7 @@ import java.util.List;
  * <p>
  * 该实现不保存本地状态，每次读取都委托给 {@link PermissionCacheLoader}。
  */
-public class DefaultPermissionCache implements PermissionCache {
+public class DefaultPermissionCacheService implements PermissionCacheService {
     /**
      * 权限数据加载器。
      */
@@ -20,7 +20,7 @@ public class DefaultPermissionCache implements PermissionCache {
      *
      * @param cacheLoader 权限数据加载器
      */
-    public DefaultPermissionCache(PermissionCacheLoader cacheLoader) {
+    public DefaultPermissionCacheService(PermissionCacheLoader cacheLoader) {
         this.cacheLoader = cacheLoader;
     }
 

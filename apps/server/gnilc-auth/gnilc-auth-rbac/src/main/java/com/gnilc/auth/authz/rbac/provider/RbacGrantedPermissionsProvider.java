@@ -5,7 +5,7 @@ import com.gnilc.auth.authz.context.AccessEnvironment;
 import com.gnilc.auth.authz.context.AccessIdentity;
 import com.gnilc.auth.authz.provider.GrantedPermissionsProvider;
 import com.gnilc.auth.authz.provider.Permission;
-import com.gnilc.auth.authz.rbac.provider.cache.PermissionCache;
+import com.gnilc.auth.authz.rbac.provider.cache.PermissionCacheService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,7 +25,7 @@ import java.util.stream.Stream;
 @Slf4j
 public class RbacGrantedPermissionsProvider implements GrantedPermissionsProvider {
     @Autowired
-    private PermissionCache cache;
+    private PermissionCacheService cacheService;
 
     /**
      * RBAC provider 只参与 Servlet 访问环境。
@@ -49,10 +49,10 @@ public class RbacGrantedPermissionsProvider implements GrantedPermissionsProvide
         Long userId = getUserId(context);
         List<Permission> userPermissions = List.of();
         if (userId != null) {
-            userPermissions = cache.loadUserPermissions(userId);
+            userPermissions = cacheService.loadUserPermissions(userId);
         }
         userPermissions = Optional.ofNullable(userPermissions).orElse(List.of());
-        List<Permission> publicAccessPermissions = cache.loadPublicAccessPermissions();
+        List<Permission> publicAccessPermissions = cacheService.loadPublicAccessPermissions();
         publicAccessPermissions = Optional.ofNullable(publicAccessPermissions).orElse(List.of());
         // 公开访问权限对匿名和已识别身份都生效，因此与用户权限合并后去重。
         return Stream.concat(userPermissions.stream(), publicAccessPermissions.stream())

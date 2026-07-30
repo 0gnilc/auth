@@ -10,7 +10,7 @@ import java.util.List;
  * <p>
  * 该接口只描述 provider 读取权限数据和重置缓存的能力，不限定具体缓存策略。
  */
-public interface PermissionCache {
+public interface PermissionCacheService {
     /**
      * 加载目标权限集合。
      *

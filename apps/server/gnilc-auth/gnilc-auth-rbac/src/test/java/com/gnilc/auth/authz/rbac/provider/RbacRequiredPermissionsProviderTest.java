@@ -5,7 +5,7 @@ import com.gnilc.auth.authz.context.AccessEnvironment;
 import com.gnilc.auth.authz.context.AccessIdentity;
 import com.gnilc.auth.authz.context.AccessTarget;
 import com.gnilc.auth.authz.provider.Permission;
-import com.gnilc.auth.authz.rbac.provider.cache.PermissionCache;
+import com.gnilc.auth.authz.rbac.provider.cache.PermissionCacheService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -18,17 +18,17 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class RbacRequiredPermissionsProviderTest {
-    private final PermissionCache cache = mock(PermissionCache.class);
+    private final PermissionCacheService cacheService = mock(PermissionCacheService.class);
     private final RbacRequiredPermissionsProvider provider = new RbacRequiredPermissionsProvider();
 
     @BeforeEach
     void injectCache() {
-        ReflectionTestUtils.setField(provider, "cache", cache);
+        ReflectionTestUtils.setField(provider, "cacheService", cacheService);
     }
 
     @Test
     void usesAntPathMatchingAndDeduplicatesCodes() {
-        when(cache.loadTargetPermissions()).thenReturn(List.of(
+        when(cacheService.loadTargetPermissions()).thenReturn(List.of(
                 new TargetPermission("/sys/**", "admin"),
                 new TargetPermission("/sys/admin/*", "admin"),
                 new TargetPermission("/public/**", "public")));

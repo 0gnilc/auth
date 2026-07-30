@@ -8,8 +8,8 @@ import static org.mockito.Mockito.verify;
 class PermissionCacheResetExecutorTest {
     @Test
     void routesEveryCommandType() {
-        PermissionCache cache = mock(PermissionCache.class);
-        PermissionCacheResetExecutor executor = new PermissionCacheResetExecutor(cache);
+        PermissionCacheService cacheService = mock(PermissionCacheService.class);
+        PermissionCacheResetExecutor executor = new PermissionCacheResetExecutor(cacheService);
 
         executor.execute(PermissionCacheResetCommand.targetPermissions());
         executor.execute(PermissionCacheResetCommand.publicAccessPermissions());
@@ -17,9 +17,9 @@ class PermissionCacheResetExecutorTest {
         executor.execute(PermissionCacheResetCommand.all());
         executor.execute(null);
 
-        verify(cache).resetTargetPermissions();
-        verify(cache).resetPublicAccessPermissions();
-        verify(cache).resetUserPermissions(5L);
-        verify(cache).resetAll();
+        verify(cacheService).resetTargetPermissions();
+        verify(cacheService).resetPublicAccessPermissions();
+        verify(cacheService).resetUserPermissions(5L);
+        verify(cacheService).resetAll();
     }
 }

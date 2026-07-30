@@ -5,7 +5,7 @@ import com.gnilc.auth.authz.context.AccessEnvironment;
 import com.gnilc.auth.authz.context.AccessTarget;
 import com.gnilc.auth.authz.provider.Permission;
 import com.gnilc.auth.authz.provider.RequiredPermissionsProvider;
-import com.gnilc.auth.authz.rbac.provider.cache.PermissionCache;
+import com.gnilc.auth.authz.rbac.provider.cache.PermissionCacheService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,7 +26,7 @@ public class RbacRequiredPermissionsProvider implements RequiredPermissionsProvi
   private final AntPathMatcher matcher = new AntPathMatcher();
 
   @Autowired
-  private PermissionCache cache;
+  private PermissionCacheService cacheService;
 
   /**
    * RBAC provider 只参与 Servlet 访问环境。
@@ -52,7 +52,7 @@ public class RbacRequiredPermissionsProvider implements RequiredPermissionsProvi
       return List.of();
     }
     String path = target.getIdentifier();
-    List<TargetPermission> targetPermissions = cache.loadTargetPermissions();
+    List<TargetPermission> targetPermissions = cacheService.loadTargetPermissions();
     targetPermissions = Optional.ofNullable(targetPermissions).orElse(List.of());
     // RBAC 第一版只使用目标标识做路径匹配，目标限定符暂不参与匹配。
     return targetPermissions.stream()

@@ -59,7 +59,7 @@ class PermissionCacheTransactionIT {
     @Autowired private UserRoleDao userRoleDao;
     @Autowired private PlatformTransactionManager transactionManager;
     @Autowired private JdbcTemplate jdbc;
-    @Autowired private PermissionCache permissionCache;
+    @Autowired private PermissionCacheService cacheService;
     @Autowired private PermissionCacheRedisResetTransport redisResetTransport;
 
     private TransactionTemplate transactions;
@@ -68,7 +68,7 @@ class PermissionCacheTransactionIT {
     void setUp() {
         transactions = new TransactionTemplate(transactionManager);
         cleanCommittedRelations();
-        clearInvocations(permissionCache, redisResetTransport);
+        clearInvocations(cacheService, redisResetTransport);
     }
 
     @AfterEach
@@ -88,11 +88,11 @@ class PermissionCacheTransactionIT {
             rolePermissionService.saveRolePermissions(replacement(roleId, 7302L, 7303L, 7303L));
 
             assertThat(permissionIds(roleId)).containsExactlyInAnyOrder(7302L, 7303L);
-            verifyNoInteractions(permissionCache, redisResetTransport);
+            verifyNoInteractions(cacheService, redisResetTransport);
         });
 
         PermissionCacheResetCommand expected = PermissionCacheResetCommand.userPermissions(userId);
-        verify(permissionCache).resetUserPermissions(userId);
+        verify(cacheService).resetUserPermissions(userId);
         verify(redisResetTransport).publish(expected);
     }
 
@@ -106,12 +106,12 @@ class PermissionCacheTransactionIT {
         transactions.executeWithoutResult(status -> {
             rolePermissionService.saveRolePermissions(replacement(roleId, 7305L));
             assertThat(permissionIds(roleId)).containsExactly(7305L);
-            verifyNoInteractions(permissionCache, redisResetTransport);
+            verifyNoInteractions(cacheService, redisResetTransport);
             status.setRollbackOnly();
         });
 
         assertThat(permissionIds(roleId)).containsExactly(7304L);
-        verifyNoInteractions(permissionCache, redisResetTransport);
+        verifyNoInteractions(cacheService, redisResetTransport);
     }
 
     @Test
@@ -125,11 +125,11 @@ class PermissionCacheTransactionIT {
             rolePermissionService.removeByPermissionId(7306L);
 
             assertThat(permissionIds(roleId)).isEmpty();
-            verifyNoInteractions(permissionCache, redisResetTransport);
+            verifyNoInteractions(cacheService, redisResetTransport);
         });
 
         PermissionCacheResetCommand expected = PermissionCacheResetCommand.userPermissions(userId);
-        verify(permissionCache).resetUserPermissions(userId);
+        verify(cacheService).resetUserPermissions(userId);
         verify(redisResetTransport).publish(expected);
     }
 
@@ -144,11 +144,11 @@ class PermissionCacheTransactionIT {
 
             assertThat(userRoleDao.selectList(new LambdaQueryWrapper<UserRoleBo>()
                     .eq(UserRoleBo::getRoleId, roleId))).isEmpty();
-            verifyNoInteractions(permissionCache, redisResetTransport);
+            verifyNoInteractions(cacheService, redisResetTransport);
         });
 
         PermissionCacheResetCommand expected = PermissionCacheResetCommand.userPermissions(userId);
-        verify(permissionCache).resetUserPermissions(userId);
+        verify(cacheService).resetUserPermissions(userId);
         verify(redisResetTransport).publish(expected);
     }
 
@@ -199,8 +199,8 @@ class PermissionCacheTransactionIT {
     })
     static class TransactionConfiguration {
         @Bean
-        PermissionCache permissionCache() {
-            return mock(PermissionCache.class);
+        PermissionCacheService permissionCacheService() {
+            return mock(PermissionCacheService.class);
         }
 
         @Bean
