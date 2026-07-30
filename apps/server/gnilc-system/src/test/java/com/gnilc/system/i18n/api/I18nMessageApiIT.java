@@ -89,8 +89,7 @@ class I18nMessageApiIT extends AdminApiTestSupport {
                 .then()
                 .statusCode(200)
                 .body("code", equalTo(10001))
-                .body("error", equalTo(
-                        "The target internationalization key api.message.title already exists."));
+                .body("error", equalTo("Message key already exists"));
 
         given()
                 .header("Authorization", auth)
