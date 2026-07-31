@@ -14,6 +14,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ContextConfiguration;
 
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -259,6 +260,50 @@ class I18nMessageApiIT extends AdminApiTestSupport {
         assertThat(jdbc.queryForObject("""
                 SELECT COUNT(*) FROM sys_i18n
                  WHERE message_key LIKE 'api.invalid.%'
+                """, Integer.class)).isZero();
+    }
+
+    @Test
+    void unicodeMessageValuesUseTheFourThousandCodePointBoundary() {
+        String auth = bearer(loginAsDefaultAdmin().accessToken());
+        String exactMaximum = "\uD83D\uDE00".repeat(4000);
+
+        given()
+                .header("Authorization", auth)
+                .header("Accept-Language", "en-US")
+                .contentType(ContentType.JSON)
+                .body(Map.of(
+                        "category", "admin",
+                        "messageKey", "api.unicode.maximum",
+                        "values", List.of(Map.of("locale", "en-US", "value", exactMaximum))))
+                .post("/api/sys/i18n-message/create")
+                .then()
+                .statusCode(200)
+                .body("code", equalTo(0));
+
+        assertThat(jdbc.queryForObject("""
+                SELECT CHAR_LENGTH(i18n_value) FROM sys_i18n
+                 WHERE message_key = 'api.unicode.maximum' AND locale = 'en-US'
+                """, Integer.class)).isEqualTo(4000);
+
+        given()
+                .header("Authorization", auth)
+                .header("Accept-Language", "en-US")
+                .contentType(ContentType.JSON)
+                .body(Map.of(
+                        "category", "admin",
+                        "messageKey", "api.unicode.overflow",
+                        "values", List.of(Map.of(
+                                "locale", "en-US",
+                                "value", "\uD83D\uDE00".repeat(4001)))))
+                .post("/api/sys/i18n-message/create")
+                .then()
+                .statusCode(200)
+                .body("code", equalTo(10001));
+
+        assertThat(jdbc.queryForObject("""
+                SELECT COUNT(*) FROM sys_i18n
+                 WHERE message_key = 'api.unicode.overflow'
                 """, Integer.class)).isZero();
     }
 

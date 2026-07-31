@@ -58,7 +58,11 @@ public class RoleServiceImpl extends ServiceImpl<RoleDao, RoleBo> implements Rol
                 .like(StringUtils.isNotBlank(name), RoleBo::getName, name)
                 .page(dto.getPage());
         List<RoleVo> vos = page.getRecords().stream()
-                .map(this::toRoleVo)
+                .map(bo -> {
+                    RoleVo vo = new RoleVo();
+                    BeanUtils.copyProperties(bo, vo);
+                    return vo;
+                })
                 .toList();
         return PageResult.of(page, vos);
     }
@@ -73,7 +77,11 @@ public class RoleServiceImpl extends ServiceImpl<RoleDao, RoleBo> implements Rol
                 .like(StringUtils.isNotBlank(name), RoleBo::getName, name)
                 .list()
                 .stream()
-                .map(this::toRoleVo)
+                .map(bo -> {
+                    RoleVo vo = new RoleVo();
+                    BeanUtils.copyProperties(bo, vo);
+                    return vo;
+                })
                 .toList();
     }
 
@@ -184,9 +192,4 @@ public class RoleServiceImpl extends ServiceImpl<RoleDao, RoleBo> implements Rol
         return role;
     }
 
-    private RoleVo toRoleVo(RoleBo bo) {
-        RoleVo vo = new RoleVo();
-        BeanUtils.copyProperties(bo, vo);
-        return vo;
-    }
 }

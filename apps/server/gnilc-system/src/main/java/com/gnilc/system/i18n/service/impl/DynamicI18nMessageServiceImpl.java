@@ -216,7 +216,7 @@ public class DynamicI18nMessageServiceImpl extends ServiceImpl<I18nMessageDao, I
             Preconditions.checkArgument(locales.add(locale),
                     messages.get("system.i18n.locale.duplicate", locale));
             Preconditions.checkArgument(value.getValue() == null
-                            || value.getValue().length() <= MAX_VALUE_LENGTH,
+                            || value.getValue().codePointCount(0, value.getValue().length()) <= MAX_VALUE_LENGTH,
                     messages.get("system.i18n.value.tooLong", MAX_VALUE_LENGTH));
         }
         boolean hasFallback = values.stream().anyMatch(value ->

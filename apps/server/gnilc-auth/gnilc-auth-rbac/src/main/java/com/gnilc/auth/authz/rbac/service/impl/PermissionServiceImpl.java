@@ -124,7 +124,11 @@ public class PermissionServiceImpl extends ServiceImpl<PermissionDao, Permission
                 .eq(publicAccess != null, PermissionBo::getPublicAccess, publicAccess)
                 .list()
                 .stream()
-                .map(this::toPermissionVo)
+                .map(bo -> {
+                    PermissionVo vo = new PermissionVo();
+                    BeanUtils.copyProperties(bo, vo);
+                    return vo;
+                })
                 .toList();
     }
 
@@ -158,12 +162,6 @@ public class PermissionServiceImpl extends ServiceImpl<PermissionDao, Permission
             return List.of();
         }
         return listByIds(new LinkedHashSet<>(ids));
-    }
-
-    private PermissionVo toPermissionVo(PermissionBo bo) {
-        PermissionVo vo = new PermissionVo();
-        BeanUtils.copyProperties(bo, vo);
-        return vo;
     }
 
     private PermissionBo validatePermission(PermissionDto dto, boolean update) {

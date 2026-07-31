@@ -93,12 +93,15 @@ export const authenticateResponseInterceptor = ({
         const newToken = await doRefreshToken();
         client.isRefreshing = false;
         config.headers.Authorization = formatToken(newToken);
+        const retriedRequest = client.request(error.config.url, {
+          ...error.config,
+        });
 
         // 处理队列中的请求
         const queue = client.refreshTokenQueue.splice(0);
         queue.forEach((queued) => queued.resolve(newToken));
 
-        return client.request(error.config.url, { ...error.config });
+        return retriedRequest;
       } catch (refreshError) {
         // 如果刷新 token 失败，处理错误（如强制登出或跳转登录页面）
         const queue = client.refreshTokenQueue.splice(0);

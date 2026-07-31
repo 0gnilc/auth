@@ -15,6 +15,10 @@ import { $t } from '#/locales';
 import { reloadDynamicMessages } from '#/locales/dynamic';
 
 import { confirmDrawerClose } from '../../components/dirty';
+import {
+  I18N_MESSAGE_INPUT_MAX_LENGTH,
+  I18N_MESSAGE_MAX_CODE_POINTS,
+} from '../validation';
 
 export interface I18nMessageFormDrawerData {
   categories: string[];
@@ -69,23 +73,36 @@ const schema: VbenFormSchema<MessageForm>[] = [
   },
   {
     component: 'Input',
-    componentProps: { maxlength: 4000, rows: 4, type: 'textarea' },
+    componentProps: {
+      maxlength: I18N_MESSAGE_INPUT_MAX_LENGTH,
+      rows: 4,
+      type: 'textarea',
+    },
     fieldName: 'enUS',
     label: 'en-US',
     rules: z
       .string()
       .trim()
       .min(1, { message: $t('page.i18nMessage.validation.enRequired') })
-      .max(4000, { message: $t('page.i18nMessage.validation.valueTooLong') }),
+      .refine((value) => [...value].length <= I18N_MESSAGE_MAX_CODE_POINTS, {
+        message: $t('page.i18nMessage.validation.valueTooLong'),
+      }),
   },
   {
     component: 'Input',
-    componentProps: { maxlength: 4000, rows: 4, type: 'textarea' },
+    componentProps: {
+      maxlength: I18N_MESSAGE_INPUT_MAX_LENGTH,
+      rows: 4,
+      type: 'textarea',
+    },
     fieldName: 'zhCN',
     label: 'zh-CN',
     rules: z
       .string()
-      .max(4000, { message: $t('page.i18nMessage.validation.valueTooLong') })
+      .trim()
+      .refine((value) => [...value].length <= I18N_MESSAGE_MAX_CODE_POINTS, {
+        message: $t('page.i18nMessage.validation.valueTooLong'),
+      })
       .optional(),
   },
 ];

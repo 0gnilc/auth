@@ -48,6 +48,10 @@ describe('authenticateResponseInterceptor', () => {
     ]);
 
     expect(request).toHaveBeenCalledTimes(2);
+    expect(request.mock.calls.map(([url]) => url)).toEqual([
+      '/first',
+      '/second',
+    ]);
     expect(request.mock.calls).toEqual(
       expect.arrayContaining([
         [
