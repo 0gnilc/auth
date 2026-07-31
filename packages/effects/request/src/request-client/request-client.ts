@@ -46,8 +46,11 @@ class RequestClient {
   // 是否正在刷新token
   public isRefreshing = false;
   public postSSE: SSE['postSSE'];
-  // 刷新token队列
-  public refreshTokenQueue: ((token: string) => void)[] = [];
+  // 刷新 token 队列需要同时传播成功和失败，避免失败后以空 token 重放请求。
+  public refreshTokenQueue: Array<{
+    reject: (error: unknown) => void;
+    resolve: (token: string) => void;
+  }> = [];
   public requestSSE: SSE['requestSSE'];
   public upload: FileUploader['upload'];
 

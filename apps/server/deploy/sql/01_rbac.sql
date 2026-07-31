@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS az_role (
     del tinyint NOT NULL DEFAULT '0' COMMENT '是否删除,0未删除、1已删除',
     create_time datetime(6) NOT NULL COMMENT '创建时间（UTC）',
     update_time datetime(6) DEFAULT NULL COMMENT '修改时间（UTC）',
-    code varchar(255) NOT NULL COMMENT '角色标识',
+    code varchar(320) NOT NULL COMMENT '角色标识',
     name varchar(255) NOT NULL COMMENT '角色名称',
     remark varchar(500) DEFAULT NULL COMMENT '描述/备注',
     built_in tinyint(1) NOT NULL DEFAULT '0' COMMENT '是否系统内置,0否、1是',
@@ -16,12 +16,15 @@ CREATE TABLE IF NOT EXISTS az_role (
     UNIQUE KEY uk_code (code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='角色';
 
+ALTER TABLE az_role
+    MODIFY COLUMN code varchar(320) NOT NULL COMMENT '角色标识';
+
 CREATE TABLE IF NOT EXISTS az_permission (
     id bigint NOT NULL AUTO_INCREMENT COMMENT 'id',
     del tinyint NOT NULL DEFAULT '0' COMMENT '是否删除,0未删除、1已删除',
     create_time datetime(6) NOT NULL COMMENT '创建时间（UTC）',
     update_time datetime(6) DEFAULT NULL COMMENT '修改时间（UTC）',
-    code varchar(255) NOT NULL COMMENT '权限标识',
+    code varchar(320) NOT NULL COMMENT '权限标识',
     name varchar(255) NOT NULL COMMENT '权限名称',
     target_identifier varchar(500) DEFAULT NULL COMMENT '访问目标标识',
     target_qualifier varchar(100) DEFAULT NULL COMMENT '访问目标限定符',
@@ -34,6 +37,9 @@ CREATE TABLE IF NOT EXISTS az_permission (
     KEY idx_target_qualifier (target_qualifier)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='权限';
 
+ALTER TABLE az_permission
+    MODIFY COLUMN code varchar(320) NOT NULL COMMENT '权限标识';
+
 CREATE TABLE IF NOT EXISTS az_menu (
     id bigint NOT NULL AUTO_INCREMENT COMMENT 'id',
     del tinyint NOT NULL DEFAULT '0' COMMENT '是否删除,0未删除、1已删除',
@@ -42,9 +48,9 @@ CREATE TABLE IF NOT EXISTS az_menu (
     pid bigint NOT NULL DEFAULT '0' COMMENT '父级ID',
     type varchar(16) NOT NULL COMMENT '菜单类型',
     status tinyint(1) NOT NULL DEFAULT '1' COMMENT '菜单状态,0已禁用、1已启用',
-    access_code varchar(255) DEFAULT NULL COMMENT '后端权限标识',
-    name varchar(255) NOT NULL COMMENT '菜单名称',
-    path varchar(500) DEFAULT NULL COMMENT '路由路径',
+    access_code varchar(320) DEFAULT NULL COMMENT '后端权限标识',
+    name varchar(320) NOT NULL COMMENT '菜单名称',
+    path varchar(560) DEFAULT NULL COMMENT '路由路径',
     component varchar(255) DEFAULT NULL COMMENT '组件',
     redirect varchar(500) DEFAULT NULL COMMENT '重定向',
     active_path varchar(500) DEFAULT NULL COMMENT '指定当前激活的菜单',
@@ -77,6 +83,11 @@ CREATE TABLE IF NOT EXISTS az_menu (
     UNIQUE KEY uk_name (name),
     UNIQUE KEY uk_path (path)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='菜单';
+
+ALTER TABLE az_menu
+    MODIFY COLUMN access_code varchar(320) DEFAULT NULL COMMENT '后端权限标识',
+    MODIFY COLUMN name varchar(320) NOT NULL COMMENT '菜单名称',
+    MODIFY COLUMN path varchar(560) DEFAULT NULL COMMENT '路由路径';
 
 CREATE TABLE IF NOT EXISTS az_user (
     id bigint NOT NULL AUTO_INCREMENT COMMENT 'id',

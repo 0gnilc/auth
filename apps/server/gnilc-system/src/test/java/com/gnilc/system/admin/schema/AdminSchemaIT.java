@@ -53,6 +53,13 @@ class AdminSchemaIT {
         runScript("sql/schema/02_admin.sql");
 
         assertThat(tableNames()).contains("sys_admin");
+        assertThat(jdbc.queryForObject("""
+                SELECT character_maximum_length
+                  FROM information_schema.columns
+                 WHERE table_schema = database()
+                   AND table_name = 'sys_admin'
+                   AND column_name = 'username'
+                """, Integer.class)).isEqualTo(320);
         assertThat(count("sys_admin", "username = 'admin' AND del = 0")).isEqualTo(1);
         assertThat(jdbc.queryForObject(
                 "SELECT home_path FROM sys_admin WHERE username = 'admin'", String.class))

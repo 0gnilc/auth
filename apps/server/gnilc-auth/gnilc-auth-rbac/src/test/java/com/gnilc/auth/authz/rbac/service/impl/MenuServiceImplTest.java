@@ -1,5 +1,9 @@
 package com.gnilc.auth.authz.rbac.service.impl;
 
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.extension.conditions.query.LambdaQueryChainWrapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gnilc.auth.authz.rbac.dao.MenuDao;
 import com.gnilc.auth.authz.rbac.entity.bo.MenuBo;
@@ -15,6 +19,10 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
@@ -24,15 +32,19 @@ import org.springframework.context.support.ResourceBundleMessageSource;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -48,6 +60,11 @@ class MenuServiceImplTest {
 
     @BeforeEach
     void setUp() {
+        if (TableInfoHelper.getTableInfo(MenuBo.class) == null) {
+            TableInfoHelper.initTableInfo(
+                    new MapperBuilderAssistant(new MybatisConfiguration(), "menu-service-test"),
+                    MenuBo.class);
+        }
         LocaleContextHolder.setLocale(Locale.US);
         ResourceBundleMessageSource source = new ResourceBundleMessageSource();
         source.setBasename("i18n/rbac/messages");
@@ -58,6 +75,14 @@ class MenuServiceImplTest {
                 eventPublisher,
                 new ObjectMapper(),
                 new I18nMessageService(source, "en-US")));
+        lenient().doAnswer(invocation -> new LambdaQueryChainWrapper<>(
+                menuDao, Wrappers.lambdaQuery(MenuBo.class)))
+                .when(menus).lambdaQuery();
+        lenient().when(menuDao.selectList(any())).thenReturn(List.of());
+        lenient().doAnswer(invocation -> {
+            ((MenuBo) invocation.getArgument(0)).setId(99L);
+            return true;
+        }).when(menus).save(any(MenuBo.class));
     }
 
     @AfterEach
@@ -117,6 +142,8 @@ class MenuServiceImplTest {
 
         assertThatThrownBy(() -> menus.updateMenu(update))
                 .isInstanceOf(IllegalConditionException.class);
+        verify(menus, never()).updateById(any(MenuBo.class));
+        verifyNoInteractions(eventPublisher);
     }
 
     @Test
@@ -131,6 +158,7 @@ class MenuServiceImplTest {
                 .isInstanceOf(InvalidArgumentException.class)
                 .hasMessage("Page component is required.");
         verify(menus, never()).updateById(any(MenuBo.class));
+        verifyNoInteractions(eventPublisher);
     }
 
     @Test
@@ -165,6 +193,58 @@ class MenuServiceImplTest {
                 .isInstanceOf(InvalidArgumentException.class);
     }
 
+    @ParameterizedTest(name = "accepts exact {0} business limit")
+    @MethodSource("menuLengthBoundaries")
+    void createMenuAcceptsExactBusinessLimits(
+            String field,
+            int maximum,
+            String character,
+            MenuType type,
+            String ignoredMessage) {
+        MenuDto dto = validMenu(type);
+        prepareParent(dto);
+        setField(dto, field, boundaryValue(field, maximum, character));
+
+        menus.createMenu(dto);
+
+        verify(menus).save(any(MenuBo.class));
+        verify(eventPublisher).publishEvent(new MenuEvent(MenuEvent.Action.CREATE, 99L));
+    }
+
+    @ParameterizedTest(name = "rejects {0} beyond business limit")
+    @MethodSource("menuLengthBoundaries")
+    void createMenuRejectsFieldsBeyondBusinessLimits(
+            String field,
+            int maximum,
+            String character,
+            MenuType type,
+            String message) {
+        MenuDto dto = validMenu(type);
+        prepareParent(dto);
+        setField(dto, field, boundaryValue(field, maximum + 1, character));
+
+        assertThatThrownBy(() -> menus.createMenu(dto))
+                .isInstanceOf(InvalidArgumentException.class)
+                .hasMessage(message);
+        verifyNoMenuWrite();
+    }
+
+    @ParameterizedTest(name = "{0} rejects a missing {1}")
+    @MethodSource("missingTypeSpecificFields")
+    void createMenuRejectsMissingTypeSpecificFields(
+            MenuType type,
+            String field,
+            String message) {
+        MenuDto dto = validMenu(type);
+        prepareParent(dto);
+        setField(dto, field, "   ");
+
+        assertThatThrownBy(() -> menus.createMenu(dto))
+                .isInstanceOf(InvalidArgumentException.class)
+                .hasMessage(message);
+        verifyNoMenuWrite();
+    }
+
     @Test
     void getMenusWithAncestorsRejectsAnInvalidSelectionBeforeReturningAClosure() {
         doReturn(List.of(menu(1L, 0L, MenuType.CATALOG, "Root", "/root", 1)))
@@ -194,6 +274,7 @@ class MenuServiceImplTest {
         doReturn(root).when(menus).getById(1L);
         when(menuDao.getSubtreeIds(1L, true)).thenReturn(subtreeIds);
         doReturn(List.of(root)).when(menus).getMenus(subtreeIds);
+        doReturn(true).when(menus).updateById(any(MenuBo.class));
         doReturn(true).when(menus).removeByIds(subtreeIds);
 
         menus.removeMenu(1L);
@@ -202,6 +283,8 @@ class MenuServiceImplTest {
         verify(roleMenuService).removeByMenuIds(subtreeIds);
         verify(menus).removeByIds(subtreeIds);
         verify(eventPublisher).publishEvent(new MenuEvent(MenuEvent.Action.DELETE, 1L));
+        assertThat(root.getName()).isEqualTo("Root_del_1");
+        assertThat(root.getPath()).isEqualTo("/root_del_1");
     }
 
     @Test
@@ -216,9 +299,11 @@ class MenuServiceImplTest {
 
         assertThatThrownBy(() -> menus.removeMenu(1L))
                 .isInstanceOf(IllegalConditionException.class)
-                .hasMessage("Built-in menus cannot be deleted.");
+                .hasMessage("This menu contains built-in menus and cannot be deleted.");
+        verify(menus, never()).updateById(any(MenuBo.class));
         verify(roleMenuService, never()).removeByMenuIds(anyList());
         verify(menus, never()).removeByIds(anyList());
+        verifyNoInteractions(eventPublisher);
     }
 
     @Test
@@ -260,5 +345,102 @@ class MenuServiceImplTest {
         menu.setTitle("menu.candidate.title");
         menu.setOrder(1);
         return menu;
+    }
+
+    private MenuDto validMenu(MenuType type) {
+        Long pid = type == MenuType.BUTTON ? 10L : 0L;
+        MenuDto menu = completeMenu(type, pid);
+        switch (type) {
+            case CATALOG -> {
+            }
+            case MENU -> menu.setComponent("/candidate/index");
+            case BUTTON -> menu.setAccessCode("candidate:read");
+            case EMBEDDED -> menu.setIframeSrc("https://example.test/embedded");
+            case LINK -> menu.setLink("https://example.test/external");
+        }
+        return menu;
+    }
+
+    private void prepareParent(MenuDto dto) {
+        if (dto.getType() != MenuType.BUTTON) {
+            return;
+        }
+        doReturn(menu(10L, 0L, MenuType.CATALOG, "Parent", "/parent", 1))
+                .when(menus).getById(10L);
+    }
+
+    private void verifyNoMenuWrite() {
+        verify(menus, never()).save(any(MenuBo.class));
+        verify(menus, never()).updateById(any(MenuBo.class));
+        verifyNoInteractions(eventPublisher);
+    }
+
+    private static void setField(MenuDto dto, String field, String value) {
+        switch (field) {
+            case "name" -> dto.setName(value);
+            case "title" -> dto.setTitle(value);
+            case "accessCode" -> dto.setAccessCode(value);
+            case "path" -> dto.setPath(value);
+            case "component" -> dto.setComponent(value);
+            case "redirect" -> dto.setRedirect(value);
+            case "activePath" -> dto.setActivePath(value);
+            case "badge" -> dto.setBadge(value);
+            case "badgeType" -> dto.setBadgeType(value);
+            case "badgeVariants" -> dto.setBadgeVariants(value);
+            case "icon" -> dto.setIcon(value);
+            case "iframeSrc" -> dto.setIframeSrc(value);
+            case "link" -> dto.setLink(value);
+            default -> throw new IllegalArgumentException("Unknown menu field: " + field);
+        }
+    }
+
+    private static String boundaryValue(String field, int codePoints, String character) {
+        String prefix = switch (field) {
+            case "path", "redirect", "activePath" -> "/";
+            case "iframeSrc", "link" -> "https://example.test/";
+            default -> "";
+        };
+        return prefix + character.repeat(codePoints - prefix.codePointCount(0, prefix.length()));
+    }
+
+    private static Stream<Arguments> menuLengthBoundaries() {
+        return Stream.of(
+                Arguments.of("name", 255, "\uD83D\uDE00", MenuType.CATALOG,
+                        "Menu name must not exceed 255 characters."),
+                Arguments.of("title", 255, "t", MenuType.CATALOG,
+                        "Menu title must not exceed 255 characters."),
+                Arguments.of("accessCode", 255, "a", MenuType.BUTTON,
+                        "Button access code must not exceed 255 characters."),
+                Arguments.of("path", 500, "p", MenuType.CATALOG,
+                        "Route path must not exceed 500 characters."),
+                Arguments.of("component", 255, "c", MenuType.MENU,
+                        "Component path must not exceed 255 characters."),
+                Arguments.of("redirect", 500, "r", MenuType.CATALOG,
+                        "Redirect path must not exceed 500 characters."),
+                Arguments.of("activePath", 500, "a", MenuType.CATALOG,
+                        "Active menu path must not exceed 500 characters."),
+                Arguments.of("badge", 100, "b", MenuType.CATALOG,
+                        "Badge content must not exceed 100 characters."),
+                Arguments.of("badgeType", 16, "b", MenuType.CATALOG,
+                        "Badge type must not exceed 16 characters."),
+                Arguments.of("badgeVariants", 32, "b", MenuType.CATALOG,
+                        "Badge variant must not exceed 32 characters."),
+                Arguments.of("icon", 255, "i", MenuType.CATALOG,
+                        "Icon must not exceed 255 characters."),
+                Arguments.of("iframeSrc", 500, "i", MenuType.EMBEDDED,
+                        "Embedded page URL must not exceed 500 characters."),
+                Arguments.of("link", 500, "l", MenuType.LINK,
+                        "External URL must not exceed 500 characters."));
+    }
+
+    private static Stream<Arguments> missingTypeSpecificFields() {
+        return Stream.of(
+                Arguments.of(MenuType.CATALOG, "path", "Route path is required."),
+                Arguments.of(MenuType.MENU, "path", "Route path is required."),
+                Arguments.of(MenuType.BUTTON, "accessCode", "Permission code is required."),
+                Arguments.of(MenuType.EMBEDDED, "path", "Route path is required."),
+                Arguments.of(MenuType.EMBEDDED, "iframeSrc", "Embedded page URL is required."),
+                Arguments.of(MenuType.LINK, "path", "Route path is required."),
+                Arguments.of(MenuType.LINK, "link", "External URL is required."));
     }
 }

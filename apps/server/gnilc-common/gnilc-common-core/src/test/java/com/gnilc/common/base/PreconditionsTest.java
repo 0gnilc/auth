@@ -9,10 +9,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class PreconditionsTest {
     @Test
     void usesDistinctExceptionTypes() {
-        assertThatThrownBy(() -> Preconditions.checkArgument(false, "argument"))
+        Object argument = null;
+        Object state = null;
+
+        assertThatThrownBy(() -> Preconditions.checkArgument(argument != null, "argument"))
                 .isInstanceOf(InvalidArgumentException.class)
                 .hasMessage("argument");
-        assertThatThrownBy(() -> Preconditions.checkCondition(false, "state"))
+        assertThatThrownBy(() -> Preconditions.checkCondition(state != null, "state"))
                 .isInstanceOf(IllegalConditionException.class)
                 .hasMessage("state");
     }
