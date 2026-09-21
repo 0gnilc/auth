@@ -12,7 +12,13 @@
     "scripts/*/src/**/*.ts",
     "scripts/*/src/**/*.json"
   ],
-  "globalEnv": ["NODE_ENV", "SPRING_PROFILES_ACTIVE"],
+  "globalEnv": [
+    "NODE_ENV",
+    "SPRING_PROFILES_ACTIVE",
+    "GNILC_BUILD_REVISION",
+    "GNILC_BUILD_CHANNEL",
+    "SOURCE_DATE_EPOCH"
+  ],
   "globalPassThroughEnv": ["JAVA_HOME", "MAVEN_HOME", "MAVEN_OPTS"],
   "tasks": {
     "build": {

@@ -36,7 +36,7 @@ pnpm build:admin
 pnpm build:server
 ```
 
-服务端可执行 JAR 位于 `apps/server/gnilc-bootstrap/target/gnilc-bootstrap-1.0.0-exec.jar`。生产启动时指定 `--spring.profiles.active=prod`。Admin 生产构建默认请求同源 `/api`；示例 Nginx 将其转发到同一容器网络中的 `server:3888`，部署时需要提供该服务名或调整上游地址。
+服务端可执行 JAR 位于 `apps/server/gnilc-bootstrap/target/gnilc-bootstrap-<版本>-exec.jar`，版本取自根 `package.json`。生产启动时指定 `--spring.profiles.active=prod`。Admin 生产构建默认请求同源 `/api`；示例 Nginx 将其转发到同一容器网络中的 `server:3888`，部署时需要提供该服务名或调整上游地址。
 
 ## 提取后的契约
 
@@ -45,3 +45,5 @@ pnpm build:server
 管理员头像统一使用可选 `avatar` URL，数据库仍使用 `sys_admin.avatar`；不再返回或接收对象存储字段。空值及资料更新的省略/清空语义保持不变。应用不需要对象存储、支付渠道或 IP 数据库配置。
 
 [领域术语](CONTEXT.md) · [角色设计](docs/role/role-design.md) · [测试策略](docs/test/test-strategy.md) · [架构决策](docs/adr/README.md)
+
+[版本管理与发布流程](docs/release/README.md) · [变更日志](CHANGELOG.md)

@@ -42,22 +42,24 @@ Only the following types are allowed:
 | `ci` | CI configuration change | No |
 | `chore` | Miscellaneous maintenance change | No |
 | `types` | Type definition change | No |
+| `release` | Release preparation | No |
 | `wip` | Work-in-progress commit | No |
 | `revert` | Revert commit | No |
+
+A `!` after type/scope or a footer containing `BREAKING CHANGE:` marks an incompatible change.
 
 Any commit that contains `BREAKING CHANGE:` is treated as a breaking change and should be included in the changelog, regardless of its type.
 
 ## Scope
 
-`scope` identifies the module or area affected by the change. Use short lowercase names, for example:
+`scope` identifies the module or area affected by the change. Use the scopes allowed by `internal/lint-configs/commitlint-config/index.mjs`, for example:
 
 - `core`
 - `rbac`
-- `example`
-- `build`
+- `server`
 - `ci`
 - `docs`
-- `workflow`
+- `release`
 
 Scoped package names such as `@app/server` and `@vben-core/shared` are also valid.
 
@@ -65,7 +67,7 @@ Scoped package names such as `@app/server` and `@vben-core/shared` are also vali
 
 - Required.
 - Use imperative, present-tense wording.
-- Start with a lowercase letter.
+- Use clear wording; subject case is not restricted.
 - Do not end with a period.
 - Keep it concise. The local and remote rules limit the header to 100 characters.
 
@@ -122,3 +124,5 @@ revert: feat(core): add permission evaluator
 
 This reverts commit abc1234.
 ```
+
+Local hooks and GitHub Actions both execute the same commitlint configuration. PR titles are validated too because they may become squash commit headers. Release preparation is explicit; commit types alone never trigger publication.

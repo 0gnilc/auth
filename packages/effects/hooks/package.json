@@ -1,6 +1,6 @@
 {
   "name": "@vben/hooks",
-  "version": "5.7.0",
+  "version": "1.0.0-rc.1",
   "homepage": "https://github.com/vbenjs/vue-vben-admin",
   "bugs": "https://github.com/vbenjs/vue-vben-admin/issues",
   "repository": {
@@ -29,5 +29,6 @@
     "vue": "catalog:",
     "vue-router": "catalog:",
     "watermark-js-plus": "catalog:"
-  }
+  },
+  "private": true
 }

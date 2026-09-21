@@ -7,6 +7,13 @@ const { packages } = getPackagesSync();
 const allowedScopes = [
   ...packages.map((pkg) => pkg.packageJson.name),
   'project',
+  'auth',
+  'core',
+  'rbac',
+  'admin',
+  'server',
+  'docs',
+  'release',
   'style',
   'lint',
   'ci',
@@ -115,10 +122,10 @@ const userConfig = {
       },
     ],
     /**
-     * type[scope]: [function] description [No more than 108 characters]
+     * type[scope]: [function] description [No more than 100 characters]
      *      ^^^^^
      */
-    'header-max-length': [2, 'always', 108],
+    'header-max-length': [2, 'always', 100],
 
     'scope-enum': [0],
     'subject-case': [0],
@@ -144,6 +151,8 @@ const userConfig = {
         'chore',
         'revert',
         'types',
+        'workflow',
+        'wip',
         'release',
       ],
     ],

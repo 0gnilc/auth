@@ -1,13 +1,14 @@
 import type { PluginOption } from 'vite';
 
 import {
-  dateUtil,
   findMonorepoRoot,
   getPackages,
   readPackageJSON,
 } from '@vben/node-utils';
 
 import { readWorkspaceManifest } from '@pnpm/workspace.read-manifest';
+
+import { resolveBuildInfo } from './build-info';
 
 function resolvePackageVersion(
   pkgsMeta: Record<string, string>,
@@ -73,7 +74,7 @@ async function viteMetadataPlugin(
   const { author, description, homepage, license, version } =
     await readPackageJSON(root);
 
-  const buildTime = dateUtil().format('YYYY-MM-DD HH:mm:ss');
+  const buildInfo = resolveBuildInfo(version ?? '', findMonorepoRoot());
 
   return {
     async config() {
@@ -91,7 +92,7 @@ async function viteMetadataPlugin(
             authorEmail,
             authorName,
             authorUrl,
-            buildTime,
+            ...buildInfo,
             dependencies,
             description,
             devDependencies,
@@ -102,6 +103,13 @@ async function viteMetadataPlugin(
           'import.meta.env.VITE_APP_VERSION': JSON.stringify(version),
         },
       };
+    },
+    generateBundle() {
+      this.emitFile({
+        type: 'asset',
+        fileName: 'build-info.json',
+        source: JSON.stringify(buildInfo, null, 2),
+      });
     },
     enforce: 'post',
     name: 'vite:inject-metadata',

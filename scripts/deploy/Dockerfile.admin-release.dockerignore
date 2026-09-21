@@ -1,0 +1,8 @@
+**
+!apps/
+!apps/admin/
+!apps/admin/dist/
+!apps/admin/dist/**
+!scripts/
+!scripts/deploy/
+!scripts/deploy/nginx.conf

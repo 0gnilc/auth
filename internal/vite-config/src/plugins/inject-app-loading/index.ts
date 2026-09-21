@@ -5,8 +5,6 @@ import fsp from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { readPackageJSON } from '@vben/node-utils';
-
 /**
  * 用于生成将loading样式注入到项目中
  * 为多app提供loading样式，无需在每个 app -> index.html单独引入
@@ -16,10 +14,16 @@ async function viteInjectAppLoadingPlugin(
   env: Record<string, any> = {},
   loadingTemplate = 'loading.html',
 ): Promise<PluginOption | undefined> {
+  if (!/^[a-z\d-]+$/u.test(env.VITE_APP_STORAGE_NAMESPACE ?? '')) {
+    throw new Error(
+      'VITE_APP_STORAGE_NAMESPACE must be a non-empty lowercase storage identifier',
+    );
+  }
   const loadingHtml = await getLoadingRawByHtmlTemplate(loadingTemplate);
-  const { version } = await readPackageJSON(process.cwd());
   const envRaw = isBuild ? 'prod' : 'dev';
-  const cacheName = `'${env.VITE_APP_NAMESPACE}-${version}-${envRaw}-preferences-theme'`;
+  const cacheName = JSON.stringify(
+    `${env.VITE_APP_STORAGE_NAMESPACE}-${envRaw}-preferences-theme`,
+  );
 
   // 获取缓存的主题
   // 保证黑暗主题下，刷新页面时，loading也是黑暗主题

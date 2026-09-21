@@ -6,7 +6,7 @@
 
     <groupId>com.gnilc</groupId>
     <artifactId>gnilc-auth-parent</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.0-rc.1</version>
     <packaging>pom</packaging>
 
     <modules>
@@ -17,6 +17,8 @@
     </modules>
 
     <properties>
+        <build.channel>development</build.channel>
+        <build.revision>local</build.revision>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

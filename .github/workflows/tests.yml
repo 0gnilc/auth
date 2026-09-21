@@ -38,6 +38,16 @@ jobs:
         with:
           node-version: '24'
 
+      - name: Set up pnpm for version consistency checks
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.16.0
+
+      - name: Check product versions and database manifest
+        run: |
+          pnpm version:check
+          node scripts/release/database.mjs
+
       - name: Classify changed paths
         id: classify
         shell: bash

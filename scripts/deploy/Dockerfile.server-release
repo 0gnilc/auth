@@ -1,0 +1,6 @@
+FROM eclipse-temurin:17-jre
+ARG PRODUCT_VERSION
+WORKDIR /app
+COPY .release/${PRODUCT_VERSION}/gnilc-auth-server-${PRODUCT_VERSION}.jar /app/server.jar
+EXPOSE 3888
+ENTRYPOINT ["java", "-jar", "/app/server.jar"]

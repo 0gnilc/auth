@@ -1,0 +1,6 @@
+# 发布镜像直接使用已经验收的静态文件，不在部署环境重新构建。
+FROM nginx:stable-alpine
+COPY scripts/deploy/nginx.conf /etc/nginx/nginx.conf
+COPY apps/admin/dist /usr/share/nginx/html
+EXPOSE 8080
+CMD ["nginx", "-g", "daemon off;"]

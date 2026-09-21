@@ -1,6 +1,6 @@
 {
   "name": "gnilc-auth",
-  "version": "1.0.0",
+  "version": "1.0.0-rc.1",
   "private": true,
   "keywords": [
     "monorepo",
@@ -53,7 +53,12 @@
     "verify": "pnpm run verify:server && pnpm run test:e2e",
     "verify:server": "pnpm --filter=@app/server run verify",
     "update:deps": "npx taze -r -w",
-    "catalog": "pnpm dlx codemod pnpm/catalog"
+    "catalog": "pnpm dlx codemod pnpm/catalog",
+    "version:check": "node scripts/release/version.mjs check",
+    "version:sync": "node scripts/release/version.mjs sync",
+    "release:prepare": "node scripts/release/version.mjs prepare",
+    "release:verify": "node scripts/release/verify.mjs",
+    "release:bundle": "node scripts/release/bundle.mjs"
   },
   "devDependencies": {
     "@tsdown/css": "catalog:",

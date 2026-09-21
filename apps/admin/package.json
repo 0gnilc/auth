@@ -1,6 +1,6 @@
 {
   "name": "@app/admin",
-  "version": "5.7.0",
+  "version": "1.0.0-rc.1",
   "homepage": "https://github.com/0gnilc/auth",
   "bugs": "https://github.com/0gnilc/auth/issues",
   "repository": {
@@ -49,5 +49,6 @@
   "devDependencies": {
     "@vue/test-utils": "catalog:",
     "unplugin-element-plus": "catalog:"
-  }
+  },
+  "private": true
 }

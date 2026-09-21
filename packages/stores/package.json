@@ -1,6 +1,6 @@
 {
   "name": "@vben/stores",
-  "version": "5.7.0",
+  "version": "1.0.0-rc.1",
   "homepage": "https://github.com/vbenjs/vue-vben-admin",
   "bugs": "https://github.com/vbenjs/vue-vben-admin/issues",
   "repository": {
@@ -28,5 +28,6 @@
     "secure-ls": "catalog:",
     "vue": "catalog:",
     "vue-router": "catalog:"
-  }
+  },
+  "private": true
 }

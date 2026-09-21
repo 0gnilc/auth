@@ -7,6 +7,12 @@ import { fileURLToPath } from 'node:url';
 const serverDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const commonArgs = ['--batch-mode', '--no-transfer-progress'];
 
+// 本地构建标识明确为开发构建；发布脚本使用同一提交的完整 SHA。
+if (process.env.GNILC_BUILD_REVISION)
+  commonArgs.push(`-Dbuild.revision=${process.env.GNILC_BUILD_REVISION}`);
+if (process.env.GNILC_BUILD_CHANNEL)
+  commonArgs.push(`-Dbuild.channel=${process.env.GNILC_BUILD_CHANNEL}`);
+
 const tasks = {
   build: [[...commonArgs, '-DskipTests', 'package']],
   clean: [[...commonArgs, 'clean']],

@@ -17,3 +17,5 @@ The following decisions apply to the extracted authentication project.
 - [0018-inject-request-error-messages-at-the-application-boundary](0018-inject-request-error-messages-at-the-application-boundary.md)
 - [0022-validate-client-business-strings-without-normalization](0022-validate-client-business-strings-without-normalization.md)
 - [0033-separate-authentication-authorization-and-denied-handling](0033-separate-authentication-authorization-and-denied-handling.md)
+
+- [0034-release-admin-and-server-as-one-product](0034-release-admin-and-server-as-one-product.md)

@@ -9,6 +9,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationContext;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
@@ -16,10 +18,13 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Set;
 import java.util.TreeSet;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest(classes = AuthBootApplication.class)
 @ActiveProfiles("test")
@@ -39,6 +44,26 @@ class ApplicationContextIT {
         assertThat(context.getBean(ServletAuthenticationFilter.class)).isNotNull();
         assertThat(context.getBean(ServletAuthorizationFilter.class)).isNotNull();
         assertThat(context.getBean(StringRedisTemplate.class)).isNotNull();
+    }
+
+    @Test
+    void migrationHistoryPreservesTheFirstSuccessfulExecution() throws IOException {
+        jdbc.execute(new ClassPathResource("sql/migrations/history.sql")
+                .getContentAsString(StandardCharsets.UTF_8));
+        String migrationId = "test-baseline";
+        try {
+            jdbc.update("INSERT INTO sys_schema_history (migration_id, checksum_sha256, product_version, git_revision, applied_by) VALUES (?, ?, ?, ?, ?)",
+                    migrationId, "a".repeat(64), "1.0.0-rc.1", "b".repeat(40), "integration-test");
+            assertThatThrownBy(() -> jdbc.update("INSERT INTO sys_schema_history (migration_id, checksum_sha256, product_version, git_revision, applied_by) VALUES (?, ?, ?, ?, ?)",
+                    migrationId, "c".repeat(64), "1.0.0", "d".repeat(40), "integration-test"))
+                    .isInstanceOf(DuplicateKeyException.class);
+            assertThat(jdbc.queryForObject("SELECT checksum_sha256 FROM sys_schema_history WHERE migration_id = ?", String.class, migrationId))
+                    .isEqualTo("a".repeat(64));
+            assertThat(jdbc.queryForObject("SELECT applied_at FROM sys_schema_history WHERE migration_id = ?", java.sql.Timestamp.class, migrationId))
+                    .isNotNull();
+        } finally {
+            jdbc.update("DELETE FROM sys_schema_history WHERE migration_id = ?", migrationId);
+        }
     }
 
     @Test

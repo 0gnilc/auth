@@ -12,8 +12,8 @@ async function initApplication() {
   // name用于指定项目唯一标识
   // 用于区分不同项目的偏好设置以及存储数据的key前缀以及其他一些需要隔离的数据
   const env = import.meta.env.PROD ? 'prod' : 'dev';
-  const appVersion = import.meta.env.VITE_APP_VERSION;
-  const namespace = `${import.meta.env.VITE_APP_NAMESPACE}-${appVersion}-${env}`;
+  // 产品升级继续使用兼容的存储结构，避免每次发布重置会话和偏好。
+  const namespace = `${import.meta.env.VITE_APP_STORAGE_NAMESPACE}-${env}`;
 
   // app偏好设置初始化
   await initPreferences({

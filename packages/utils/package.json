@@ -1,6 +1,6 @@
 {
   "name": "@vben/utils",
-  "version": "5.7.0",
+  "version": "1.0.0-rc.1",
   "homepage": "https://github.com/vbenjs/vue-vben-admin",
   "bugs": "https://github.com/vbenjs/vue-vben-admin/issues",
   "repository": {
@@ -36,5 +36,6 @@
     "@vben-core/typings": "workspace:*",
     "decimal.js": "catalog:",
     "vue-router": "catalog:"
-  }
+  },
+  "private": true
 }

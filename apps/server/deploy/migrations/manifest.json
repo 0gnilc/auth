@@ -1,0 +1,41 @@
+{
+  "baseline": {
+    "id": "baseline-1",
+    "files": [
+      {
+        "path": "sql/01_rbac.sql",
+        "sha256": "917e5f9fc540d0eb0942aa022cbc34526066ed69af4090e65d30c7e9955d5f70"
+      },
+      {
+        "path": "sql/02_admin.sql",
+        "sha256": "1314a956caf46ffd90e286d8d9bf886d77aad03734f96dfa1abc32eb64ea95e1"
+      },
+      {
+        "path": "sql/03_framework_permissions.sql",
+        "sha256": "773ecaaf2d3f6c491e8570e1084559d5da2df7947405acc968d2d287584be598"
+      },
+      {
+        "path": "sql/04_rbac_permissions.sql",
+        "sha256": "c1bacf7d0fda84cd99db09f86355505d2d7c985f648289725e52cdf267db29fd"
+      },
+      {
+        "path": "sql/05_admin_permissions.sql",
+        "sha256": "4ceeb6870de9956fcc10b88d711558b34bd798249a4056bc475b0fd8662bfa81"
+      },
+      {
+        "path": "sql/06_i18n.sql",
+        "sha256": "a9ae1daecf85e48c8037173379a6f004b40b5ee0285dd54f356063386e5e0a59"
+      },
+      {
+        "path": "sql/07_rbac_admin.sql",
+        "sha256": "81caa08d9ad52ae6273f19ae7656986d6ff5c0e9f8a951a1f947b0858ebb6ab3"
+      },
+      {
+        "path": "migrations/history.sql",
+        "sha256": "f0cd8eb9dc9f9aca49bf200f3611af2004fc8f6cf427819b885a5ca850763c08"
+      }
+    ]
+  },
+  "supportedUpgradeFrom": [],
+  "migrations": []
+}

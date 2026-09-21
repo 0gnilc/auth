@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.gnilc</groupId>
         <artifactId>gnilc-auth-parent</artifactId>
-        <version>1.0.0</version>
+        <version>1.0.0-rc.1</version>
     </parent>
 
     <artifactId>gnilc-bootstrap</artifactId>
@@ -56,6 +56,13 @@
                     <include>07_rbac_admin.sql</include>
                 </includes>
             </testResource>
+            <testResource>
+                <directory>${maven.multiModuleProjectDirectory}/deploy/migrations</directory>
+                <targetPath>sql/migrations</targetPath>
+                <includes>
+                    <include>history.sql</include>
+                </includes>
+            </testResource>
         </testResources>
         <plugins>
             <plugin>
@@ -64,11 +71,16 @@
                 <configuration>
                     <mainClass>com.gnilc.bootstrap.AuthBootApplication</mainClass>
                     <classifier>exec</classifier>
+                    <additionalProperties>
+                        <channel>${build.channel}</channel>
+                        <revision>${build.revision}</revision>
+                    </additionalProperties>
                 </configuration>
                 <executions>
                     <execution>
                         <goals>
                             <goal>repackage</goal>
+                            <goal>build-info</goal>
                         </goals>
                     </execution>
                 </executions>

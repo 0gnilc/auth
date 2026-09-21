@@ -25,3 +25,5 @@ pnpm build:server
 Development requires Node.js 22.18+ or 24, pnpm 11, Java 17, Maven, MySQL 8 and Redis. Full verification uses disposable Docker containers. Initialize a fresh `gnilc_auth` database using the [SQL guide](apps/server/deploy/sql/README.md). Avatar values are optional URLs in the `avatar` field; object storage is not required.
 
 [Domain glossary](CONTEXT.md) · [Architecture decisions](docs/adr/README.md) · [Testing](docs/test/test-strategy.md)
+
+[版本管理与发布流程](docs/release/README.md) · [变更日志](CHANGELOG.md)

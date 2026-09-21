@@ -1,0 +1,16 @@
+{
+  "environment": "staging",
+  "version": "1.0.0-rc.1",
+  "revision": "<full-git-sha>",
+  "manifestSha256": "<release-manifest-sha256>",
+  "adminArtifactSha256": "<admin-zip-sha256>",
+  "serverArtifactSha256": "<server-jar-sha256>",
+  "adminImageDigest": null,
+  "serverImageDigest": null,
+  "databaseBaseline": "baseline-1",
+  "appliedMigrations": [],
+  "deployedAt": "<UTC-ISO-8601>",
+  "operator": "<deployment-operator>",
+  "previousRelease": null,
+  "rollbackRunbook": "docs/release/1.0.0-rc.1.md"
+}
