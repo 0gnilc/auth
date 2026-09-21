@@ -1,5 +1,6 @@
 package com.gnilc.test.container;
 
+import lombok.Data;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.datasource.SimpleDriverDataSource;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
@@ -29,6 +30,7 @@ public final class SharedTestContainers {
             .withDatabaseName(DATABASE_NAME)
             .withUsername("test")
             .withPassword("test")
+            .withCommand("--log-bin-trust-function-creators=1")
             .withEnv("TZ", "Asia/Shanghai");
 
     private static final GenericContainer<?> REDIS = new GenericContainer<>(
@@ -37,6 +39,7 @@ public final class SharedTestContainers {
 
     private static final Set<String> INITIALIZED_SCHEMAS = new HashSet<>();
 
+    /** 禁止实例化共享测试容器工具。 */
     private SharedTestContainers() {
     }
 
@@ -87,43 +90,49 @@ public final class SharedTestContainers {
         }
     }
 
+    /** 确保共享 MySQL 容器已启动。 */
     private static void ensureMySqlRunning() {
         if (!MYSQL.isRunning()) {
             MYSQL.start();
         }
     }
 
+    /** 确保共享 Redis 容器已启动。 */
     private static void ensureRedisRunning() {
         if (!REDIS.isRunning()) {
             REDIS.start();
         }
     }
 
+    /** 为 JDBC URL 增加生产一致的字符集、排序规则和 UTC Session 参数。 */
     private static String utcJdbcUrl(String jdbcUrl) {
         String separator = jdbcUrl.contains("?") ? "&" : "?";
         return jdbcUrl + separator
-                + "connectionTimeZone=%2B00:00&forceConnectionTimeZoneToSession=true&preserveInstants=true";
+                + "useUnicode=true&characterEncoding=utf8"
+                + "&connectionCollation=utf8mb4_unicode_ci"
+                + "&connectionTimeZone=%2B00:00"
+                + "&forceConnectionTimeZoneToSession=true"
+                + "&preserveInstants=true";
     }
 
     /**
      * 共享 MySQL 的连接信息快照。
-     *
-     * @param jdbcUrl JDBC URL
-     * @param username 用户名
-     * @param password 密码
-     * @param driverClassName JDBC 驱动类名
      */
-    public record MySqlConnectionDetails(
-            String jdbcUrl, String username, String password, String driverClassName) {
+    @Data
+    public static final class MySqlConnectionDetails {
+        private final String jdbcUrl;
+        private final String username;
+        private final String password;
+        private final String driverClassName;
     }
 
     /**
      * 共享 Redis 的连接信息快照。
-     *
-     * @param host 主机名
-     * @param port 映射端口
-     * @param database Redis 数据库索引
      */
-    public record RedisConnectionDetails(String host, int port, int database) {
+    @Data
+    public static final class RedisConnectionDetails {
+        private final String host;
+        private final int port;
+        private final int database;
     }
 }

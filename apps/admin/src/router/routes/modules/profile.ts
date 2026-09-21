@@ -11,7 +11,7 @@ const routes: RouteRecordRaw[] = [
       authority: ['admin'],
       hideInMenu: true,
       icon: 'lucide:user',
-      title: $t('page.auth.profile'),
+      title: $t('auth.profile'),
     },
   },
 ];

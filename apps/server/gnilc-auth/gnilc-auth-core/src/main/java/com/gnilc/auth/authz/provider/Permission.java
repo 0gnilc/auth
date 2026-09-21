@@ -2,10 +2,9 @@ package com.gnilc.auth.authz.provider;
 
 import java.util.Objects;
 
+/** 授权比较使用的权限标识值。 */
 public class Permission {
-    /**
-     * 权限的标识
-     */
+    /** 权限的标识 */
     private final String symbol;
 
     public Permission(String symbol) {

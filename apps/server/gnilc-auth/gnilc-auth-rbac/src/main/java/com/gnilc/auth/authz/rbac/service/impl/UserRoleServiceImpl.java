@@ -8,6 +8,7 @@ import com.gnilc.auth.authz.rbac.dao.UserRoleDao;
 import com.gnilc.auth.authz.rbac.entity.bo.UserRoleBo;
 import com.gnilc.auth.authz.rbac.entity.dto.UserRoleDto;
 import com.gnilc.auth.authz.rbac.event.AuthorizationEvent;
+import com.gnilc.auth.authz.rbac.service.RequiredRolePolicy;
 import com.gnilc.auth.authz.rbac.service.UserRoleService;
 import com.google.common.collect.Sets;
 import org.springframework.context.ApplicationEventPublisher;
@@ -17,17 +18,21 @@ import org.springframework.util.CollectionUtils;
 
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 
+/** 维护用户角色关系，在移除前执行应用提供的必需角色策略并发布授权变化事件。 */
 @Service("userRoleService")
 public class UserRoleServiceImpl extends ServiceImpl<UserRoleDao, UserRoleBo> implements UserRoleService {
 
     private final ApplicationEventPublisher eventPublisher;
+    private final List<RequiredRolePolicy> requiredRolePolicies;
     private final I18nMessageService messages;
 
-    public UserRoleServiceImpl(ApplicationEventPublisher eventPublisher, I18nMessageService messages) {
+    public UserRoleServiceImpl(ApplicationEventPublisher eventPublisher,
+                               List<RequiredRolePolicy> requiredRolePolicies,
+                               I18nMessageService messages) {
         this.eventPublisher = eventPublisher;
+        this.requiredRolePolicies = requiredRolePolicies;
         this.messages = messages;
     }
 
@@ -38,16 +43,11 @@ public class UserRoleServiceImpl extends ServiceImpl<UserRoleDao, UserRoleBo> im
         Long userId = dto.getUserId();
         List<Long> roleIds = dto.getRoleIds();
         Preconditions.checkArgument(userId != null, messages.get("rbac.user.selection.required"));
-        Set<Long> oldSet = lambdaQuery()
-                .select(UserRoleBo::getRoleId)
-                .eq(UserRoleBo::getUserId, userId)
-                .list()
-                .stream()
-                .map(UserRoleBo::getRoleId)
-                .collect(Collectors.toSet());
+        Set<Long> oldSet = Set.copyOf(getRoleIds(userId));
         Set<Long> newSet = CollectionUtils.isEmpty(roleIds) ? Set.of() : Sets.newHashSet(roleIds);
 
         Set<Long> removeSet = Sets.difference(oldSet, newSet);
+        ensureRemovable(userId, removeSet);
         if (!removeSet.isEmpty()) {
             lambdaUpdate()
                     .eq(UserRoleBo::getUserId, userId)
@@ -111,6 +111,7 @@ public class UserRoleServiceImpl extends ServiceImpl<UserRoleDao, UserRoleBo> im
     public void unbindRole(Long userId, Long roleId) {
         Preconditions.checkArgument(userId != null, "A user must be selected.");
         Preconditions.checkArgument(roleId != null, "A role must be selected.");
+        ensureRemovable(userId, Set.of(roleId));
         remove(new LambdaQueryWrapper<UserRoleBo>()
                 .eq(UserRoleBo::getUserId, userId)
                 .eq(UserRoleBo::getRoleId, roleId));
@@ -143,6 +144,7 @@ public class UserRoleServiceImpl extends ServiceImpl<UserRoleDao, UserRoleBo> im
         return getUserIds(List.of(roleId));
     }
 
+    /** 删除角色相关绑定前保留受影响用户，随后逐用户发布事件，避免关系删除后无法反查缓存归属。 */
     @Transactional
     @Override
     public void removeByRoleId(Long roleId) {
@@ -171,5 +173,12 @@ public class UserRoleServiceImpl extends ServiceImpl<UserRoleDao, UserRoleBo> im
                 .stream()
                 .findFirst()
                 .orElse(null);
+    }
+
+    /** 按每项应用策略检查待移除角色，属于身份必需角色时在任何写入前拒绝。 */
+    private void ensureRemovable(Long userId, Set<Long> roleIds) {
+        boolean required = roleIds.stream().anyMatch(roleId -> requiredRolePolicies.stream()
+                .anyMatch(policy -> policy.isRequired(userId, roleId)));
+        Preconditions.checkCondition(!required, messages.get("rbac.assignment.requiredRole.remove"));
     }
 }

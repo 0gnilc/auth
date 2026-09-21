@@ -6,14 +6,18 @@ import java.util.Map;
 
 /**
  * 一次授权判断所需的核心访问事实输入。
- * <p>
- * 访问上下文包含访问环境、访问身份、访问目标和补充属性。执行环境对象（如 Servlet request、MQ message）
- * 应先由 adapter 翻译为访问上下文，再交给授权与权限校验核心 module 使用。
+ *  <p>
+ *  访问上下文包含访问环境、访问身份、访问目标和补充属性。执行环境对象（如 Servlet request、MQ message）
+ *  应先由 adapter 翻译为访问上下文，再交给授权与权限校验核心 module 使用。
  */
 public class AccessContext {
+    /** 本次访问的执行环境；未提供时使用未指定环境。 */
     private final AccessEnvironment environment;
+    /** 用于本次授权判断的身份事实，由环境适配方提供。 */
     private final AccessIdentity identity;
+    /** 用于本次授权判断的受保护目标，由环境适配方提供。 */
     private final AccessTarget target;
+    /** 整次访问的补充授权事实；构造时复制到新的 Map，未提供时为空。 */
     private final Map<String, Object> attributes;
 
     /**

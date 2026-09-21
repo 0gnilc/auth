@@ -15,8 +15,10 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+/** 验证内置角色不可重新分配权限，区分缺少选择与选择的权限已不存在。 */
 class RolePermissionServiceImplTest extends RbacMessageTestSupport {
     @Test
     void saveRolePermissionsRejectsMissingAssignmentWithTheDefaultLocale() {
@@ -75,5 +77,27 @@ class RolePermissionServiceImplTest extends RbacMessageTestSupport {
         assertThatThrownBy(() -> rolePermissions.saveRolePermissions(dto))
                 .isInstanceOf(IllegalConditionException.class)
                 .hasMessage("The permission no longer exists. Refresh and try again.");
+    }
+
+    @Test
+    void saveRolePermissionsDistinguishesANullSelectionFromADeletedPermission() {
+        PermissionService permissions = mock(PermissionService.class);
+        RoleService roles = mock(RoleService.class);
+        ApplicationEventPublisher events = mock(ApplicationEventPublisher.class);
+        RoleBo role = new RoleBo();
+        role.setBuiltIn(false);
+        when(roles.getById(7L)).thenReturn(role);
+        RolePermissionServiceImpl rolePermissions =
+                new RolePermissionServiceImpl(
+                        events, permissions, roles, messages());
+        RolePermissionDto dto = new RolePermissionDto();
+        dto.setRoleId(7L);
+        dto.setPermissionIds(java.util.Collections.singletonList(null));
+
+        assertThatThrownBy(() -> rolePermissions.saveRolePermissions(dto))
+                .isInstanceOf(InvalidArgumentException.class)
+                .hasMessage("A permission must be selected.");
+
+        verifyNoInteractions(permissions, events);
     }
 }

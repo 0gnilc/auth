@@ -173,6 +173,23 @@ describe('generateMenus', () => {
     ]);
   });
 
+  it('uses the route path when a hidden menu has an object redirect', () => {
+    const routesWithObjectRedirect = [
+      {
+        children: [{ name: 'child', path: 'child' }],
+        meta: { hideChildrenInMenu: true, title: 'Parent' },
+        name: 'parent',
+        path: '/parent',
+        redirect: { name: 'fallback' },
+      },
+    ] as RouteRecordRaw[];
+
+    const menus = generateMenus(routesWithObjectRedirect, mockRouter as any);
+
+    expect(menus).toHaveLength(1);
+    expect(menus[0]?.path).toBe('/parent');
+  });
+
   const routes: any = [
     {
       meta: { order: 2, title: 'Home' },

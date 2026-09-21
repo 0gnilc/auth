@@ -2,23 +2,13 @@ package com.gnilc.auth.authz.rbac.entity.vo;
 
 import lombok.Data;
 
-/**
- * 角色关联权限(多对多)
- * 
- * @author kyhns7
- */
+/** 一条角色权限绑定的查询结果。 */
 @Data
 public class RolePermissionVo {
-	/**
-	 * id
-	 */
+	/** 记录的数据库主键。 */
 	private Long id;
-	/**
-	 * 角色id
-	 */
+	/** 所关联角色的数据库 ID。 */
 	private Long roleId;
-	/**
-	 * 权限id
-	 */
+	/** 所关联权限的数据库 ID。 */
 	private Long permissionId;
 }

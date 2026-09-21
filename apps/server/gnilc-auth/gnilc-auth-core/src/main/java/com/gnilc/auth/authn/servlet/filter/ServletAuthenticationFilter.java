@@ -49,6 +49,7 @@ public class ServletAuthenticationFilter implements Filter {
         this.failureHandler = failureHandler;
     }
 
+    /** 按顺序选择首个支持当前凭据的处理器；成功只建立主体，失败终止请求，无匹配处理器时保留原请求继续后续链路。 */
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
         HttpServletRequest httpRequest = (HttpServletRequest) request;
@@ -66,6 +67,7 @@ public class ServletAuthenticationFilter implements Filter {
                 failureHandler.handle(context, AuthenticationResult.failed(null, e));
                 return;
             }
+            // 仅认证处理器异常走认证失败分支；下游过滤器或业务异常不能被重新包装成认证失败。
             if (result != null && result.isAuthenticated()) {
                 chain.doFilter(new AuthenticatedHttpServletRequest(httpRequest, result.getPrincipal()), response);
                 return;
@@ -76,10 +78,9 @@ public class ServletAuthenticationFilter implements Filter {
         chain.doFilter(request, response);
     }
 
-    /**
-     * 携带认证主体的 Servlet 请求包装器。
-     */
+    /** 携带认证主体的 Servlet 请求包装器。 */
     private static class AuthenticatedHttpServletRequest extends HttpServletRequestWrapper {
+        /** 认证成功后向 Servlet 请求暴露的主体。 */
         private final Principal principal;
 
         private AuthenticatedHttpServletRequest(HttpServletRequest request, Principal principal) {

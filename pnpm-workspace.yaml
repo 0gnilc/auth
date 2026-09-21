@@ -114,6 +114,7 @@ catalog:
   cz-git: ^1.13.1
   czg: ^1.13.1
   dayjs: ^1.11.21
+  decimal.js: ^10.6.0
   defu: ^6.1.7
   dotenv: ^17.4.2
   echarts: ^6.1.0

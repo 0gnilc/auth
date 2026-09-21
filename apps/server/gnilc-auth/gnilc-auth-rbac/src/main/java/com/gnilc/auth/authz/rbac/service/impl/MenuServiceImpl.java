@@ -17,7 +17,6 @@ import com.gnilc.auth.authz.rbac.service.RoleMenuService;
 import com.gnilc.common.base.Preconditions;
 import com.gnilc.common.exception.InvalidArgumentException;
 import com.gnilc.common.i18n.I18nMessageService;
-import com.gnilc.common.utils.BeanPropertyUtils;
 import com.gnilc.common.utils.HttpUrlUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
@@ -39,6 +38,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 
+/** 维护菜单合法层级和资源保护规则，并从已授权菜单构建可达的导航树。 */
 @Service("menuService")
 public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements MenuService {
     private static final String IFRAME_VIEW = "IFrameView";
@@ -95,7 +95,6 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
         Preconditions.checkArgument(dto != null, messages.get("rbac.menu.information.required"));
         MenuBo bo = new MenuBo();
         BeanUtils.copyProperties(dto, bo);
-        BeanPropertyUtils.trimToNull(bo);
         bo.setBuiltIn(Boolean.FALSE);
         validateMenu(bo);
         save(bo);
@@ -103,7 +102,7 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
     }
 
     /**
-     * 使用同一个菜单对象完成完整请求的规范化、校验和持久化，确保校验值与落库值一致。
+     * 使用同一个菜单对象完成完整请求的校验和持久化，确保校验值与落库值一致。
      */
     @Override
     @Transactional
@@ -119,12 +118,12 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
         Preconditions.checkCondition(Objects.equals(dto.getType(), menu.getType()),
                 messages.get("rbac.menu.type.immutable"));
         BeanUtils.copyProperties(dto, menu);
-        BeanPropertyUtils.trimToNull(menu);
         validateMenu(menu);
         updateById(menu);
         eventPublisher.publishEvent(new MenuEvent(MenuEvent.Action.UPDATE, menuId));
     }
 
+    /** 保护整棵子树内的内置资源，释放可复用标识、删除绑定后再逻辑删除全部后代。 */
     @Transactional
     @Override
     public void removeMenu(Long id) {
@@ -165,6 +164,7 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
                 .list();
     }
 
+    /** 补齐所选菜单到根的完整路径；严格模式拒绝缺失或循环层级，导航读取模式跳过无效选择。 */
     @Override
     public List<MenuBo> getMenusWithAncestors(Set<Long> menuIds, boolean thorough) {
         if (CollectionUtils.isEmpty(menuIds)) {
@@ -211,6 +211,7 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
                 .toList();
     }
 
+    /** 从授权闭包构建启用且可达的导航，移除按钮及没有可导航后代的空目录；不据此替代后端权限校验。 */
     @Override
     public List<MenuRouteVo> getMenuRoutes(List<Long> menuIds) {
         Set<Long> selectedMenuIds = CollectionUtils.isEmpty(menuIds)
@@ -333,13 +334,13 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
                 Preconditions.checkArgument(StringUtils.isNotBlank(iframeSrc),
                         messages.get("rbac.menu.iframeSrc.required"));
                 Preconditions.checkArgument(HttpUrlUtils.isValid(iframeSrc),
-                        messages.get("rbac.menu.url.invalid"));
+                        messages.get("rbac.menu.iframeSrc.invalid"));
             }
             case LINK -> {
                 Preconditions.checkArgument(StringUtils.isNotBlank(path), messages.get("rbac.menu.path.required"));
                 Preconditions.checkArgument(StringUtils.isNotBlank(link), messages.get("rbac.menu.link.required"));
                 Preconditions.checkArgument(HttpUrlUtils.isValid(link),
-                        messages.get("rbac.menu.url.invalid"));
+                        messages.get("rbac.menu.link.invalid"));
             }
         }
         MenuBo nameBo = getMenuByName(name);
@@ -398,7 +399,7 @@ public class MenuServiceImpl extends ServiceImpl<MenuDao, MenuBo> implements Men
     }
 
     private List<Long> getSubtreeIds(Long rootId) {
-        // IService queries hide logically deleted rows, but deletion must traverse through them.
+        // 常规查询会隐藏已逻辑删除节点；删除子树仍需穿过这些节点清理后代及角色绑定。
         return menuDao.getSubtreeIds(rootId, true);
     }
 

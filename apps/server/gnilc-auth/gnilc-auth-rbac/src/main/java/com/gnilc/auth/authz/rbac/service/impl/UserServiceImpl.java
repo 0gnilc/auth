@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 
+/** 维护应用无关的 RBAC 用户与授权读取，具体管理员和客户身份由应用自行关联。 */
 @Service("userService")
 public class UserServiceImpl extends ServiceImpl<UserDao, UserBo> implements UserService {
     private final ApplicationEventPublisher eventPublisher;

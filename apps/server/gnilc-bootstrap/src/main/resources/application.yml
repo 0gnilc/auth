@@ -1,5 +1,5 @@
 server:
-  port: 3666
+  port: 3888
   servlet:
     context-path: /api
 spring:
@@ -43,8 +43,17 @@ mybatis-plus:
       logic-not-delete-value: false
       id-type: assign_id
 logging:
+  file:
+    name: '${LOG_FILE:logs/${spring.application.name:gnilc-auth}.log}'
+  logback:
+    rollingpolicy:
+      max-file-size: ${LOG_MAX_FILE_SIZE:20MB}
+      max-history: ${LOG_MAX_HISTORY:30}
+      total-size-cap: ${LOG_TOTAL_SIZE_CAP:5GB}
+      clean-history-on-start: ${LOG_CLEAN_HISTORY_ON_START:true}
   level:
-    com.gnilc.auth.authz.rbac.dao: debug
+    root: warn
+    com.gnilc: info
 app:
   i18n:
     default-locale: en-US

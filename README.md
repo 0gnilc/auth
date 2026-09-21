@@ -1,44 +1,27 @@
-# Gnilc Auth Monorepo
+# gnilc-auth
 
-This repository contains the Gnilc Auth product as a pnpm and Turborepo monorepo based on [Vue Vben Admin](https://github.com/vbenjs/vue-vben-admin).
+A standalone administrator authentication and authorization workspace built with Vue 3, Vben, Element Plus, Spring Boot 3, MySQL and Redis.
 
-## Applications
+It includes administrator sessions, profiles and password changes, administrator management, RBAC roles/permissions/menus, and dynamic internationalization. The application uses the current authentication, authorization, rejection handling and cache implementations.
 
-- `apps/admin`: Vue 3 + Element Plus administration UI, derived from Vben's `web-ele` application.
-- `apps/server`: Spring Boot 3 and Maven multi-module authentication and authorization server.
+- `apps/admin`: administrator UI.
+- `apps/server/gnilc-bootstrap`: executable application and profiles.
+- `apps/server/gnilc-core`: administrator identity, sessions and application adapters.
+- `apps/server/gnilc-auth`: reusable authentication and RBAC.
+- `apps/server/gnilc-common`: shared infrastructure and test support.
 
-The Vben workspace packages required by the admin application remain under `packages/`, `internal/`, and `scripts/`.
-
-## Requirements
-
-- Node.js `^22.18.0 || ^24.0.0`
-- pnpm `>=11.0.0`
-- JDK 17+
-- Maven 3.8+
-- Docker for the server integration test suite
-
-## Development
+See the [Chinese setup guide](README.zh-CN.md) for environment variables, database initialization, build and deployment details, and the extraction's API contract changes.
 
 ```bash
-nvm use
 pnpm install
-pnpm dev:admin
-pnpm dev:server
-```
-
-The admin UI runs on port `5777` and proxies `/api` requests to the server on port `3666`.
-
-## Build and test
-
-```bash
-pnpm build
-pnpm check
+pnpm dev
 pnpm test
-pnpm verify:server
+pnpm check:type
+pnpm verify
+pnpm build:admin
+pnpm build:server
 ```
 
-See [apps/server/README.md](apps/server/README.md) for the server architecture and [docs/test/testing-guide.md](docs/test/testing-guide.md) for mandatory server test conventions.
+Development requires Node.js 22.18+ or 24, pnpm 11, Java 17, Maven, MySQL 8 and Redis. Full verification uses disposable Docker containers. Initialize a fresh `gnilc_auth` database using the [SQL guide](apps/server/deploy/sql/README.md). Avatar values are optional URLs in the `avatar` field; object storage is not required.
 
-## Repository guidance
-
-Shared agent instructions live in `AGENTS.md`. Start domain discovery from the root `CONTEXT.md`, which links module-owned contexts and the centralized ADR collection. See [docs/agents/instruction-files.md](docs/agents/instruction-files.md).
+[Domain glossary](CONTEXT.md) · [Architecture decisions](docs/adr/README.md) · [Testing](docs/test/test-strategy.md)

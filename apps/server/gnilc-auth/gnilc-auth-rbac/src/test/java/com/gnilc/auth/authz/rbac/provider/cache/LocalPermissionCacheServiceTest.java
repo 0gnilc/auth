@@ -11,6 +11,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+/** 验证本地权限缓存命中与失效后重载，并将加载器合法空结果统一为空权限集合。 */
 class LocalPermissionCacheServiceTest {
     @Test
     void loadsOnceAndReloadsAfterReset() {

@@ -127,9 +127,10 @@ export function setupVbenVxeTable(setupOptions: SetupVxeTable) {
   watch(
     [() => isDark.value, () => locale.value],
     ([isDarkValue, localeValue]) => {
+      const vxeLocale = localeValue === 'zh-CN' ? 'zh-CN' : 'en-US';
       VxeUI.setTheme(isDarkValue ? 'dark' : 'light');
-      VxeUI.setI18n(localeValue, localMap[localeValue]);
-      VxeUI.setLanguage(localeValue);
+      VxeUI.setI18n(vxeLocale, localMap[vxeLocale]);
+      VxeUI.setLanguage(vxeLocale);
     },
     {
       immediate: true,

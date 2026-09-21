@@ -6,6 +6,7 @@ import type { LocaleSetupOptions, SupportedLanguagesType } from '@vben/locales';
 
 import { ref } from 'vue';
 
+import { FALLBACK_LOCALE, SUPPORTED_LOCALES } from '@vben/constants';
 import {
   $t,
   setupI18n as coreSetup,
@@ -24,18 +25,15 @@ import { mergeMessages } from './messages';
 // Element Plus 通过响应式引用消费当前语言配置，切换后无需重新挂载应用。
 const elementLocale = ref<Language>(defaultLocale);
 // vue-i18n 找不到当前语言消息时，统一回退到英文。
-const DEFAULT_LOCALE: SupportedLanguagesType = 'en-US';
-// 前后端共享同一组固定语言代码；数据库动态消息也只会返回这些语言。
-const SUPPORTED_LOCALES: SupportedLanguagesType[] = ['en-US', 'zh-CN'];
 
 // Vite 将每个语言目录包装为延迟加载函数，避免首屏一次加载全部静态 JSON。
-const modules = import.meta.glob('./langs/**/*.json');
+const modules = import.meta.glob('./langs/*/*.json');
 // 后端返回的是按语言组织的完整快照；替换整个对象才能同步反映已删除的 key。
 const dynamicMessages = ref<Record<string, Record<string, unknown>>>({});
 
 // 将 ./langs/{locale}/{namespace}.json 聚合为按语言延迟加载的消息树。
 const localesMap = loadLocalesMapFromDir(
-  /\.\/langs\/([^/]+)\/(.*)\.json$/,
+  /\.\/langs\/([^/]+)\/([^/]+)\.json$/,
   modules,
 );
 /**
@@ -100,26 +98,11 @@ async function loadThirdPartyMessage(lang: SupportedLanguagesType) {
  * 未知语言回退到英文，保证日期格式化始终有可用配置。
  */
 async function loadDayjsLocale(lang: SupportedLanguagesType) {
-  let locale;
-  switch (lang) {
-    case 'en-US': {
-      locale = await import('dayjs/locale/en');
-      break;
-    }
-    case 'zh-CN': {
-      locale = await import('dayjs/locale/zh-cn');
-      break;
-    }
-    // 默认使用英语
-    default: {
-      locale = await import('dayjs/locale/en');
-    }
-  }
-  if (locale) {
-    dayjs.locale(locale);
-  } else {
-    console.error(`Failed to load dayjs locale for ${lang}`);
-  }
+  const locale =
+    lang === 'zh-CN'
+      ? await import('dayjs/locale/zh-cn')
+      : await import('dayjs/locale/en');
+  dayjs.locale(locale);
 }
 
 /**
@@ -128,6 +111,11 @@ async function loadDayjsLocale(lang: SupportedLanguagesType) {
 async function loadElementLocale(lang: SupportedLanguagesType) {
   switch (lang) {
     case 'en-US': {
+      elementLocale.value = enLocale;
+      break;
+    }
+    case 'ha-NG':
+    case 'yo-NG': {
       elementLocale.value = enLocale;
       break;
     }
@@ -152,7 +140,7 @@ async function setupI18n(app: App, options: LocaleSetupOptions = {}) {
     missingWarn: !import.meta.env.PROD,
     ...options,
   });
-  i18n.global.fallbackLocale.value = DEFAULT_LOCALE;
+  i18n.global.fallbackLocale.value = FALLBACK_LOCALE;
 }
 
 export {

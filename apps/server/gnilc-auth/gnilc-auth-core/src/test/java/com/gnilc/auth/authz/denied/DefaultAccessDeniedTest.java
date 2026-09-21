@@ -11,6 +11,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/** 验证拒绝处理器按顺序调用所有支持者，不把拒绝响应处理错误地当成授权决策。 */
 class DefaultAccessDeniedTest {
     private final AccessContext context =
             new AccessContext(new AccessIdentity("9", null), new AccessTarget("/orders", "GET"));

@@ -16,8 +16,7 @@ export default defineConfig({
     environmentOptions: {
       happyDOM: {
         settings: {
-          // happy-dom v20+ disables JS evaluation by default (security fix).
-          // Treat disabled script loading as success to preserve test behavior.
+          // 禁用资源加载时仍触发成功回调，兼容不依赖真实外部脚本加载的组件测试。
           handleDisabledFileLoadingAsSuccess: true,
         },
       },

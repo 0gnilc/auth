@@ -39,6 +39,30 @@ export function formatDateTime(time?: FormatDate) {
   return formatDate(time, 'YYYY-MM-DD HH:mm:ss');
 }
 
+/** 将无偏移的本地时间按来源时区解释为 UTC；已有 Z/偏移或 Date 时间点保持原瞬间，无效边界返回 undefined。 */
+export function toUtcInstant(
+  time?: FormatDate,
+  sourceTimezone = getCurrentTimezone(),
+) {
+  if (time === undefined || time === null || time === '') {
+    return undefined;
+  }
+
+  if (typeof time !== 'string') {
+    const date = dayjs.isDayjs(time) ? time : dayjs(time);
+    return date.isValid() ? date.toISOString() : undefined;
+  }
+
+  try {
+    const date = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(time)
+      ? dayjs(time)
+      : dayjs.tz(time, sourceTimezone);
+    return date.isValid() ? date.toISOString() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export function isDate(value: any): value is Date {
   return value instanceof Date;
 }

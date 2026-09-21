@@ -9,6 +9,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/** 验证请求没有主体时明确解析为匿名访问身份。 */
 class DefaultServletAccessIdentityResolverTest {
     @Test
     void fallsBackToAnonymousWithoutPrincipal() {

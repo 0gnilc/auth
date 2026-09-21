@@ -3,8 +3,16 @@ package com.gnilc.common.exception;
 import com.gnilc.common.i18n.I18nMessageService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.context.support.ResourceBundleMessageSource;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
@@ -16,15 +24,19 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.Map;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.http.HttpHeaders.ACCEPT_LANGUAGE;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+/** 通过 MockMvc 验证异常出口的 HTTP 状态、业务 code、本地化文案及校验诊断。 */
+@ExtendWith(OutputCaptureExtension.class)
 class RestExceptionControllerAdviceControllerTest {
 
     private MockMvc mvc;
@@ -56,6 +68,19 @@ class RestExceptionControllerAdviceControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(10002))
                 .andExpect(jsonPath("$.error").value("The requested operation is not allowed in the current state."));
+    }
+
+    @Test
+    void authenticationExceptionsRetainTheirTransportAndBusinessCodes() throws Exception {
+        mvc.perform(get("/test/authentication"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(20001))
+                .andExpect(jsonPath("$.error").value("Incorrect username or password."));
+
+        mvc.perform(get("/test/unauthorized"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value(20002))
+                .andExpect(jsonPath("$.error").value("Unauthorized."));
     }
 
     @Test
@@ -98,11 +123,40 @@ class RestExceptionControllerAdviceControllerTest {
     }
 
     @Test
+    void validationLogsEveryFieldAndCodeWithoutRejectedValuesOrMessages(
+            CapturedOutput output) throws Exception {
+        mvc.perform(post("/test/validated")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "",
+                                  "reference": "secret-rejected-reference-value"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(2));
+
+        assertThat(output)
+                .contains("name:NotBlank")
+                .contains("reference:Size")
+                .doesNotContain("secret-rejected-reference-value")
+                .doesNotContain("Name is required.")
+                .doesNotContain("Reference is too long.");
+    }
+
+    @Test
     void unexpectedFailuresDoNotExposeImplementationDetails() throws Exception {
         mvc.perform(get("/test/runtime").header(ACCEPT_LANGUAGE, "en-US"))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.code").value(10000))
                 .andExpect(jsonPath("$.error").value("An unexpected error occurred."));
+    }
+
+    @Test
+    void missingResourcesUseNotFoundTransportAndBusinessCodes() throws Exception {
+        mvc.perform(get("/test/missing-resource"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value(10004));
     }
 
     @Test
@@ -128,9 +182,24 @@ class RestExceptionControllerAdviceControllerTest {
             throw new IllegalConditionException("The requested operation is not allowed in the current state.");
         }
 
+        @GetMapping("/test/authentication")
+        void authentication() {
+            throw new AuthenticationFailedException("Incorrect username or password.");
+        }
+
+        @GetMapping("/test/unauthorized")
+        void unauthorized() {
+            throw new UnauthorizedException("Unauthorized.");
+        }
+
         @GetMapping("/test/runtime")
         void runtime() {
             throw new RuntimeException("database password leaked");
+        }
+
+        @GetMapping("/test/missing-resource")
+        void missingResource() throws NoResourceFoundException {
+            throw new NoResourceFoundException(HttpMethod.GET, "missing");
         }
 
         @PostMapping(value = "/test/body", consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -146,6 +215,14 @@ class RestExceptionControllerAdviceControllerTest {
         }
     }
 
-    record TestRequest(@NotBlank(message = "Name is required.") String name) {
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    static class TestRequest {
+        @NotBlank(message = "Name is required.")
+        private String name;
+
+        @Size(max = 3, message = "Reference is too long.")
+        private String reference;
     }
 }

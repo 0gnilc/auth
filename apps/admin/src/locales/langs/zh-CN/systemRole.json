@@ -1,0 +1,42 @@
+{
+  "title": "角色管理",
+  "filters": {
+    "code": "按角色标识精确查询",
+    "name": "按角色名称模糊查询"
+  },
+  "actions": {
+    "create": "新增角色",
+    "permissions": "分配权限",
+    "menus": "菜单授权"
+  },
+  "table": {
+    "code": "角色标识",
+    "name": "角色名称",
+    "remark": "描述",
+    "type": "类型",
+    "createTime": "创建时间"
+  },
+  "drawer": {
+    "createTitle": "新增角色",
+    "editTitle": "修改角色",
+    "permissionsTitle": "为“{name}”分配权限",
+    "menusTitle": "为“{name}”进行菜单授权"
+  },
+  "form": {
+    "code": "角色标识",
+    "name": "角色名称",
+    "remark": "描述"
+  },
+  "validation": {
+    "code": "请输入角色标识",
+    "name": "请输入角色名称"
+  },
+  "messages": {
+    "saveSuccess": "角色已保存",
+    "removeConfirm": "确定删除角色“{name}”吗？",
+    "removeTitle": "删除角色",
+    "removeSuccess": "角色已删除",
+    "permissionsSuccess": "角色权限已保存",
+    "menusSuccess": "角色菜单已保存"
+  }
+}

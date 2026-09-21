@@ -7,10 +7,12 @@ import com.gnilc.auth.authz.rbac.service.RolePermissionService;
 import com.gnilc.auth.authz.rbac.service.UserRoleService;
 import com.gnilc.common.exception.IllegalConditionException;
 import com.gnilc.common.exception.InvalidArgumentException;
+import lombok.Data;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.ArgumentCaptor;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.stream.Stream;
@@ -18,6 +20,7 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
@@ -26,6 +29,7 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+/** 验证内置权限保护、原文字符串约束及删除时关系清理，非法输入不得先持久化。 */
 class PermissionServiceImplTest extends RbacMessageTestSupport {
     @Test
     void createPermissionRejectsMissingInformationWithTheDefaultLocale() {
@@ -69,10 +73,43 @@ class PermissionServiceImplTest extends RbacMessageTestSupport {
         PermissionDto dto = validPermission();
         setField(dto, field, "   ");
 
-        assertThatThrownBy(() -> fixture.service().createPermission(dto))
+        assertThatThrownBy(() -> fixture.getService().createPermission(dto))
                 .isInstanceOf(InvalidArgumentException.class)
                 .hasMessage(message);
         verifyNoPermissionWrite(fixture);
+    }
+
+    @ParameterizedTest(name = "preserves exact permission strings with {0} remark")
+    @MethodSource("exactPermissionRemarks")
+    void createPermissionPreservesExactStrings(
+            String caseName,
+            String remark) {
+        PermissionFixture fixture = permissionFixture();
+        PermissionDto dto = new PermissionDto();
+        dto.setCode("  reports:read  ");
+        dto.setName("  Read reports  ");
+        dto.setTargetIdentifier("  /reports/**  ");
+        dto.setTargetQualifier("  GET  ");
+        dto.setRemark(remark);
+        dto.setPublicAccess(false);
+        doReturn(null).when(fixture.getService()).getPermissionByCode(anyString());
+
+        fixture.getService().createPermission(dto);
+
+        ArgumentCaptor<PermissionBo> savedPermission = ArgumentCaptor.forClass(PermissionBo.class);
+        verify(fixture.getService()).save(savedPermission.capture());
+        assertThat(savedPermission.getValue()).satisfies(saved -> {
+            assertThat(saved.getCode()).isEqualTo("  reports:read  ");
+            assertThat(saved.getName()).isEqualTo("  Read reports  ");
+            assertThat(saved.getTargetIdentifier()).isEqualTo("  /reports/**  ");
+            assertThat(saved.getTargetQualifier()).isEqualTo("  GET  ");
+            assertThat(saved.getRemark()).isEqualTo(remark);
+        });
+        assertThat(dto.getCode()).isEqualTo("  reports:read  ");
+        assertThat(dto.getName()).isEqualTo("  Read reports  ");
+        assertThat(dto.getTargetIdentifier()).isEqualTo("  /reports/**  ");
+        assertThat(dto.getTargetQualifier()).isEqualTo("  GET  ");
+        assertThat(dto.getRemark()).isEqualTo(remark);
     }
 
     @ParameterizedTest(name = "accepts exact {0} business limit")
@@ -85,12 +122,12 @@ class PermissionServiceImplTest extends RbacMessageTestSupport {
         PermissionFixture fixture = permissionFixture();
         PermissionDto dto = validPermission();
         setField(dto, field, character.repeat(maximum));
-        doReturn(null).when(fixture.service()).getPermissionByCode(dto.getCode());
+        doReturn(null).when(fixture.getService()).getPermissionByCode(dto.getCode());
 
-        fixture.service().createPermission(dto);
+        fixture.getService().createPermission(dto);
 
-        verify(fixture.service()).save(any(PermissionBo.class));
-        verify(fixture.publisher()).publishEvent(any(AuthorizationEvent.class));
+        verify(fixture.getService()).save(any(PermissionBo.class));
+        verify(fixture.getPublisher()).publishEvent(any(AuthorizationEvent.class));
     }
 
     @ParameterizedTest(name = "rejects {0} beyond business limit")
@@ -104,7 +141,7 @@ class PermissionServiceImplTest extends RbacMessageTestSupport {
         PermissionDto dto = validPermission();
         setField(dto, field, character.repeat(maximum + 1));
 
-        assertThatThrownBy(() -> fixture.service().createPermission(dto))
+        assertThatThrownBy(() -> fixture.getService().createPermission(dto))
                 .isInstanceOf(InvalidArgumentException.class)
                 .hasMessage(message);
         verifyNoPermissionWrite(fixture);
@@ -160,9 +197,9 @@ class PermissionServiceImplTest extends RbacMessageTestSupport {
     }
 
     private void verifyNoPermissionWrite(PermissionFixture fixture) {
-        verify(fixture.service(), never()).save(any(PermissionBo.class));
-        verify(fixture.service(), never()).updateById(any(PermissionBo.class));
-        verifyNoInteractions(fixture.publisher());
+        verify(fixture.getService(), never()).save(any(PermissionBo.class));
+        verify(fixture.getService(), never()).updateById(any(PermissionBo.class));
+        verifyNoInteractions(fixture.getPublisher());
     }
 
     private static void setField(PermissionDto dto, String field, String value) {
@@ -193,8 +230,16 @@ class PermissionServiceImplTest extends RbacMessageTestSupport {
                 Arguments.of("remark", 500, "m", "Permission description must not exceed 500 characters."));
     }
 
-    private record PermissionFixture(
-            PermissionServiceImpl service,
-            ApplicationEventPublisher publisher) {
+    private static Stream<Arguments> exactPermissionRemarks() {
+        return Stream.of(
+                Arguments.of("null", (Object) null),
+                Arguments.of("empty", ""),
+                Arguments.of("whitespace-only", "   "));
+    }
+
+    @Data
+    private static final class PermissionFixture {
+        private final PermissionServiceImpl service;
+        private final ApplicationEventPublisher publisher;
     }
 }

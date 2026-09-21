@@ -1,22 +1,22 @@
 {
-  "name": "gnilc-auth-monorepo",
+  "name": "gnilc-auth",
   "version": "1.0.0",
   "private": true,
   "keywords": [
     "monorepo",
     "turbo",
     "vben",
-    "gnilc auth",
     "spring boot",
     "vue",
     "vue admin",
     "vue vben admin",
     "vue vben admin pro",
-    "vue3"
+    "vue3",
+    "auth"
   ],
-  "homepage": "https://github.com/gnil0416/auth",
-  "bugs": "https://github.com/gnil0416/auth/issues",
-  "repository": "gnil0416/auth.git",
+  "homepage": "https://github.com/0gnilc/auth",
+  "bugs": "https://github.com/0gnilc/auth/issues",
+  "repository": "0gnilc/auth.git",
   "license": "MIT",
   "author": {
     "name": "gnil"
@@ -34,7 +34,7 @@
     "check:type": "turbo run typecheck",
     "clean": "node ./scripts/clean.mjs",
     "commit": "czg",
-    "dev": "turbo run dev --filter=@app/admin --filter=@app/server",
+    "dev": "node ./scripts/dev.mjs",
     "dev:admin": "pnpm --filter=@app/admin run dev",
     "dev:server": "pnpm --filter=@app/server run dev",
     "format": "vsh lint --format",
@@ -45,10 +45,12 @@
     "preview": "pnpm --filter=@app/admin run preview",
     "publint": "vsh publint",
     "reinstall": "pnpm run clean -- --del-lock && pnpm install",
-    "test": "turbo run test",
-    "test:admin": "vitest run --dom",
-    "test:e2e": "playwright test",
+    "test": "pnpm run test:workspace && pnpm run test:server",
+    "test:admin": "vitest run --dom apps/admin",
+    "test:e2e": "node scripts/e2e.mjs",
     "test:server": "pnpm --filter=@app/server run test",
+    "test:workspace": "vitest run --dom",
+    "verify": "pnpm run verify:server && pnpm run test:e2e",
     "verify:server": "pnpm --filter=@app/server run verify",
     "update:deps": "npx taze -r -w",
     "catalog": "pnpm dlx codemod pnpm/catalog"

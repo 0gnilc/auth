@@ -18,11 +18,16 @@ export interface ImageUploadOptions {
   maxSize?: number;
   /** 上传失败回调，未提供时使用 alert 弹窗提示 */
   onUploadError?: (error: unknown) => void;
-  /** 上传函数，返回图片 URL，可选 onProgress 回调报告上传进度 */
+  /** 上传函数，返回 Managed Image Object Key 和展示 URL。 */
   upload: (
     file: File,
     onProgress?: (percent: number) => void,
-  ) => Promise<string>;
+  ) => Promise<ImageUploadResult>;
+}
+
+export interface ImageUploadResult {
+  objectKey: string;
+  url: string;
 }
 
 export interface TipTapProps {
@@ -45,6 +50,7 @@ export interface TipTapPreviewProps {
 export interface VbenTiptapChangeEvent {
   html: string;
   json: JSONContent;
+  storageHtml: string;
   text: string;
 }
 

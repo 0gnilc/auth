@@ -1,18 +1,10 @@
-# Admin Application Instructions
+# Admin Development
 
-## Domain
+Admin uses Vben and Element Plus. Prefer the existing form, Drawer, Grid, and request capabilities when working in this UI; `#/adapter/form` is the form integration entry.
 
-- Read [`CONTEXT.md`](CONTEXT.md) and the relevant ADRs in the root [`docs/adr/`](../../docs/adr/) before changing administrator, RBAC, menu, or dynamic internationalization behavior.
-- The server owns authorization and business invariants. UI access-code checks control action visibility only.
-
-## API Modules
-
-- Define cohesive resource types and derive operation-specific inputs inline with TypeScript utilities such as `Pick` and `Omit`.
-- Do not create one interface per API operation.
-- Follow the organization used by [Vben Admin's system API modules](https://github.com/vbenjs/vue-vben-admin/tree/main/playground/src/api/system).
-
-## UI Changes
-
-- Inspect neighboring views and shared components before introducing a new pattern.
-- Preserve unsaved-change protection for mutable drawers and forms.
-- Keep Message Key persistence separate from the enclosing business-resource save, as defined by the relevant ADRs.
+- Keep page-owned Vue components in the feature's `components/` directory; place shared components under their nearest common business directory. Keep query, validation, and type files named by responsibility outside component directories.
+- Navigation comes from the Server and resolves components through the existing `views/**/*.vue` page map. Menu access codes control visibility; API Permissions enforce access.
+- Organize APIs by business capability under `src/api`; callers import from the owning module entry, such as `#/api/core` or `#/api/system`. Keep DTOs and requests together, and contract tests beside their module.
+- `src/api/core` owns runtime/session requests; `src/api/system` owns administrator, access, and dynamic-message administration. The shared transport and pagination contracts remain in `src/api/request.ts` and `src/api/types.ts`.
+- The shared request client owns common error presentation and locale handling.
+- [Role Design](../../docs/role/role-design.md) describes the current role catalog and where its grants are maintained.

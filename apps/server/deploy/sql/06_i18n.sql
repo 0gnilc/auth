@@ -4,18 +4,18 @@
 SET NAMES utf8mb4;
 
 CREATE TABLE IF NOT EXISTS sys_i18n (
-    id bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
-    category varchar(64) NOT NULL COMMENT '消息分类，例如 default、admin',
-    message_key varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '国际化 key，大小写敏感',
-    locale varchar(20) NOT NULL COMMENT '语言代码，例如 zh-CN',
-    i18n_value text NOT NULL COMMENT '翻译值',
-    create_time datetime(6) NOT NULL COMMENT '创建时间（UTC）',
-    update_time datetime(6) DEFAULT NULL COMMENT '更新时间（UTC）',
+    id bigint NOT NULL AUTO_INCREMENT COMMENT '单语言翻译记录主键',
+    category varchar(64) NOT NULL COMMENT '消息分类：default 或 admin；分类限定语言包范围，不改变消息键身份',
+    message_key varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '全局消息键，大小写敏感；与语言组合唯一，不按分类区分',
+    locale varchar(20) NOT NULL COMMENT '动态翻译语言代码：zh-CN 或 en-US',
+    i18n_value text NOT NULL COMMENT '消息键在指定语言下的翻译原文',
+    create_time datetime(6) NOT NULL COMMENT '记录创建时间，使用 UTC 时间点',
+    update_time datetime(6) DEFAULT NULL COMMENT '记录最近更新时间，使用 UTC 时间点；尚未更新时可为空',
     PRIMARY KEY (id),
     UNIQUE KEY uk_message_key_locale (message_key, locale),
     KEY idx_category_message_key (category, message_key),
     KEY idx_category_locale_key (category, locale, message_key)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='动态国际化消息';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='按全局消息键和语言存储的动态翻译';
 
 SET @has_i18n_client_column := (
     SELECT COUNT(*)
@@ -33,16 +33,15 @@ SET @has_i18n_category_column := (
 );
 SET @rename_i18n_client_sql := IF(
     @has_i18n_client_column = 1 AND @has_i18n_category_column = 0,
-    'ALTER TABLE sys_i18n CHANGE COLUMN client category varchar(64) NOT NULL COMMENT ''消息分类，例如 default、admin''',
+    'ALTER TABLE sys_i18n CHANGE COLUMN client category varchar(64) NOT NULL COMMENT ''消息分类：default 或 admin；分类限定语言包范围，不改变消息键身份''',
     'SELECT 1'
 );
 PREPARE rename_i18n_client_stmt FROM @rename_i18n_client_sql;
 EXECUTE rename_i18n_client_stmt;
 DEALLOCATE PREPARE rename_i18n_client_stmt;
 
--- The old client-scoped identity allowed duplicate Key/locale pairs. Prefer the
--- admin value, collapse the remainder deterministically, then map other clients
--- to the default category before creating the global unique index.
+-- 旧的客户端范围允许重复的 Key/locale 组合。优先保留 admin 值，按确定顺序合并其余重复项，
+-- 再将其他客户端映射到 default 分类，最后创建全局唯一索引。
 DELETE duplicate_message
 FROM sys_i18n duplicate_message
 JOIN sys_i18n keeper
@@ -374,24 +373,25 @@ WHERE id = @legacy_i18n_manager_role_id
 UPDATE az_role
 SET del = 0,
     built_in = 1,
-    name = '国际化配置管理员',
-    remark = '跨分类维护动态国际化配置',
+    name = '国际化配置管理',
+    remark = '维护动态国际化配置',
     update_time = UTC_TIMESTAMP(6)
 WHERE code = 'i18n:manager';
 
 INSERT INTO az_role (del, create_time, update_time, code, name, remark, built_in)
-SELECT 0, UTC_TIMESTAMP(6), NULL, 'i18n:manager', '国际化配置管理员', '跨分类维护动态国际化配置', 1
+SELECT 0, UTC_TIMESTAMP(6), NULL, 'i18n:manager', '国际化配置管理',
+       '维护动态国际化配置', 1
 WHERE NOT EXISTS (
     SELECT 1 FROM az_role WHERE code = 'i18n:manager'
 );
 
 INSERT INTO az_menu (
     del, create_time, update_time, pid, type, status, name, path, component,
-    affix_tab, hide_in_menu, icon, `order`, title
+    affix_tab, hide_in_menu, keep_alive, icon, `order`, title
 )
 SELECT
     0, UTC_TIMESTAMP(6), NULL, 0, 'catalog', 1, 'System', '/system', 'BasicLayout',
-    0, 0, 'lucide:settings', 100, 'menu.system.title'
+    0, 0, 0, 'lucide:settings', 50, 'menu.system.title'
 WHERE NOT EXISTS (
     SELECT 1 FROM az_menu WHERE name = 'System'
 );
@@ -404,8 +404,9 @@ SET del = 0,
     path = '/system',
     component = 'BasicLayout',
     hide_in_menu = 0,
+    keep_alive = 0,
     icon = 'lucide:settings',
-    `order` = 100,
+    `order` = 50,
     title = 'menu.system.title',
     update_time = UTC_TIMESTAMP(6)
 WHERE name = 'System';
@@ -416,11 +417,11 @@ SET @system_menu_id := (
 
 INSERT INTO az_menu (
     del, create_time, update_time, pid, type, status, name, path, component,
-    affix_tab, hide_in_menu, icon, `order`, title
+    affix_tab, hide_in_menu, keep_alive, icon, `order`, title
 )
 SELECT
     0, UTC_TIMESTAMP(6), NULL, @system_menu_id, 'menu', 1, 'I18nMessage', '/system/i18n-message', '/system/i18n-message/index',
-    0, 0, 'lucide:languages', 10, 'menu.i18nMessage.title'
+    0, 0, 1, 'lucide:languages', 10, 'menu.i18nMessage.title'
 WHERE @system_menu_id IS NOT NULL
   AND NOT EXISTS (
       SELECT 1 FROM az_menu WHERE name IN ('I18n', 'I18nMessage')
@@ -435,6 +436,7 @@ SET name = 'I18nMessage',
     path = '/system/i18n-message',
     component = '/system/i18n-message/index',
     hide_in_menu = 0,
+    keep_alive = 1,
     icon = 'lucide:languages',
     `order` = 10,
     title = 'menu.i18nMessage.title',
@@ -448,11 +450,11 @@ SET @i18n_message_menu_id := (
 
 INSERT INTO az_menu (
     del, create_time, update_time, pid, type, status, access_code,
-    name, `order`, title
+    name, keep_alive, `order`, title
 )
 SELECT
     0, UTC_TIMESTAMP(6), NULL, @i18n_message_menu_id, 'button', 1,
-    'system:i18n-message:save', 'I18nMessageSave', 1,
+    'system:i18n-message:save', 'I18nMessageSave', 0, 1,
     'menu.i18nMessage.save'
 WHERE @i18n_message_menu_id IS NOT NULL
   AND NOT EXISTS (
@@ -461,11 +463,11 @@ WHERE @i18n_message_menu_id IS NOT NULL
 
 INSERT INTO az_menu (
     del, create_time, update_time, pid, type, status, access_code,
-    name, `order`, title
+    name, keep_alive, `order`, title
 )
 SELECT
     0, UTC_TIMESTAMP(6), NULL, @i18n_message_menu_id, 'button', 1,
-    'system:i18n-message:remove', 'I18nMessageRemove', 2,
+    'system:i18n-message:remove', 'I18nMessageRemove', 0, 2,
     'menu.i18nMessage.remove'
 WHERE @i18n_message_menu_id IS NOT NULL
   AND NOT EXISTS (
@@ -478,6 +480,7 @@ SET del = 0,
     type = 'button',
     status = 1,
     access_code = 'system:i18n-message:save',
+    keep_alive = 0,
     `order` = 1,
     title = 'menu.i18nMessage.save',
     update_time = UTC_TIMESTAMP(6)
@@ -490,6 +493,7 @@ SET del = 0,
     type = 'button',
     status = 1,
     access_code = 'system:i18n-message:remove',
+    keep_alive = 0,
     `order` = 2,
     title = 'menu.i18nMessage.remove',
     update_time = UTC_TIMESTAMP(6)
@@ -576,9 +580,6 @@ SET @admin_role_id := (
 SET @i18n_manager_role_id := (
     SELECT id FROM az_role WHERE code = 'i18n:manager' AND del = 0 LIMIT 1
 );
-SET @default_admin_user_id := (
-    SELECT user_id FROM sys_admin WHERE username = 'admin' AND del = 0 LIMIT 1
-);
 INSERT INTO az_role_permission (del, create_time, update_time, role_id, permission_id)
 SELECT 0, UTC_TIMESTAMP(6), NULL, @admin_role_id, p.id
 FROM az_permission p
@@ -620,15 +621,4 @@ WHERE m.name IN (
   AND NOT EXISTS (
       SELECT 1 FROM az_role_menu rm
       WHERE rm.role_id = @i18n_manager_role_id AND rm.menu_id = m.id AND rm.del = 0
-  );
-
-INSERT INTO az_user_role (del, create_time, update_time, user_id, role_id)
-SELECT 0, UTC_TIMESTAMP(6), NULL, @default_admin_user_id, @i18n_manager_role_id
-WHERE @default_admin_user_id IS NOT NULL
-  AND @i18n_manager_role_id IS NOT NULL
-  AND NOT EXISTS (
-      SELECT 1 FROM az_user_role ur
-      WHERE ur.user_id = @default_admin_user_id
-        AND ur.role_id = @i18n_manager_role_id
-        AND ur.del = 0
   );

@@ -157,6 +157,7 @@ public class LocalPermissionCacheService implements PermissionCacheService {
         resetExecutor.shutdown();
     }
 
+    /** 延迟再次失效同一缓存，清理首次失效附近并发读取可能回填的旧结果；不提供跨节点锁。 */
     private void scheduleSecondReset(Runnable task) {
         resetExecutor.schedule(task, SECOND_RESET_DELAY.toMillis(), TimeUnit.MILLISECONDS);
     }

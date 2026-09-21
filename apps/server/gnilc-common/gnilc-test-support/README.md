@@ -21,7 +21,7 @@
 
 ```xml
 <dependency>
-    <groupId>com.gnilc.auth</groupId>
+    <groupId>com.gnilc.core</groupId>
     <artifactId>gnilc-test-support</artifactId>
     <version>${project.version}</version>
     <scope>test</scope>
@@ -191,17 +191,6 @@ SQL 应由使用方通过 Maven `testResources` 放入测试 classpath。例如�
 
 任一条件不满足时，清理会直接失败。不要绕过该保护，也不要把清理组件用于开发、预发布或生产环境。
 
-## 作为独立通用库的边界
-
-后续独立发布时应继续保持以下边界：
-
-- 不依赖任何业务模块；
-- 不内置业务表名、业务 SQL、账号或角色；
-- 容器镜像、数据库名和清理策略应保持可配置；
-- 公共 API 变更需要保持向后兼容；
-- 本模块自身使用 Docker-free 单元测试验证清理编排和安全保护；
-- 真实 MySQL、Redis 行为由消费模块的集成测试验证。
-
 ## 执行命令
 
 ```bash
@@ -212,4 +201,4 @@ mvn test
 mvn verify
 ```
 
-完整测试分层和仓库约束见 [`../../docs/test/test-strategy.md`](../../docs/test/test-strategy.md) 和 [`../../docs/test/testing-guide.md`](../../docs/test/testing-guide.md)。
+测试执行入口与隔离机制见[服务端测试设施](../../../../docs/test/test-strategy.md)。

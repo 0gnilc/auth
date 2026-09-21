@@ -1,5 +1,6 @@
 package com.gnilc.common.exception;
 
+/** 请求参数不满足输入契约时抛出的异常。 */
 public class InvalidArgumentException extends RuntimeException {
     public InvalidArgumentException() {
     }

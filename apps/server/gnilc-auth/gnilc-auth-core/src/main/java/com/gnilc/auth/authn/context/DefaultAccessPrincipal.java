@@ -7,11 +7,13 @@ import java.util.Objects;
 
 /**
  * 默认访问主体实现。
- * <p>
- * 该类型仅保存认证后的主体标识与补充事实，不包含 Servlet 或其他运行环境语义。
+ *  <p>
+ *  该类型仅保存认证后的主体标识与补充事实，不包含 Servlet 或其他运行环境语义。
  */
 public final class DefaultAccessPrincipal implements AccessPrincipal {
+    /** 已认证主体的非空标识，不绑定特定应用的账号类型。 */
     private final String identifier;
+    /** 认证后的补充事实；构造时复制为只读 Map，未提供时为空 Map。 */
     private final Map<String, Object> attributes;
 
     private DefaultAccessPrincipal(String identifier, Map<String, Object> attributes) {

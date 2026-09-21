@@ -52,6 +52,7 @@ public class ServletAuthorizationFilter implements Filter {
         this.accessDenied = accessDenied;
     }
 
+    /** 将 Servlet 请求适配为授权事实；允许时继续链路，拒绝时交给环境相关处理器写响应。 */
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
         ServletRequestContext servletRequestContext = new ServletRequestContext(request, response, chain);

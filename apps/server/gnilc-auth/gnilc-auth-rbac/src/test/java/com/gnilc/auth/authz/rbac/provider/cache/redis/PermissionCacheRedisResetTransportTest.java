@@ -15,6 +15,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
+/** 验证节点广播载荷、自投递忽略和损坏消息边界，远端合法命令交由本地执行器处理。 */
 class PermissionCacheRedisResetTransportTest {
     @Test
     void publishedMessageContainsCommandAndSelfDeliveryIsIgnored() throws Exception {

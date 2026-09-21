@@ -1,0 +1,49 @@
+{
+  "title": "国际化消息管理",
+  "newMessagePlaceholder": "新增国际化消息",
+  "filters": {
+    "key": "Message Key",
+    "keyPlaceholder": "按Message Key模糊查询",
+    "value": "翻译值",
+    "valuePlaceholder": "按翻译值模糊查询",
+    "category": "分类",
+    "locale": "语言",
+    "allLocales": "全部语言"
+  },
+  "actions": {
+    "search": "查询",
+    "reset": "重置",
+    "create": "新增",
+    "remove": "删除",
+    "reload": "刷新"
+  },
+  "drawer": {
+    "createTitle": "新增国际化消息",
+    "editTitle": "修改国际化消息"
+  },
+  "form": {
+    "category": "分类",
+    "messageKey": "Message Key"
+  },
+  "validation": {
+    "keyRequired": "请输入 Message Key",
+    "keyTooLong": "Message Key 不能超过 191 个字符",
+    "keyInvalid": "Message Key 必须是以字母开头的点分标识",
+    "enRequired": "en-US 兜底文本不能为空",
+    "valueTooLong": "单个语言文本不能超过 4000 个字符"
+  },
+  "table": {
+    "category": "分类",
+    "key": "Message Key",
+    "operations": "操作",
+    "empty": "暂无国际化配置"
+  },
+  "messages": {
+    "saveSuccess": "国际化配置已保存",
+    "removeSuccess": "国际化配置已删除",
+    "removeConfirm": "确定删除“{key}”的全部语言配置吗？",
+    "removeTitle": "删除国际化配置",
+    "runtimeReloadFailed": "数据已保存，但当前页面语言包刷新失败",
+    "listReloadFailed": "数据已变更，但列表刷新失败"
+  }
+}

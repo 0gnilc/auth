@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
 
+/** 通过 HTTP 验证角色生命周期、长度边界与删除后业务编码复用。 */
 @ApiTest
 @Import(RestExceptionHandlingConfiguration.class)
 @ContextConfiguration(

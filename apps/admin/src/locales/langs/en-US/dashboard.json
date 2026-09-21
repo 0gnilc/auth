@@ -1,0 +1,12 @@
+{
+  "title": "Dashboard",
+  "currentAdmin": "Current Administrator",
+  "emptyDescription": "No bio provided",
+  "basicInfo": "Basic Information",
+  "username": "Username",
+  "defaultHome": "Default Home",
+  "roleCodes": "Role Codes",
+  "emptyRoleCodes": "No role codes",
+  "accessCodes": "Button Access Codes",
+  "emptyAccessCodes": "No button access codes"
+}

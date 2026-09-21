@@ -1,0 +1,52 @@
+{
+  "title": "Administrators",
+  "filters": {
+    "username": "Exact username",
+    "nickname": "Search nickname",
+    "status": "Status"
+  },
+  "actions": {
+    "create": "Create administrator",
+    "roles": "Assign roles"
+  },
+  "table": {
+    "username": "Username",
+    "nickname": "Nickname",
+    "roles": "Roles",
+    "roleCount": "{count} roles",
+    "status": "Status",
+    "createTime": "Created"
+  },
+  "drawer": {
+    "createTitle": "Create administrator",
+    "editTitle": "Edit administrator",
+    "rolesTitle": "Assign roles to {name}"
+  },
+  "form": {
+    "username": "Username",
+    "password": "Password",
+    "passwordUnchanged": "Leave blank to keep the current password",
+    "nickname": "Nickname",
+    "homePath": "Default home",
+    "avatar": "Avatar URL",
+    "description": "Description",
+    "status": "Enabled"
+  },
+  "validation": {
+    "username": "Enter a username",
+    "password": "A password is required for a new administrator",
+    "nickname": "Enter a nickname",
+    "homePath": "Enter a default home path"
+  },
+  "messages": {
+    "saveSuccess": "Administrator saved",
+    "removeConfirm": "Delete administrator {name}?",
+    "removeTitle": "Delete administrator",
+    "removeSuccess": "Administrator deleted",
+    "rolesSuccess": "Role assignments saved",
+    "statusConfirm": "Set {name} to {status}?",
+    "statusTitle": "Change status",
+    "statusSuccess": "Status updated",
+    "currentProtected": "The current administrator cannot be deleted"
+  }
+}

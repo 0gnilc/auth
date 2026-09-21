@@ -9,6 +9,6 @@ defineOptions({ name: 'ForgetPassword' });
 <template>
   <AuthenticationForgetPassword
     :show-submit-button="false"
-    :sub-title="$t('page.auth.forgetPasswordContactAdmin')"
+    :sub-title="$t('auth.forgetPasswordContactAdmin')"
   />
 </template>

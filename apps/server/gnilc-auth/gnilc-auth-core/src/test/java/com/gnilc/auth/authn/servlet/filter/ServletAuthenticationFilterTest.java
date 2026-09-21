@@ -22,6 +22,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+/** 验证首个匹配处理器的认证结果决定主体或失败，无支持者才继续匿名请求。 */
 class ServletAuthenticationFilterTest {
     @Test
     void successfulHandlerAddsPrincipalAndStopsHandlerChain() throws Exception {

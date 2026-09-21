@@ -40,7 +40,7 @@ vi.mock('@vben/stores', () => ({
   useAccessStore: () => stores.access,
   useUserStore: () => stores.user,
 }));
-vi.mock('#/api', () => api);
+vi.mock('#/api/core', () => api);
 vi.mock('#/locales/dynamic', () => ({
   clearDynamicMessages: dynamicMessages.clear,
   loadDynamicMessages: dynamicMessages.load,
@@ -60,8 +60,9 @@ describe('administrator session state', () => {
     });
   });
 
-  it('refreshes button access codes when restoring an existing session', async () => {
+  it('恢复会话时同步刷新按钮访问码', async () => {
     api.getAdminUserInfo.mockResolvedValue({
+      avatar: 'https://images.example.test/images/2026/08/06/admin.png',
       roleCodes: ['admin', 'rbac:manager'],
       userId: '1',
       username: 'admin',
@@ -70,16 +71,25 @@ describe('administrator session state', () => {
       'system:admin:create',
       'system:role:create',
     ]);
-    await useAuthStore().getUserInfo();
+    const userInfo = await useAuthStore().getUserInfo();
+
+    expect(userInfo.avatar).toBe(
+      'https://images.example.test/images/2026/08/06/admin.png',
+    );
 
     expect(api.getMenuAccessCodes).toHaveBeenCalledOnce();
     expect(stores.access.accessCodes).toEqual([
       'system:admin:create',
       'system:role:create',
     ]);
+    expect(stores.user.setUserInfo).toHaveBeenCalledWith(
+      expect.objectContaining({
+        avatar: 'https://images.example.test/images/2026/08/06/admin.png',
+      }),
+    );
   });
 
-  it('allows a clean retry after the login request fails', async () => {
+  it('登录请求失败后释放加载状态以便再次登录', async () => {
     api.login
       .mockRejectedValueOnce(new Error('network unavailable'))
       .mockResolvedValueOnce({
@@ -110,7 +120,7 @@ describe('administrator session state', () => {
     expect(router.push).toHaveBeenCalledWith('/dashboard');
   });
 
-  it('clears a partial session when post-login initialization fails', async () => {
+  it('登录后的身份初始化失败时清除部分会话', async () => {
     api.login.mockResolvedValue({
       accessToken: 'partial-access',
       refreshToken: 'partial-refresh',
@@ -130,7 +140,7 @@ describe('administrator session state', () => {
     expect(auth.loginLoading).toBe(false);
   });
 
-  it('clears local state and redirects even when remote logout fails', async () => {
+  it('远端退出失败仍清理本地会话并跳转', async () => {
     stores.access.refreshToken = 'refresh-token';
     api.logout.mockRejectedValue(new Error('backend unavailable'));
 

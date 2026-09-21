@@ -45,6 +45,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.mockito.ArgumentMatchers.anyList;
 
+/** 通过显式提交和回滚验证权限缓存只在业务提交后失效，删除关系仍能找到受影响用户。 */
 @MybatisPlusTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
@@ -77,6 +78,7 @@ class PermissionCacheTransactionIT {
         jdbc.update("delete from az_user_role where role_id between 7101 and 7102");
     }
 
+    /** 事务内部先断言新关系可见但缓存未重置，再在提交后断言受影响用户被失效。 */
     @Test
     void committedRelationChangeInvalidatesAffectedUserAfterCommit() {
         long roleId = 7101L;
@@ -96,6 +98,7 @@ class PermissionCacheTransactionIT {
         verify(redisResetTransport).publish(expected);
     }
 
+    /** 显式回滚关系替换，同时验证旧关系恢复且没有权限缓存失效或广播。 */
     @Test
     void rolledBackRelationChangePreservesDataAndDoesNotInvalidateCache() {
         long roleId = 7102L;

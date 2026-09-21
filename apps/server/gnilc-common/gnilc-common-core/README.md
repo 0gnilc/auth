@@ -15,13 +15,13 @@
 
 ```xml
 <dependency>
-    <groupId>com.gnilc.auth</groupId>
+    <groupId>com.gnilc.core</groupId>
     <artifactId>gnilc-common-core</artifactId>
     <version>${project.version}</version>
 </dependency>
 ```
 
-该模块可以被业务模块直接依赖，但不能反向依赖 `gnilc-auth-core`、`gnilc-auth-rbac`、`gnilc-system` 或 `gnilc-bootstrap`。
+该模块可以被业务模块直接依赖，但不能反向依赖 `gnilc-auth-core`、`gnilc-auth-rbac`、`gnilc-core` 或 `gnilc-bootstrap`。
 
 ## REST 异常处理
 

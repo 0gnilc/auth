@@ -15,6 +15,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/** 验证已授予和所需权限提供者均存在时才装配决策器，避免缺少一侧事实仍进行判断。 */
 class AuthorizationAutoConfigurationTest {
     @Test
     void buildsDecisionOnlyWhenBothProviderTypesExist() {

@@ -13,7 +13,7 @@ SET @permission_built_in_exists := (
 );
 SET @permission_built_in_ddl := IF(
     @permission_built_in_exists = 0,
-    'ALTER TABLE az_permission ADD COLUMN built_in tinyint(1) NOT NULL DEFAULT 0 COMMENT ''是否系统内置,0否、1是'' AFTER public_access',
+    'ALTER TABLE az_permission ADD COLUMN built_in tinyint(1) NOT NULL DEFAULT 0 COMMENT ''是否为系统维护的内置权限：0 否、1 是'' AFTER public_access',
     'SELECT 1'
 );
 PREPARE permission_built_in_statement FROM @permission_built_in_ddl;
@@ -29,7 +29,7 @@ SET @menu_built_in_exists := (
 );
 SET @menu_built_in_ddl := IF(
     @menu_built_in_exists = 0,
-    'ALTER TABLE az_menu ADD COLUMN built_in tinyint(1) NOT NULL DEFAULT 0 COMMENT ''是否系统内置,0否、1是'' AFTER title',
+    'ALTER TABLE az_menu ADD COLUMN built_in tinyint(1) NOT NULL DEFAULT 0 COMMENT ''是否为系统维护的内置菜单：0 否、1 是'' AFTER title',
     'SELECT 1'
 );
 PREPARE menu_built_in_statement FROM @menu_built_in_ddl;
@@ -112,13 +112,18 @@ WHERE id = @legacy_rbac_manager_role_id
 
 UPDATE az_role
 SET del = 0,
+    name = 'RBAC 管理',
+    remark = '维护后台用户、角色、权限和菜单',
     built_in = 1,
     update_time = UTC_TIMESTAMP(6)
 WHERE code = 'rbac:manager'
-  AND (del <> 0 OR built_in <> 1);
+  AND (del <> 0 OR built_in <> 1
+       OR name <> 'RBAC 管理'
+       OR remark <> '维护后台用户、角色、权限和菜单');
 
 INSERT INTO az_role (del, create_time, update_time, code, name, remark, built_in)
-SELECT 0, UTC_TIMESTAMP(6), NULL, 'rbac:manager', 'RBAC 管理员', '维护后台管理员、角色、权限和菜单', 1
+SELECT 0, UTC_TIMESTAMP(6), NULL, 'rbac:manager', 'RBAC 管理',
+       '维护后台用户、角色、权限和菜单', 1
 WHERE NOT EXISTS (
     SELECT 1 FROM az_role WHERE code = 'rbac:manager'
 );
@@ -211,9 +216,6 @@ WHERE target_identifier LIKE '/authz/%'
 SET @rbac_manager_role_id := (
     SELECT id FROM az_role WHERE code = 'rbac:manager' AND del = 0 LIMIT 1
 );
-SET @default_admin_user_id := (
-    SELECT user_id FROM sys_admin WHERE username = 'admin' AND del = 0 LIMIT 1
-);
 
 INSERT INTO az_role_permission (del, create_time, update_time, role_id, permission_id)
 SELECT 0, UTC_TIMESTAMP(6), NULL, @rbac_manager_role_id, p.id
@@ -249,6 +251,7 @@ CREATE TEMPORARY TABLE rbac_admin_menu_seed (
     path varchar(500) DEFAULT NULL,
     component varchar(255) DEFAULT NULL,
     icon varchar(255) DEFAULT NULL,
+    keep_alive tinyint(1) NOT NULL DEFAULT 0,
     menu_order int NOT NULL,
     title varchar(255) NOT NULL,
     PRIMARY KEY (name)
@@ -262,13 +265,16 @@ VALUES
     ('Permission', 'System', 'menu', NULL, '/system/permission', '/system/permission/index', 'lucide:key-round', 40, 'menu.system.permission.title'),
     ('Menu', 'System', 'menu', NULL, '/system/menu', '/system/menu/index', 'lucide:list-tree', 50, 'menu.system.menu.title');
 
+UPDATE rbac_admin_menu_seed
+SET keep_alive = 1;
+
 INSERT INTO az_menu (
     del, create_time, update_time, pid, type, status, access_code, name, path,
-    component, affix_tab, hide_in_menu, icon, `order`, title, built_in
+    component, affix_tab, hide_in_menu, keep_alive, icon, `order`, title, built_in
 )
 SELECT
     0, UTC_TIMESTAMP(6), NULL, parent.id, seed.type, 1, seed.access_code, seed.name, seed.path,
-    seed.component, 0, 0, seed.icon, seed.menu_order, seed.title, 1
+    seed.component, 0, 0, seed.keep_alive, seed.icon, seed.menu_order, seed.title, 1
 FROM rbac_admin_menu_seed seed
 JOIN az_menu parent ON parent.name = seed.parent_name AND parent.del = 0
 WHERE NOT EXISTS (
@@ -296,11 +302,11 @@ VALUES
 
 INSERT INTO az_menu (
     del, create_time, update_time, pid, type, status, access_code, name, path,
-    component, affix_tab, hide_in_menu, `order`, title, built_in
+    component, affix_tab, hide_in_menu, keep_alive, `order`, title, built_in
 )
 SELECT
     0, UTC_TIMESTAMP(6), NULL, parent.id, seed.type, 1, seed.access_code, seed.name, seed.path,
-    seed.component, 0, 0, seed.menu_order, seed.title, 1
+    seed.component, 0, 0, seed.keep_alive, seed.menu_order, seed.title, 1
 FROM rbac_admin_menu_seed seed
 JOIN az_menu parent ON parent.name = seed.parent_name AND parent.del = 0
 WHERE seed.type = 'button'
@@ -318,6 +324,7 @@ SET current_menu.del = 0,
     current_menu.access_code = seed.access_code,
     current_menu.path = seed.path,
     current_menu.component = seed.component,
+    current_menu.keep_alive = seed.keep_alive,
     current_menu.icon = seed.icon,
     current_menu.`order` = seed.menu_order,
     current_menu.title = seed.title,
@@ -419,17 +426,22 @@ WHERE NOT EXISTS (
       AND current_message.locale COLLATE utf8mb4_unicode_ci = seed.locale
 );
 
-INSERT INTO az_user_role (del, create_time, update_time, user_id, role_id)
-SELECT 0, UTC_TIMESTAMP(6), NULL, @default_admin_user_id, @rbac_manager_role_id
-WHERE @default_admin_user_id IS NOT NULL
-  AND @rbac_manager_role_id IS NOT NULL
-  AND NOT EXISTS (
-      SELECT 1
-      FROM az_user_role ur
-      WHERE ur.user_id = @default_admin_user_id
-        AND ur.role_id = @rbac_manager_role_id
-        AND ur.del = 0
-  );
-
 DROP TEMPORARY TABLE IF EXISTS rbac_admin_i18n_seed;
 DROP TEMPORARY TABLE IF EXISTS rbac_admin_menu_seed;
+
+-- 新库首次创建默认管理员时授予本项目的管理能力；后续初始化不恢复操作者解除的绑定。
+-- 02_admin.sql 在创建账号前记录首次创建标记；未执行前置脚本时不授予角色。
+INSERT INTO az_user_role (del, create_time, update_time, user_id, role_id)
+SELECT 0, UTC_TIMESTAMP(6), NULL, admin.user_id, role.id
+FROM sys_admin admin
+JOIN az_role role ON role.code IN ('rbac:manager', 'i18n:manager') AND role.del = 0
+WHERE admin.username = 'admin'
+  AND admin.del = 0
+  AND @default_admin_created = 1
+  AND NOT EXISTS (
+      SELECT 1 FROM az_user_role binding
+      WHERE binding.user_id = admin.user_id AND binding.role_id = role.id
+  );
+
+-- 同一连接单独重放本脚本也不应被误判为首次初始化。
+SET @default_admin_created := 0;

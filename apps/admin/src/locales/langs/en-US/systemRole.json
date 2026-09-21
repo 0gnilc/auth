@@ -1,0 +1,42 @@
+{
+  "title": "Roles",
+  "filters": {
+    "code": "Exact role code",
+    "name": "Search role name"
+  },
+  "actions": {
+    "create": "Create role",
+    "permissions": "Assign permissions",
+    "menus": "Assign menus"
+  },
+  "table": {
+    "code": "Role code",
+    "name": "Role name",
+    "remark": "Description",
+    "type": "Type",
+    "createTime": "Created"
+  },
+  "drawer": {
+    "createTitle": "Create role",
+    "editTitle": "Edit role",
+    "permissionsTitle": "Assign permissions to {name}",
+    "menusTitle": "Assign menus to {name}"
+  },
+  "form": {
+    "code": "Role code",
+    "name": "Role name",
+    "remark": "Description"
+  },
+  "validation": {
+    "code": "Enter a role code",
+    "name": "Enter a role name"
+  },
+  "messages": {
+    "saveSuccess": "Role saved",
+    "removeConfirm": "Delete role {name}?",
+    "removeTitle": "Delete role",
+    "removeSuccess": "Role deleted",
+    "permissionsSuccess": "Role permissions saved",
+    "menusSuccess": "Role menus saved"
+  }
+}

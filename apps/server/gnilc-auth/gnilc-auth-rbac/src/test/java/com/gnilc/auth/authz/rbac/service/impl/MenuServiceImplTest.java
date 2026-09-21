@@ -23,6 +23,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
@@ -47,6 +48,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+/** 验证菜单层级、内置节点保护、完整更新和可达导航树，删除时包含已删除分支后代。 */
 @ExtendWith(MockitoExtension.class)
 class MenuServiceImplTest {
     @Mock
@@ -184,13 +186,64 @@ class MenuServiceImplTest {
         embedded.setIframeSrc("/relative/docs");
 
         assertThatThrownBy(() -> menus.createMenu(embedded))
-                .isInstanceOf(InvalidArgumentException.class);
+                .isInstanceOf(InvalidArgumentException.class)
+                .hasMessage(
+                        "Embedded Page URL must be a complete http or https address.");
 
         MenuDto link = completeMenu(MenuType.LINK, 0L);
         link.setLink("javascript:alert(1)");
 
         assertThatThrownBy(() -> menus.createMenu(link))
-                .isInstanceOf(InvalidArgumentException.class);
+                .isInstanceOf(InvalidArgumentException.class)
+                .hasMessage(
+                        "External URL must be a complete http or https address.");
+    }
+
+    @ParameterizedTest(name = "preserves exact menu strings with {0} badge")
+    @MethodSource("exactMenuBadges")
+    void createMenuPreservesExactStrings(
+            String caseName,
+            String badge) {
+        MenuDto dto = validMenu(MenuType.CATALOG);
+        dto.setName("  ExactCatalog  ");
+        dto.setTitle("  menu.exact.title  ");
+        dto.setPath("  /exact  ");
+        dto.setBadge(badge);
+
+        menus.createMenu(dto);
+
+        ArgumentCaptor<MenuBo> savedMenu = ArgumentCaptor.forClass(MenuBo.class);
+        verify(menus).save(savedMenu.capture());
+        assertThat(savedMenu.getValue()).satisfies(saved -> {
+            assertThat(saved.getName()).isEqualTo("  ExactCatalog  ");
+            assertThat(saved.getTitle()).isEqualTo("  menu.exact.title  ");
+            assertThat(saved.getPath()).isEqualTo("  /exact  ");
+            assertThat(saved.getBadge()).isEqualTo(badge);
+        });
+    }
+
+    @Test
+    void updateMenuPreservesExactStrings() {
+        MenuBo existing = menu(1L, 0L, MenuType.CATALOG, "Existing", "/existing", 1);
+        doReturn(existing).when(menus).getById(1L);
+        doReturn(true).when(menus).updateById(any(MenuBo.class));
+        MenuDto update = validMenu(MenuType.CATALOG);
+        update.setId(1L);
+        update.setName("  UpdatedCatalog  ");
+        update.setTitle("  menu.updated.title  ");
+        update.setPath("  /updated  ");
+        update.setBadge("   ");
+
+        menus.updateMenu(update);
+
+        ArgumentCaptor<MenuBo> updatedMenu = ArgumentCaptor.forClass(MenuBo.class);
+        verify(menus).updateById(updatedMenu.capture());
+        assertThat(updatedMenu.getValue()).satisfies(updated -> {
+            assertThat(updated.getName()).isEqualTo("  UpdatedCatalog  ");
+            assertThat(updated.getTitle()).isEqualTo("  menu.updated.title  ");
+            assertThat(updated.getPath()).isEqualTo("  /updated  ");
+            assertThat(updated.getBadge()).isEqualTo("   ");
+        });
     }
 
     @ParameterizedTest(name = "accepts exact {0} business limit")
@@ -442,5 +495,12 @@ class MenuServiceImplTest {
                 Arguments.of(MenuType.EMBEDDED, "iframeSrc", "Embedded page URL is required."),
                 Arguments.of(MenuType.LINK, "path", "Route path is required."),
                 Arguments.of(MenuType.LINK, "link", "External URL is required."));
+    }
+
+    private static Stream<Arguments> exactMenuBadges() {
+        return Stream.of(
+                Arguments.of("null", (Object) null),
+                Arguments.of("empty", ""),
+                Arguments.of("whitespace-only", "   "));
     }
 }

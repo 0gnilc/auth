@@ -26,13 +26,15 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.LocaleResolver;
 import org.springframework.web.servlet.i18n.AcceptHeaderLocaleResolver;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
- * Opt-in configuration for the common REST exception handling policy.
+ * 由应用显式导入的 REST 异常出口与请求语言配置。
  *
- * <p>Applications control activation by explicitly importing this configuration.</p>
+ * <p>业务错误使用 R.code，HTTP 状态由具体异常分支决定；二者不互相替代。</p>
  */
 @Import(I18nMessageService.class)
 public class RestExceptionHandlingConfiguration {
@@ -51,6 +53,7 @@ public class RestExceptionHandlingConfiguration {
         return new RestExceptionControllerAdvice(i18nMessageService);
     }
 
+    /** 保留已知错误的业务文案；对未预期异常记录诊断原因并向调用方返回通用本地化提示。 */
     @RestControllerAdvice
     @Order(Ordered.LOWEST_PRECEDENCE)
     @Conditional(ExplicitImportOnlyCondition.class)
@@ -63,6 +66,7 @@ public class RestExceptionHandlingConfiguration {
             this.i18nMessageService = i18nMessageService;
         }
 
+        /** 返回字段错误集合；该校验日志只记录字段与约束码，不输出用户提交的被拒绝值。 */
         @ExceptionHandler(MethodArgumentNotValidException.class)
         public R<?> handleMethodArgumentNotValid(MethodArgumentNotValidException exception) {
             BindingResult bindingResult = exception.getBindingResult();
@@ -77,7 +81,12 @@ public class RestExceptionHandlingConfiguration {
                     .filter(value -> value != null && !value.isBlank())
                     .findFirst()
                     .orElse(i18nMessageService.get("validation.argument.invalid"));
-            log.warn("Request validation failed: {}", message);
+            String diagnostics = fieldErrors.stream()
+                    .map(error -> error.getField() + ":"
+                            + (error.getCode() == null
+                            ? "Unknown" : error.getCode()))
+                    .collect(Collectors.joining(", "));
+            log.warn("Request validation failed: {}", diagnostics);
             return R.error(ResponseCode.ARGUMENT_INVALID.getCode(), message, fieldErrors);
         }
 
@@ -117,6 +126,20 @@ public class RestExceptionHandlingConfiguration {
             return R.error(ResponseCode.ILLEGAL_CONDITION, exception.getMessage());
         }
 
+        @ExceptionHandler(AuthenticationFailedException.class)
+        public R<?> handleAuthenticationFailed(AuthenticationFailedException exception) {
+            log.warn("Authentication failed: {}", exception.getMessage());
+            return R.error(ResponseCode.AUTHENTICATION_FAILED, exception.getMessage());
+        }
+
+        /** 会话缺失或失效使用 HTTP 401，供客户端已有的刷新或重新认证流程识别。 */
+        @ExceptionHandler(UnauthorizedException.class)
+        public ResponseEntity<R<?>> handleUnauthorized(UnauthorizedException exception) {
+            log.warn("Unauthorized request: {}", exception.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(R.error(ResponseCode.UNAUTHORIZED, exception.getMessage()));
+        }
+
         @ExceptionHandler(UnknownErrorException.class)
         public ResponseEntity<R<?>> handleUnknownError(UnknownErrorException exception) {
             log.error("Application error", exception);
@@ -124,6 +147,15 @@ public class RestExceptionHandlingConfiguration {
                     .body(R.error(ResponseCode.ERROR, exception.getMessage()));
         }
 
+        @ExceptionHandler(NoResourceFoundException.class)
+        public ResponseEntity<R<?>> handleNoResourceFoundException(NoResourceFoundException exception) {
+            log.warn("No resource found: {}", exception.getResourcePath());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(R.error(ResponseCode.NO_RESOURCE_FOUND,
+                            exception.getMessage()));
+        }
+
+        /** 意外失败保留服务端异常链，响应使用通用文案，不将实现异常消息直接暴露给客户端。 */
         @ExceptionHandler(Exception.class)
         public ResponseEntity<R<?>> handleUnexpectedException(Exception exception) {
             log.error("Unhandled exception", exception);
@@ -134,8 +166,7 @@ public class RestExceptionHandlingConfiguration {
     }
 
     /**
-     * Prevents component scanning from activating the advice. The configuration's
-     * {@link Bean} method remains the only registration path.
+     * 阻止组件扫描自行启用异常处理器；配置中的 {@link Bean} 方法是显式注册入口。
      */
     static final class ExplicitImportOnlyCondition implements Condition {
         @Override

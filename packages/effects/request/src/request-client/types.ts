@@ -26,7 +26,10 @@ type ExtendOptions<T = any> = {
    * - data: 解构响应的BODY数据，只返回其中的data节点数据（会检查status和code是否为成功状态）。
    */
   responseReturn?: 'body' | 'data' | 'raw';
+  /** 是否使用应用级默认错误提示。 */
+  showErrorMessage?: boolean;
 };
+
 type RequestClientConfig<T = any> = AxiosRequestConfig<T> & ExtendOptions<T>;
 
 type RequestResponse<T = any> = AxiosResponse<T> & {
@@ -65,7 +68,19 @@ interface ResponseInterceptorConfig<T = any> {
   rejected?: (error: any) => any;
 }
 
-type MakeErrorMessageFn = (message: string, error: any) => void;
+type RequestErrorType =
+  | 'bad-request'
+  | 'forbidden'
+  | 'internal-server-error'
+  | 'network-error'
+  | 'not-found'
+  | 'request-timeout'
+  | 'unauthorized';
+
+interface ErrorMessageInterceptorOptions {
+  onError: (message: string, error: unknown) => void;
+  resolveMessage: (type: RequestErrorType, error: unknown) => string;
+}
 
 interface HttpResponse<T = any> {
   /**
@@ -78,11 +93,12 @@ interface HttpResponse<T = any> {
 }
 
 export type {
+  ErrorMessageInterceptorOptions,
   HttpResponse,
-  MakeErrorMessageFn,
   RequestClientConfig,
   RequestClientOptions,
   RequestContentType,
+  RequestErrorType,
   RequestInterceptorConfig,
   RequestResponse,
   ResponseInterceptorConfig,

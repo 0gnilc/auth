@@ -1,5 +1,6 @@
 package com.gnilc.common.exception;
 
+/** 当前业务状态或条件不满足操作要求时抛出的异常。 */
 public class IllegalConditionException extends RuntimeException {
     public IllegalConditionException() {
     }

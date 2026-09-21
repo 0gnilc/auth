@@ -1,0 +1,88 @@
+{
+  "title": "菜单管理",
+  "root": "根菜单",
+  "filters": {
+    "keyword": "关键词"
+  },
+  "actions": {
+    "create": "新增菜单",
+    "append": "新增下级"
+  },
+  "types": {
+    "catalog": "目录",
+    "menu": "菜单",
+    "embedded": "内嵌页面",
+    "link": "外链",
+    "button": "按钮"
+  },
+  "table": {
+    "title": "菜单标题",
+    "name": "菜单名称",
+    "type": "类型",
+    "accessCode": "按钮权限码",
+    "path": "路径",
+    "status": "状态"
+  },
+  "drawer": {
+    "createTitle": "新增菜单",
+    "editTitle": "修改菜单"
+  },
+  "sections": {
+    "routing": "路由配置",
+    "badgeAndTabs": "徽标与标签页",
+    "behavior": "显示与行为"
+  },
+  "form": {
+    "type": "菜单类型",
+    "typeImmutable": "保存成功后类型不可再修改",
+    "parent": "上级菜单",
+    "name": "菜单名称",
+    "title": "菜单标题",
+    "path": "路由路径",
+    "component": "组件路径",
+    "accessCode": "按钮权限码",
+    "iframeSrc": "内嵌页面 URL",
+    "link": "外链 URL",
+    "status": "启用状态",
+    "order": "排序",
+    "redirect": "重定向",
+    "activePath": "激活菜单路径",
+    "icon": "图标",
+    "query": "路由查询参数（JSON 对象）",
+    "badge": "徽标内容",
+    "badgeType": "徽标类型",
+    "badgeVariants": "徽标样式",
+    "affixTabOrder": "固定标签页排序",
+    "maxNumOfOpenTab": "最大同名标签数",
+    "affixTab": "固定标签页",
+    "fullPathKey": "完整路径作为标签 Key",
+    "hideChildrenInMenu": "隐藏子菜单",
+    "hideInBreadcrumb": "在面包屑隐藏",
+    "hideInMenu": "在菜单隐藏",
+    "hideInTab": "在标签页隐藏",
+    "keepAlive": "缓存页面",
+    "noBasicLayout": "不使用基础布局",
+    "openInNewWindow": "在新窗口打开"
+  },
+  "validation": {
+    "type": "请选择菜单类型",
+    "parent": "请选择上级菜单",
+    "name": "请输入菜单名称",
+    "title": "请配置菜单标题",
+    "path": "请输入路由路径",
+    "component": "请输入组件路径",
+    "accessCode": "请输入按钮权限码",
+    "iframeSrc": "请输入内嵌页面 URL",
+    "link": "请输入外链 URL",
+    "query": "路由查询参数必须是有效的 JSON 对象",
+    "url": "请输入完整的 http 或 https 地址",
+    "parentType": "所选上级菜单不能包含当前菜单类型"
+  },
+  "messages": {
+    "saveSuccess": "菜单已保存",
+    "removeConfirm": "确定删除“{name}”及其全部下级菜单吗？",
+    "removeTitle": "删除菜单",
+    "removeSuccess": "菜单已删除",
+    "removeImpactConfirm": "确定删除“{name}”吗？将同时删除 {descendants} 个下级节点，并影响 {roles} 个角色的菜单授权。"
+  }
+}

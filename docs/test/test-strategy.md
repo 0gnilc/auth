@@ -1,58 +1,13 @@
-# Test strategy
+# 测试策略
 
-This repository uses one test source set per owning Maven module. Test names select the execution lane:
+`pnpm test` 运行工作区和 Admin 的 Vitest 测试，以及 Server 的 Maven `test`。快速 Server 测试不依赖 Docker。
 
-| Suffix | Scope | Maven lane |
-| --- | --- | --- |
-| `*Test`, `*ControllerTest` | Unit, focused auto-configuration, and HTTP controller contracts | Surefire, `mvn -f apps/server/pom.xml test` |
-| `*MapperIT` | MyBatis-Plus mappings and MySQL behavior | Failsafe, `mvn -f apps/server/pom.xml verify` |
-| `*CacheIT`, `*IT` | Spring integration and Redis behavior | Failsafe, `mvn -f apps/server/pom.xml verify` |
-| `*ApiIT` | Random-port HTTP flows | Failsafe, `mvn -f apps/server/pom.xml verify` |
+`pnpm verify:server` 运行 Maven `verify`，增加 `*IT` 集成测试。测试使用 Testcontainers 提供的一次性 MySQL 8.4 和 Redis 8；数据清理受 test profile、显式开关和测试数据库名约束。
 
-## Package locality
+`pnpm test:e2e` 预留独立的 Admin 和 Server 端口，通过 `E2eServerIT` 启动完整应用，再运行 Playwright Chromium。已有开发服务不被关闭或复用。
 
-Test packages mirror the production packages they verify. A focused test for `com.gnilc.feature.cache.TokenCache` belongs in the same package under the owning module's `src/test/java`, and its class name should identify that target. Do not collect unrelated `context`, `provider`, `filter`, controller, or utility behavior in a module-level catch-all test class.
+`pnpm verify` 包含服务端完整验证和浏览器测试。浏览器测试首次运行需安装 Chromium：`pnpm exec playwright install chromium`。
 
-A test may cover multiple production classes when their collaboration is the behavior under test, but it stays beside the narrowest shared production boundary. Mapper integration tests stay with the owning DAO package, service integration tests stay with the implementation package, and cache transaction tests stay with the cache package.
+覆盖重点：认证和授权分流、会话刷新与撤销、基础角色保护、RBAC 管理与国际化权限矩阵、缓存失效、管理员资料清空语义、部署 SQL 幂等性和启动组合。启动器测试验证端口竞争、启动失败、信号转发与资源回收。
 
-Only these support layers intentionally do not mirror one production class:
-
-- business-neutral reusable infrastructure lives in `gnilc-test-support`;
-- module-only context initializers and test applications live in that module's `support` test package;
-- deployment schema tests live beside the module that owns the schema;
-- random-port HTTP flows live beside the module that owns the API;
-- only final whole-application composition and startup checks live in `gnilc-bootstrap`.
-
-## Infrastructure
-
-`gnilc-test-support` contains only business-neutral test infrastructure:
-
-- JVM-scoped MySQL 8.4 and Redis 8 containers;
-- Spring context property initializers;
-- guarded database and Redis cleanup;
-- API baseline reset orchestration;
-- RestAssured random-port setup.
-
-The deployment scripts under `deploy/sql` are the only schema input. The owning modules copy only their required scripts to the test classpath and initialize them in the temporary MySQL database. Each owning module declares which deployment scripts and MyBatis properties its tests need; the shared support module contains no RBAC or admin schema knowledge. Module tests never use H2, a local database, or a local Redis service.
-
-## Isolation
-
-Mapper and service integration tests use Spring transaction rollback. Redis tests flush the isolated container database after each method. Random-port API tests cannot rely on test transactions, so `@ApiTest` performs this lifecycle:
-
-1. verify the active `test` profile, cleanup flag, database name, actual JDBC endpoint, and actual Redis host, port, and database against the running Testcontainers instances;
-2. flush Redis and truncate all business tables;
-3. run application-owned `BaselineDataSeeder` beans;
-4. flush Redis again;
-5. execute the test;
-6. flush Redis and truncate business tables after the test.
-
-The system module owns the admin API baseline. It replays the real admin deployment seed and adds the protected-path permissions, menu, and limited-role account needed by its API test flows.
-
-## Commands
-
-```bash
-mvn -f apps/server/pom.xml test
-mvn -f apps/server/pom.xml verify
-```
-
-`mvn -f apps/server/pom.xml test` must remain Docker-free. `mvn -f apps/server/pom.xml verify` requires Docker and fails instead of substituting a different database or cache.
+CI 根据改动范围选择工作区、Admin、Server 和浏览器任务。Server schema、资源、配置、DAO、缓存与集成测试变更触发完整服务端验证；公共 API 边界变更同时触发浏览器验证。最终 CI gate 校验所有已选择任务的实际结果。

@@ -1,5 +1,8 @@
 package com.gnilc.bootstrap.inspector;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.Data;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -10,6 +13,7 @@ import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
+import java.math.BigDecimal;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -17,16 +21,16 @@ import java.util.Set;
 import java.util.stream.Stream;
 
 /**
- * Logs the request mappings registered by Spring MVC after application startup.
+ * 应用启动完成后记录 Spring MVC 实际注册的请求映射，仅用于诊断，不写入权限目录。
  */
 @Component
 public class RequestMappingInspector {
     private static final Logger log = LoggerFactory.getLogger(RequestMappingInspector.class);
     private static final String ANY_METHOD = "*";
     private static final Comparator<MappingLogEntry> LOG_ORDER = Comparator
-            .comparing(MappingLogEntry::method)
-            .thenComparing(MappingLogEntry::path)
-            .thenComparing(MappingLogEntry::handler);
+            .comparing(MappingLogEntry::getMethod)
+            .thenComparing(MappingLogEntry::getPath)
+            .thenComparing(MappingLogEntry::getHandler);
 
     private final RequestMappingHandlerMapping handlerMapping;
 
@@ -35,13 +39,14 @@ public class RequestMappingInspector {
     }
 
     /**
-     * Logs every path and HTTP method combination once the application is ready.
+     * 应用就绪后展开并排序每个路径与 HTTP 方法组合；未限定方法的映射显示为星号。
      */
     @EventListener(ApplicationReadyEvent.class)
     public void logMappings() {
         List<MappingLogEntry> mappings = inspectMappings();
         mappings.forEach(mapping -> log.info(
-                "Request mapping: {} {} -> {}", mapping.method(), mapping.path(), mapping.handler()));
+                "Request mapping: {} {} -> {}",
+                mapping.getMethod(), mapping.getPath(), mapping.getHandler()));
         log.info("Discovered {} request mappings", mappings.size());
     }
 
@@ -64,6 +69,10 @@ public class RequestMappingInspector {
                 .map(path -> new MappingLogEntry(method, path, handler)));
     }
 
-    record MappingLogEntry(String method, String path, String handler) {
+    @Data
+    static final class MappingLogEntry {
+        private final String method;
+        private final String path;
+        private final String handler;
     }
 }

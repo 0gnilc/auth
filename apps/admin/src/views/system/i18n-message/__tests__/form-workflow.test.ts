@@ -3,7 +3,7 @@ import { shallowMount } from '@vue/test-utils';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import I18nMessageForm from '../modules/form.vue';
+import I18nMessageForm from '../components/form.vue';
 
 const runtime = vi.hoisted(() => ({
   api: {
@@ -62,13 +62,13 @@ vi.mock('#/adapter/form', async () => {
   };
 });
 
-vi.mock('#/api', () => runtime.api);
+vi.mock('#/api/system', () => runtime.api);
 vi.mock('#/locales', () => ({ $t: (key: string) => key }));
 vi.mock('#/locales/dynamic', () => ({
   reloadDynamicMessages: runtime.reloadDynamicMessages,
 }));
-vi.mock('../../components/dirty', () => ({
-  confirmDrawerClose: vi.fn(),
+vi.mock('#/adapter/confirm-discard-changes', () => ({
+  confirmDiscardChanges: vi.fn(),
 }));
 vi.mock('element-plus', () => ({ ElMessage: runtime.messages }));
 
@@ -92,7 +92,7 @@ describe('internationalization message form workflow', () => {
     runtime.reloadDynamicMessages.mockResolvedValue(undefined);
   });
 
-  it('validates locale value limits by Unicode code points', () => {
+  it('本地化文本长度按 Unicode 码点限制', () => {
     const supplementaryCharacter = '\u{1F600}';
     const wrapper = shallowMount(I18nMessageForm);
 
@@ -104,7 +104,7 @@ describe('internationalization message form workflow', () => {
     wrapper.unmount();
   });
 
-  it('creates a new message through the create-only endpoint', async () => {
+  it('新增消息只调用创建接口，不覆盖已有 Key', async () => {
     runtime.drawerData = { categories: ['default', 'admin'] };
     const wrapper = shallowMount(I18nMessageForm);
     const options = runtime.drawerOptions;
@@ -132,7 +132,7 @@ describe('internationalization message form workflow', () => {
     wrapper.unmount();
   });
 
-  it('continues to edit an existing message through the save endpoint', async () => {
+  it('编辑已有消息调用保存接口并保持 Key 身份', async () => {
     runtime.drawerData = {
       categories: ['default', 'admin'],
       row: {
@@ -180,7 +180,7 @@ describe('internationalization message form workflow', () => {
     };
 
     runtime.api.createI18nMessage.mockRejectedValueOnce(new Error('timeout'));
-    await expect(options.onConfirm()).rejects.toThrow('timeout');
+    await expect(options.onConfirm()).resolves.toBeUndefined();
 
     expect(runtime.drawerApi.lock).toHaveBeenCalledOnce();
     expect(runtime.drawerApi.unlock).toHaveBeenCalledOnce();

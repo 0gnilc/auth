@@ -18,6 +18,7 @@ interface AccessState {
  */
 export const useUserStore = defineStore('core-user', {
   actions: {
+    /** 身份更新时同步替换角色代码；清空身份也清空角色，不保留上一会话的前端权限依据。 */
     setUserInfo(userInfo: BasicUserInfo | null) {
       // 设置用户信息
       this.userInfo = userInfo;

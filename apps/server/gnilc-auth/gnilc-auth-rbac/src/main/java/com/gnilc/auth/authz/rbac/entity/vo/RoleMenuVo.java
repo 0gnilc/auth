@@ -6,25 +6,15 @@ import lombok.Data;
 
 import java.io.Serializable;
 
-/**
- * 角色关联菜单(多对多)
- * 
- * @author kyhns7
- */
+/** 一条角色菜单绑定的查询结果。 */
 @Data
 public class RoleMenuVo  {
 
-	/**
-	 * id
-	 */
+	/** 记录的数据库主键。 */
 	private Long id;
-	/**
-	 * 角色id
-	 */
+	/** 所关联角色的数据库 ID。 */
 	private Long roleId;
-	/**
-	 * 菜单id
-	 */
+	/** 所关联菜单的数据库 ID。 */
 	private Long menuId;
 
 }

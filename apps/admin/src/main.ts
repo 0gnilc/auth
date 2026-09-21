@@ -1,4 +1,6 @@
 import { initPreferences } from '@vben/preferences';
+import '@vben/styles';
+import '@vben/styles/ele';
 import { unmountGlobalLoading } from '@vben/utils';
 
 import { overridesPreferences } from './preferences';

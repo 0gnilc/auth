@@ -34,18 +34,25 @@ import { COLOR_PRESETS } from '@vben/preferences';
 import { prompt } from '@vben-core/popup-ui';
 
 const headingLevels = [1, 2, 3, 4] as const;
+const semanticColorPresets = {
+  destructive: 'hsl(347 77% 60%)',
+  foreground: 'hsl(240 5% 26%)',
+  primary: 'hsl(212 100% 45%)',
+  success: 'hsl(161 90% 43%)',
+  warning: 'hsl(42 84% 61%)',
+} as const;
 const editorColorPresets = [
-  'hsl(var(--foreground))',
-  'hsl(var(--warning))',
-  'hsl(var(--success))',
-  'hsl(var(--destructive))',
+  semanticColorPresets.foreground,
+  semanticColorPresets.warning,
+  semanticColorPresets.success,
+  semanticColorPresets.destructive,
   ...COLOR_PRESETS.map((item) => item.color),
 ];
 const editorHighlightPresets = [
-  withAlpha('hsl(var(--warning))', 0.45),
-  withAlpha('hsl(var(--success))', 0.35),
-  withAlpha('hsl(var(--primary))', 0.3),
-  withAlpha('hsl(var(--destructive))', 0.3),
+  withAlpha(semanticColorPresets.warning, 0.45),
+  withAlpha(semanticColorPresets.success, 0.35),
+  withAlpha(semanticColorPresets.primary, 0.3),
+  withAlpha(semanticColorPresets.destructive, 0.3),
   ...COLOR_PRESETS.map((item) => withAlpha(item.color, 0.4)),
 ];
 
@@ -297,11 +304,6 @@ export function createToolbarGroups(
                     },
                     label: $t('ui.tiptap.toolbar.imageUpload'),
                     shortLabel: 'UPL',
-                  },
-                  {
-                    action: (editor) => handleImageAction(editor),
-                    label: $t('ui.tiptap.toolbar.imageUrl'),
-                    shortLabel: 'URL',
                   },
                 ],
               },

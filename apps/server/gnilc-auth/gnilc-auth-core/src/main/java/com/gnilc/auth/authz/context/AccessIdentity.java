@@ -5,11 +5,13 @@ import java.util.Map;
 
 /**
  * 一次访问的身份事实。
- * <p>
- * 身份可以表示用户、匿名访问、系统任务或服务账号；具体来源由环境 adapter 决定。
+ *  <p>
+ *  身份可以表示用户、匿名访问、系统任务或服务账号；具体来源由环境 adapter 决定。
  */
 public class AccessIdentity {
+    /** 本次访问的身份标识；具体身份来源与匿名表示由环境适配决定。 */
     private final String identifier;
+    /** 身份补充事实；构造参数为 {@code null} 时按空 Map 处理。 */
     private final Map<String, Object> attributes;
 
     /**

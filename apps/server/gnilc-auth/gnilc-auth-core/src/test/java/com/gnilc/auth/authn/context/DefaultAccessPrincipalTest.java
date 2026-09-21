@@ -7,6 +7,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/** 验证调用方修改原始属性集合后，已建立认证主体的属性快照保持不变。 */
 class DefaultAccessPrincipalTest {
     @Test
     void exposesAnImmutableAttributeSnapshot() {

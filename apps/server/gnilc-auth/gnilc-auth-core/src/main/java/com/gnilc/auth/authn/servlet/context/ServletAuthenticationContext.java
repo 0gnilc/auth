@@ -7,11 +7,13 @@ import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * Servlet 认证上下文。
- * <p>
- * 认证处理器只读取请求凭证并写出认证失败响应，不参与授权判断。
+ *  <p>
+ *  认证处理器只读取请求凭证并写出认证失败响应，不参与授权判断。
  */
 public class ServletAuthenticationContext implements AuthenticationContext {
+    /** 携带待认证凭证的 HTTP 请求，构造时必须提供。 */
     private final HttpServletRequest request;
+    /** 认证失败处理可写入的 HTTP 响应，构造时必须提供。 */
     private final HttpServletResponse response;
 
     /**

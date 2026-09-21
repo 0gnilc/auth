@@ -1,0 +1,51 @@
+{
+  "title": "权限管理",
+  "public": "公开访问",
+  "protected": "需要授权",
+  "filters": {
+    "code": "按权限标识精确查询",
+    "name": "按权限名称模糊查询",
+    "targetIdentifier": "按访问目标模糊查询",
+    "publicAccess": "访问方式"
+  },
+  "actions": {
+    "create": "新增权限",
+    "enablePublic": "确认公开"
+  },
+  "table": {
+    "code": "权限标识",
+    "name": "权限名称",
+    "qualifier": "限定符",
+    "target": "访问目标",
+    "access": "访问方式",
+    "type": "类型"
+  },
+  "drawer": {
+    "createTitle": "新增权限",
+    "editTitle": "修改权限"
+  },
+  "form": {
+    "code": "权限标识",
+    "name": "权限名称",
+    "qualifier": "目标限定符",
+    "qualifierPlaceholder": "例如 POST",
+    "targetIdentifier": "访问目标标识",
+    "remark": "描述",
+    "publicAccess": "公开访问",
+    "publicHint": "无需角色授权即可访问",
+    "protectedHint": "必须通过角色获得该权限"
+  },
+  "validation": {
+    "code": "请输入权限标识",
+    "name": "请输入权限名称",
+    "targetIdentifier": "请输入访问目标标识"
+  },
+  "messages": {
+    "saveSuccess": "权限已保存",
+    "removeConfirm": "确定删除权限“{name}”吗？",
+    "removeTitle": "删除权限",
+    "removeSuccess": "权限已删除",
+    "publicConfirm": "开启后，该访问目标将绕过角色授权检查。确定公开访问吗？",
+    "publicTitle": "确认公开访问"
+  }
+}

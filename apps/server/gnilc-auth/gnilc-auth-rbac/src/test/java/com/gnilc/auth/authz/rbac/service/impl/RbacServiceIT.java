@@ -43,6 +43,7 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+/** 在真实数据库中验证资源与关系协作、必需层级闭包、软删除标识释放和导航可达性。 */
 @SpringBootTest(classes = RbacTestApplication.class)
 @ActiveProfiles("test")
 @ContextConfiguration(initializers = RbacContainerContextInitializer.class)
@@ -155,11 +156,24 @@ class RbacServiceIT {
         assertThat(cacheLoader.loadUserPermissions(userId))
                 .containsExactly(new Permission("report:read"));
         assertThat(cacheLoader.loadTargetPermissions())
-                .contains(new TargetPermission("/reports/**", "report:read"));
+                .contains(new TargetPermission(
+                        "/reports/**", null, "report:read"));
 
         userRole.setRoleIds(List.of());
         userRoles.updateUserRole(userRole);
         assertThat(users.getRoles(userId)).isEmpty();
+    }
+
+    @Test
+    void targetPermissionLoaderPreservesQualifier() {
+        PermissionDto permission = permission(
+                "report:create", "Create reports", "/reports", false);
+        permission.setTargetQualifier("POST");
+        permissions.createPermission(permission);
+
+        assertThat(cacheLoader.loadTargetPermissions())
+                .contains(new TargetPermission(
+                        "/reports", "POST", "report:create"));
     }
 
     @Test
@@ -459,7 +473,7 @@ class RbacServiceIT {
     }
 
     @Test
-    void menuUpdateClearsNullableRoutingOptions() {
+    void menuUpdatePreservesExactStringsAndClearsNullableRoutingOptions() {
         MenuDto create = menu("Reports", "Reports", "/reports", MenuType.MENU, 0L, 10);
         create.setComponent("/reports/index");
         create.setRedirect("/reports/overview");
@@ -478,9 +492,9 @@ class RbacServiceIT {
         menus.updateMenu(update);
 
         MenuBo updated = menus.getById(stored.getId());
-        assertThat(updated.getName()).isEqualTo("Reports");
-        assertThat(updated.getPath()).isEqualTo("/reports");
-        assertThat(updated.getComponent()).isEqualTo("/reports/index");
+        assertThat(updated.getName()).isEqualTo(" Reports ");
+        assertThat(updated.getPath()).isEqualTo(" /reports ");
+        assertThat(updated.getComponent()).isEqualTo(" /reports/index ");
         assertThat(updated.getRedirect()).isNull();
         assertThat(updated.getAffixTabOrder()).isNull();
         assertThat(updated.getMaxNumOfOpenTab()).isNull();

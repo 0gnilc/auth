@@ -26,6 +26,7 @@ import java.time.Instant;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+/** 验证 RBAC 实际表映射、唯一约束、UTC 微秒精度，以及允许清空的菜单字段。 */
 @SpringBootTest(classes = RbacTestApplication.class)
 @ActiveProfiles("test")
 @ContextConfiguration(initializers = RbacContainerContextInitializer.class)

@@ -7,13 +7,16 @@ import java.util.Map;
 
 /**
  * 一次访问指向的受保护目标。
- * <p>
- * 目标可以是 Servlet 路由、消息主题、任务入口或业务访问点。限定符用于区分同一目标下的变体，
- * 例如 HTTP method 或消息消费方向。
+ *  <p>
+ *  目标可以是 Servlet 路由、消息主题、任务入口或业务访问点。限定符用于区分同一目标下的变体，
+ *  例如 HTTP method 或消息消费方向。
  */
 public class AccessTarget {
+    /** 受保护目标的标识，具体匹配方式由权限提供方约定。 */
     private final String identifier;
+    /** 目标限定符，如 HTTP 方法；可为空以表示未限定变体。 */
     private final String qualifier;
+    /** 目标补充事实；构造参数为 {@code null} 时创建空 Map。 */
     private final Map<String, Object> attributes;
 
 

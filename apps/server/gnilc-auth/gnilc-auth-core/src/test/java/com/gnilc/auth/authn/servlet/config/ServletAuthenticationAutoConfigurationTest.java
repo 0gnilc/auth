@@ -12,6 +12,7 @@ import org.springframework.context.annotation.Configuration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/** 验证只有应用提供认证处理器时才自动建立认证过滤器，避免装配空处理链。 */
 class ServletAuthenticationAutoConfigurationTest {
     @Test
     void createsFilterOnlyWhenApplicationProvidesAHandler() {

@@ -3,7 +3,6 @@ package com.gnilc.auth.authz.rbac.service.impl;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.gnilc.common.base.Preconditions;
 import com.gnilc.common.i18n.I18nMessageService;
-import com.gnilc.common.utils.BeanPropertyUtils;
 import com.gnilc.auth.authz.rbac.dao.PermissionDao;
 import com.gnilc.auth.authz.rbac.entity.bo.PermissionBo;
 import com.gnilc.auth.authz.rbac.entity.dto.PermissionDto;
@@ -23,6 +22,7 @@ import org.springframework.util.CollectionUtils;
 import java.util.LinkedHashSet;
 import java.util.List;
 
+/** 管理权限目标与公开访问标记，保护内置权限并同步清理角色绑定。 */
 @Service("permissionService")
 public class PermissionServiceImpl extends ServiceImpl<PermissionDao, PermissionBo> implements PermissionService {
     private final ApplicationEventPublisher eventPublisher;
@@ -91,6 +91,7 @@ public class PermissionServiceImpl extends ServiceImpl<PermissionDao, Permission
                 AuthorizationEvent.Action.UPDATE, permissionId));
     }
 
+    /** 禁止删除内置权限；清理角色绑定并释放唯一编码，再逻辑删除并发布权限变化事件。 */
     @Transactional
     @Override
     public void removePermission(Long id) {
@@ -166,7 +167,6 @@ public class PermissionServiceImpl extends ServiceImpl<PermissionDao, Permission
 
     private PermissionBo validatePermission(PermissionDto dto, boolean update) {
         Preconditions.checkArgument(dto != null, messages.get("rbac.permission.information.required"));
-        BeanPropertyUtils.trimToNull(dto);
         PermissionBo permission = null;
         if (update) {
             Preconditions.checkArgument(dto.getId() != null,

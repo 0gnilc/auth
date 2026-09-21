@@ -21,6 +21,7 @@ import org.springframework.core.Ordered;
 
 import java.util.Set;
 
+/** 按可用权限提供者装配授权决策与拒绝入口，默认采用命中任一所需权限的策略。 */
 @AutoConfiguration
 @AutoConfigureOrder(Ordered.HIGHEST_PRECEDENCE)
 public class AuthorizationAutoConfiguration {

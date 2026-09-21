@@ -1,0 +1,18 @@
+{
+  "actions": "Actions",
+  "builtIn": "Built-in",
+  "builtInProtected": "Built-in resources cannot be changed",
+  "cancel": "Cancel",
+  "custom": "Custom",
+  "disabled": "Disabled",
+  "edit": "Edit",
+  "enabled": "Enabled",
+  "filterPlaceholder": "Filter available items",
+  "noMatches": "No matching items",
+  "noneSelected": "Nothing selected",
+  "remove": "Delete",
+  "reset": "Reset",
+  "save": "Save",
+  "search": "Search",
+  "selected": "Selected"
+}

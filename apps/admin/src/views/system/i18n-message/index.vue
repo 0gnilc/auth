@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { I18nMessageFormDrawerData } from './modules/form.vue';
+import type { I18nMessageFormDrawerData } from './components/form.vue';
 
 import type { VxeTableGridOptions } from '#/adapter/vxe-table';
-import type { I18nMessageApi } from '#/api';
+import type { I18nMessageApi } from '#/api/system';
 
 import { onMounted, ref } from 'vue';
 
@@ -16,16 +16,18 @@ import {
   getI18nMessageCategories,
   getI18nMessagePage,
   removeI18nMessage,
-} from '#/api';
+} from '#/api/system';
 import { $t, SUPPORTED_LOCALES } from '#/locales';
 import { reloadDynamicMessages } from '#/locales/dynamic';
 
+import Form from './components/form.vue';
 import { useColumns, useGridFormSchema } from './data';
-import Form from './modules/form.vue';
 
 const categories = ref<string[]>([]);
 
+/** 动态消息表格行，增加供表格渲染使用的稳定行键。 */
 interface I18nMessageTableRow extends I18nMessageApi.MessageItem {
+  /** 表格行唯一键，由消息身份生成。 */
   rowKey: string;
 }
 
@@ -87,12 +89,12 @@ function openForm(row?: I18nMessageApi.MessageItem) {
 
 async function onDelete(row: I18nMessageApi.MessageItem) {
   await removeI18nMessage(row.messageKey);
-  ElMessage.success($t('page.i18nMessage.messages.removeSuccess'));
+  ElMessage.success($t('i18nMessage.messages.removeSuccess'));
   if (row.category === 'admin') {
     try {
       await reloadDynamicMessages();
     } catch {
-      ElMessage.warning($t('page.i18nMessage.messages.runtimeReloadFailed'));
+      ElMessage.warning($t('i18nMessage.messages.runtimeReloadFailed'));
     }
   }
   await gridApi.query();
@@ -110,7 +112,7 @@ onMounted(async () => {
 <template>
   <Page auto-content-height>
     <FormDrawer @success="refresh" />
-    <Grid :table-title="$t('page.i18nMessage.title')">
+    <Grid :table-title="$t('i18nMessage.title')">
       <template #toolbar-tools>
         <VbenButton
           v-access:code="'system:i18n-message:save'"
@@ -119,7 +121,7 @@ onMounted(async () => {
           @click="openForm()"
         >
           <IconifyIcon icon="lucide:plus" class="mr-2 size-4" />
-          {{ $t('page.i18nMessage.actions.create') }}
+          {{ $t('i18nMessage.actions.create') }}
         </VbenButton>
       </template>
 
@@ -146,7 +148,7 @@ onMounted(async () => {
           :actions="[
             {
               auth: 'system:i18n-message:save',
-              text: $t('page.rbacCommon.edit'),
+              text: $t('rbacCommon.edit'),
               onClick: () => openForm(row),
             },
           ]"
@@ -154,9 +156,9 @@ onMounted(async () => {
             {
               auth: 'system:i18n-message:remove',
               danger: true,
-              text: $t('page.i18nMessage.actions.remove'),
+              text: $t('i18nMessage.actions.remove'),
               popConfirm: {
-                title: $t('page.i18nMessage.messages.removeConfirm', {
+                title: $t('i18nMessage.messages.removeConfirm', {
                   key: row.messageKey,
                 }),
                 confirm: () => onDelete(row),

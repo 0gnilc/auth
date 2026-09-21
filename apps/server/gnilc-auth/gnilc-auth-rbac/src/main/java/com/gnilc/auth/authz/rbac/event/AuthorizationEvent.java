@@ -9,31 +9,25 @@ import java.util.Objects;
 
 /**
  * 授权事件。
- * <p>
- * 表示会影响授权结果的 RBAC 数据发生了变化。
+ *  <p>
+ *  表示会影响授权结果的 RBAC 数据发生了变化。
  */
 @Getter
 public class AuthorizationEvent<T> implements ResolvableTypeProvider {
-    /**
-     * 授权数据类型。
-     */
+    /** 授权数据类型。 */
     private final Type type;
-    /**
-     * 授权数据变更动作。
-     */
+    /** 授权数据变更动作。 */
     private final Action action;
     /**
      * 授权事件数据，具体类型和含义由 {@link #type} 决定。
-     * -- SETTER --
-     * 设置授权事件数据，并根据传入数据推导事件泛型。
+     *  -- SETTER --
+     *  设置授权事件数据，并根据传入数据推导事件泛型。
      *
-     * @param data 授权事件数据
+     *  @param data 授权事件数据
      */
     @Setter
     private T data;
-    /**
-     * 扩展上下文，用于保存未来可能需要的事件数据。
-     */
+    /** 扩展上下文，用于保存未来可能需要的事件数据。 */
     @Setter
     private Object extra;
 
@@ -89,49 +83,37 @@ public class AuthorizationEvent<T> implements ResolvableTypeProvider {
         return ResolvableType.forClassWithGenerics(AuthorizationEvent.class, generic);
     }
 
-    /**
-     * 授权数据类型。
-     */
+    /** 授权数据类型。 */
     public enum Type {
-        /**
-         * 权限数据，data 通常表示 permissionId。
-         */
+        /** 权限数据，data 通常表示 permissionId。 */
         PERMISSION,
-        /**
-         * 角色数据，data 通常表示 roleId。
-         */
+        /** 角色数据，data 通常表示 roleId。 */
         ROLE,
-        /**
-         * 用户数据，data 通常表示 userId。
-         */
+        /** 用户数据，data 通常表示 userId。 */
         USER,
-        /**
-         * 角色权限绑定关系，data 通常表示 roleId。
-         */
+        /** 角色权限绑定关系，data 通常表示 roleId。 */
         ROLE_PERMISSION,
-        /**
-         * 角色菜单绑定关系，data 通常表示 roleId。
-         */
+        /** 角色菜单绑定关系，data 通常表示 roleId。 */
         ROLE_MENU,
-        /**
-         * 用户角色绑定关系，data 通常表示 userId。
-         */
+        /** 用户角色绑定关系，data 通常表示 userId。 */
         USER_ROLE,
-        /**
-         * 全部授权数据，data 通常为空。
-         */
+        /** 全部授权数据，data 通常为空。 */
         ALL
     }
 
-    /**
-     * 授权数据变更动作。
-     */
+    /** 授权数据变更动作。 */
     public enum Action {
+        /** 未细分动作的授权数据变更。 */
         DEFAULT,
+        /** 创建授权数据。 */
         CREATE,
+        /** 更新授权数据。 */
         UPDATE,
+        /** 删除授权数据或绑定。 */
         DELETE,
+        /** 以新的完整集合替换原有授权绑定。 */
         REPLACE,
+        /** 清空指定范围的授权数据。 */
         CLEAR
     }
 }

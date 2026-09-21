@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { VxeTableGridOptions } from '#/adapter/vxe-table';
-import type { PermissionApi } from '#/api';
+import type { PermissionApi } from '#/api/system';
 
 import { Page, useVbenDrawer, VbenButton } from '@vben/common-ui';
 import { IconifyIcon } from '@vben/icons';
@@ -8,11 +8,11 @@ import { IconifyIcon } from '@vben/icons';
 import { ElMessage, ElTag } from 'element-plus';
 
 import { useVbenVxeGrid, VbenTableAction } from '#/adapter/vxe-table';
-import { getPermissionList, removePermission } from '#/api';
+import { getPermissionList, removePermission } from '#/api/system';
 import { $t } from '#/locales';
 
+import Form from './components/form.vue';
 import { useColumns, useGridFormSchema } from './data';
-import Form from './modules/form.vue';
 
 const [FormDrawer, formDrawerApi] = useVbenDrawer({
   connectedComponent: Form,
@@ -58,7 +58,7 @@ function onEdit(row: PermissionApi.Permission) {
 async function onDelete(row: PermissionApi.Permission) {
   if (row.builtIn) return;
   await removePermission(row.id);
-  ElMessage.success($t('page.systemPermission.messages.removeSuccess'));
+  ElMessage.success($t('systemPermission.messages.removeSuccess'));
   await gridApi.query();
 }
 
@@ -70,7 +70,7 @@ function refresh() {
 <template>
   <Page auto-content-height>
     <FormDrawer @success="refresh" />
-    <Grid :table-title="$t('page.systemPermission.title')">
+    <Grid :table-title="$t('systemPermission.title')">
       <template #toolbar-tools>
         <VbenButton
           v-access:code="'system:permission:create'"
@@ -78,7 +78,7 @@ function refresh() {
           @click="onCreate"
         >
           <IconifyIcon icon="lucide:plus" class="mr-2 size-4" />
-          {{ $t('page.systemPermission.actions.create') }}
+          {{ $t('systemPermission.actions.create') }}
         </VbenButton>
       </template>
 
@@ -86,19 +86,15 @@ function refresh() {
         <ElTag :type="row.publicAccess ? 'success' : 'info'" effect="plain">
           {{
             row.publicAccess
-              ? $t('page.systemPermission.public')
-              : $t('page.systemPermission.protected')
+              ? $t('systemPermission.public')
+              : $t('systemPermission.protected')
           }}
         </ElTag>
       </template>
 
       <template #type="{ row }">
         <ElTag :type="row.builtIn ? 'warning' : 'info'" effect="plain">
-          {{
-            row.builtIn
-              ? $t('page.rbacCommon.builtIn')
-              : $t('page.rbacCommon.custom')
-          }}
+          {{ row.builtIn ? $t('rbacCommon.builtIn') : $t('rbacCommon.custom') }}
         </ElTag>
       </template>
 
@@ -108,9 +104,9 @@ function refresh() {
             {
               auth: 'system:permission:update',
               disabled: row.builtIn,
-              text: $t('page.rbacCommon.edit'),
+              text: $t('rbacCommon.edit'),
               tooltip: row.builtIn
-                ? $t('page.rbacCommon.builtInProtected')
+                ? $t('rbacCommon.builtInProtected')
                 : undefined,
               onClick: () => onEdit(row),
             },
@@ -120,9 +116,9 @@ function refresh() {
               auth: 'system:permission:remove',
               danger: true,
               disabled: row.builtIn,
-              text: $t('page.rbacCommon.remove'),
+              text: $t('rbacCommon.remove'),
               popConfirm: {
-                title: $t('page.systemPermission.messages.removeConfirm', {
+                title: $t('systemPermission.messages.removeConfirm', {
                   name: row.name,
                 }),
                 confirm: () => onDelete(row),

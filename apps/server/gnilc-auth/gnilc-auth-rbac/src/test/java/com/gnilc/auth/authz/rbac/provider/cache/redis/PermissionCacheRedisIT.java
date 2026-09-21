@@ -26,6 +26,7 @@ import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
+/** 启动真实 Redis 订阅并使用独立节点身份，验证一节点发布的命令最终到达另一节点。 */
 @SpringBootTest(classes = PermissionCacheRedisIT.RedisTestConfiguration.class)
 @ActiveProfiles("test")
 @ContextConfiguration(initializers = RedisContainerContextInitializer.class)
@@ -47,6 +48,7 @@ class PermissionCacheRedisIT {
         new RedisCleaner(connectionFactory).flushDatabase();
     }
 
+    /** 订阅回调异步到达，等待可观察的执行结果；允许重复投递，不把恰好一次执行当成广播保证。 */
     @Test
     void commandPublishedByOneNodeIsExecutedByAnotherNode() throws Exception {
         PermissionCacheResetCommand command = PermissionCacheResetCommand.userPermissions(77L);

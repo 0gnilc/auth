@@ -76,6 +76,7 @@ interface UploadContext {
   pos: number;
 }
 
+/** 使用 blob URL 标识当前上传占位节点；编辑导致位置变化时重新查找，节点已删除则不重新插回图片。 */
 function createUploadProcess(
   editor: CoreEditor,
   file: File,
@@ -87,7 +88,7 @@ function createUploadProcess(
   blobUrlTracker?.add(blobUrl);
   const insertPos = pos ?? editor.state.selection.from;
 
-  // Insert placeholder image with blob URL
+  // 临时 URL 只供编辑器预览，成功后保存对象键与展示 URL，结束或销毁时释放本地 URL。
   editor
     .chain()
     .insertContentAt(insertPos, {
@@ -120,7 +121,7 @@ function createUploadProcess(
       });
       editor.view.dispatch(transaction);
     })
-    .then((url: string) => {
+    .then(({ objectKey, url }) => {
       if (editor.isDestroyed) {
         URL.revokeObjectURL(blobUrl);
         return;
@@ -143,6 +144,7 @@ function createUploadProcess(
 
       const transaction = editor.state.tr.setNodeMarkup(currentPos, undefined, {
         ...node.attrs,
+        'data-object-key': objectKey,
         'data-upload-progress': null,
         'data-uploading': null,
         src: url,
@@ -183,6 +185,14 @@ function createCustomImage(
     addAttributes() {
       return {
         ...this.parent?.(),
+        'data-object-key': {
+          default: null,
+          parseHTML: (element) => element.dataset.objectKey,
+          renderHTML: (attributes) =>
+            attributes['data-object-key']
+              ? { 'data-object-key': attributes['data-object-key'] }
+              : {},
+        },
         'data-upload-progress': {
           default: null,
           parseHTML: (element) => element.dataset.uploadProgress,
@@ -317,7 +327,7 @@ function createCustomImage(
 
               event.preventDefault();
 
-              // Only support single image upload
+              // 单次选择只处理一张图片，避免一次文件选择创建多个未受控占位。
               const file = imageFiles[0];
               if (!file) return false;
               if (imageFiles.length > 1) {

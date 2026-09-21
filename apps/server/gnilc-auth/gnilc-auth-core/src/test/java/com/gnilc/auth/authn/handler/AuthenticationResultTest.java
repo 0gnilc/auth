@@ -10,6 +10,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+/** 验证认证成功结果保存不可变属性快照，失败结果仅保留原因和异常而不携带主体。 */
 class AuthenticationResultTest {
     @Test
     void authenticatedResultExposesAnImmutableAttributeSnapshot() {

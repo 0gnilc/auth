@@ -27,6 +27,15 @@ vite.config.mts.*
 vite.config.mjs.*
 vite.config.js.*
 vite.config.ts.*
+**/.temp
+**/.tmp
+
+# Local development credentials
+/docs/local
+/docs/research
+
+# Local deployment data
+*/*.BIN.zip
 
 # Editors and developer-specific AI tools
 .idea/
@@ -38,3 +47,7 @@ vite.config.ts.*
 .claude
 .codex
 skills-lock.json
+
+# apps
+apps/server/deploy/backup
+apps/**/**.BIN.zip

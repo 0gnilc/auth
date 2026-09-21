@@ -11,6 +11,7 @@ import {
   isDate,
   isDayjsObject,
   setCurrentTimezone,
+  toUtcInstant,
 } from '../date';
 
 dayjs.extend(utc);
@@ -78,12 +79,40 @@ describe('dateUtils', () => {
       expect(result).toMatch(/2024-10-30 \d{2}:\d{2}:\d{2}/);
     });
 
-    it('should display the same UTC instant in the selected timezone', () => {
+    it('同一 UTC 时间点随显示时区变化而不改变实际瞬间', () => {
       setCurrentTimezone('Asia/Shanghai');
       expect(formatDateTime(sampleISO)).toBe('2024-10-30 20:34:56');
 
       setCurrentTimezone('America/New_York');
       expect(formatDateTime(sampleISO)).toBe('2024-10-30 08:34:56');
+    });
+  });
+
+  describe('toUtcInstant', () => {
+    it('无偏移的本地日期时间按当前显示时区解释', () => {
+      setCurrentTimezone('Asia/Shanghai');
+
+      expect(toUtcInstant('2026-08-01 08:00:00')).toBe(
+        '2026-08-01T00:00:00.000Z',
+      );
+    });
+
+    it('自带时区偏移的输入保持原时间点', () => {
+      expect(toUtcInstant('2026-08-01T08:00:00+08:00')).toBe(
+        '2026-08-01T00:00:00.000Z',
+      );
+    });
+
+    it('显式来源时区优先于当前显示时区', () => {
+      expect(toUtcInstant('2026-08-01 08:00:00', 'America/New_York')).toBe(
+        '2026-08-01T12:00:00.000Z',
+      );
+    });
+
+    it('缺失或无效的日期边界返回省略值', () => {
+      expect(toUtcInstant()).toBeUndefined();
+      expect(toUtcInstant('')).toBeUndefined();
+      expect(toUtcInstant('not-a-date')).toBeUndefined();
     });
   });
 

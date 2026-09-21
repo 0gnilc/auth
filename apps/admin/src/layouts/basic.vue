@@ -6,19 +6,15 @@ import { useRouter } from 'vue-router';
 
 import { AuthenticationLoginExpiredModal } from '@vben/common-ui';
 import { useWatermark } from '@vben/hooks';
-import { CircleHelp, SvgGithubIcon } from '@vben/icons';
 import { BasicLayout, Notification, UserDropdown } from '@vben/layouts';
 import { preferences, usePreferences } from '@vben/preferences';
 import { useAccessStore, useUserStore } from '@vben/stores';
-import { openWindow } from '@vben/utils';
 
 import { $t } from '#/locales';
 import { useAuthStore } from '#/store';
 import LoginForm from '#/views/_core/authentication/login.vue';
 
 const notifications = ref<NotificationItem[]>([]);
-const projectUrl = 'https://github.com/gnil0416/auth';
-const projectIssuesUrl = 'https://github.com/gnil0416/auth/issues';
 
 const router = useRouter();
 const userStore = useUserStore();
@@ -36,25 +32,7 @@ const menus = computed(() => [
       router.push({ name: 'Profile' });
     },
     icon: 'lucide:user',
-    text: $t('page.auth.profile'),
-  },
-  {
-    handler: () => {
-      openWindow(projectUrl, {
-        target: '_blank',
-      });
-    },
-    icon: SvgGithubIcon,
-    text: $t('page.auth.github'),
-  },
-  {
-    handler: () => {
-      openWindow(projectIssuesUrl, {
-        target: '_blank',
-      });
-    },
-    icon: CircleHelp,
-    text: $t('page.auth.help'),
+    text: $t('auth.profile'),
   },
 ]);
 

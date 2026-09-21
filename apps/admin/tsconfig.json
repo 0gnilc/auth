@@ -4,7 +4,8 @@
   "compilerOptions": {
     "paths": {
       "#/*": ["./src/*"]
-    }
+    },
+    "types": ["vite/client", "@vben/types/global", "node"]
   },
   "references": [{ "path": "./tsconfig.node.json" }],
   "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue"]

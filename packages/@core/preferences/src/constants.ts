@@ -93,6 +93,11 @@ const DEFAULT_TIME_ZONE_OPTIONS: TimezoneOption[] = [
     label: 'Europe/London(GMT0)',
   },
   {
+    offset: 1,
+    timezone: 'Africa/Lagos',
+    label: 'Africa/Lagos(GMT+1)',
+  },
+  {
     offset: 8,
     timezone: 'Asia/Shanghai',
     label: 'Asia/Shanghai(GMT+8)',

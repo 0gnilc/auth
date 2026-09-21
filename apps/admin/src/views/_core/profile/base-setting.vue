@@ -10,7 +10,7 @@ import { ProfileBaseSetting } from '@vben/common-ui';
 import { ElMessage } from 'element-plus';
 
 import { z } from '#/adapter/form';
-import { getAdminUserInfo, updateProfile } from '#/api';
+import { getAdminUserInfo, updateProfile } from '#/api/core';
 import { $t } from '#/locales';
 import { useAuthStore } from '#/store';
 
@@ -24,22 +24,22 @@ const formSchema = computed((): VbenFormSchema[] => {
       component: 'Input',
       componentProps: {
         maxlength: 255,
-        placeholder: $t('page.profile.form.nicknamePlaceholder'),
+        placeholder: $t('profile.form.nicknamePlaceholder'),
       },
-      label: $t('page.profile.form.nickname'),
+      label: $t('profile.form.nickname'),
       rules: z
         .string()
         .trim()
-        .min(1, { message: $t('page.profile.form.nicknamePlaceholder') }),
+        .min(1, { message: $t('profile.form.nicknamePlaceholder') }),
     },
     {
       fieldName: 'avatar',
       component: 'Input',
       componentProps: {
         maxlength: 500,
-        placeholder: $t('page.profile.form.avatarPlaceholder'),
+        placeholder: $t('profile.form.avatarPlaceholder'),
       },
-      label: $t('page.profile.form.avatarUrl'),
+      label: $t('profile.form.avatar'),
     },
     {
       fieldName: 'desc',
@@ -49,20 +49,20 @@ const formSchema = computed((): VbenFormSchema[] => {
         rows: 4,
         type: 'textarea',
       },
-      label: $t('page.profile.form.description'),
+      label: $t('profile.form.description'),
     },
   ];
 });
 
 async function handleSubmit(values: Recordable<any>) {
   await updateProfile({
-    avatar: values.avatar,
-    desc: values.desc,
+    avatar: values.avatar === '' ? null : values.avatar,
+    desc: values.desc === '' ? null : values.desc,
     nickname: values.nickname,
   });
   const userInfo = await authStore.getUserInfo();
   profileBaseSettingRef.value?.getFormApi().setValues(userInfo);
-  ElMessage.success($t('page.profile.messages.basicUpdated'));
+  ElMessage.success($t('profile.messages.basicUpdated'));
 }
 
 onMounted(async () => {

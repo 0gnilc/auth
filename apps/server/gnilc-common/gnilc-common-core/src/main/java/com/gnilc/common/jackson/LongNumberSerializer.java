@@ -7,7 +7,7 @@ import com.fasterxml.jackson.databind.SerializerProvider;
 import java.io.IOException;
 
 /**
- * Serializes a {@link Long} as a JSON number even when the global Long serializer writes strings.
+ * 将指定 {@link Long} 字段输出为 JSON 数字，用于覆盖全局 Long 字符串序列化规则。
  */
 public final class LongNumberSerializer extends JsonSerializer<Long> {
     @Override

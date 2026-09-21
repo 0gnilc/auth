@@ -466,7 +466,7 @@ describe('i18n message input', () => {
     );
   });
 
-  it('requires en-US and a successful manual lookup after the key changes', async () => {
+  it('变更 Key 后必须查找成功且填写英文兜底值才能保存', async () => {
     const load = vi.fn<I18nMessageLoader>().mockResolvedValue(null);
     const { wrapper } = mountInput({ load });
     await open(wrapper);
@@ -613,7 +613,7 @@ describe('i18n message input', () => {
     ).toHaveProperty('value', 'menu.draft.title');
   });
 
-  it('ignores an older lookup response after closing and reopening for another key', async () => {
+  it('关闭并切换 Key 后旧查找响应不得覆盖新草稿', async () => {
     let resolveOlder!: (value: {
       messageKey: string;
       values: Array<{ locale: string; value: string }>;
@@ -685,7 +685,7 @@ describe('i18n message input', () => {
     expect(load).toHaveBeenLastCalledWith('menu.retry.title');
   });
 
-  it('prevents duplicate saves while the first save is pending', async () => {
+  it('当前保存未结束时不再次提交消息草稿', async () => {
     let resolveSave!: (value: {
       messageKey: string;
       values: Array<{ locale: string; value: string }>;

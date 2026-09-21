@@ -22,6 +22,7 @@ import javax.sql.DataSource;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase.Replace.NONE;
 
+/** 重复执行当前 RBAC 结构和权限脚本，核对全部表与可重入性。 */
 @JdbcTest
 @ActiveProfiles("test")
 @AutoConfigureTestDatabase(replace = NONE)

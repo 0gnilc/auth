@@ -16,7 +16,7 @@ describe('useUserStore', () => {
   });
 
   // 测试重置用户信息时的行为
-  it('clears userInfo and userRoles when setting null userInfo', () => {
+  it('清空用户资料时同步清除角色代码', () => {
     const store = useUserStore();
     store.setUserInfo({
       roleCodes: ['user'],

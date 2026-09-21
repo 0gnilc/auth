@@ -52,6 +52,25 @@ const tiptapContentClass = cn(
   'text-foreground max-h-(--vben-tiptap-max-height) min-h-(--vben-tiptap-min-height) overflow-auto leading-7 outline-none',
 );
 const blobUrlTracker = new Set<string>();
+
+/** 托管图片持久化对象键而非展示或 blob URL，并移除上传进度；未托管的普通 URL 图片保持原值。 */
+function toStorageHtml(html: string) {
+  const template = document.createElement('template');
+  template.innerHTML = html;
+  for (const image of template.content.querySelectorAll('img')) {
+    if (
+      image.dataset.objectKey ||
+      image.dataset.uploading ||
+      image.dataset.uploadProgress
+    ) {
+      image.removeAttribute('src');
+    }
+    delete image.dataset.uploadProgress;
+    delete image.dataset.uploading;
+  }
+  return template.innerHTML;
+}
+
 const editor = useEditor({
   content: modelValue.value,
   editable: props.editable,
@@ -69,19 +88,20 @@ const editor = useEditor({
     }),
   onUpdate: ({ editor }) => {
     const html = editor.getHTML();
-    if (html !== modelValue.value) {
-      modelValue.value = html;
+    const storageHtml = toStorageHtml(html);
+    if (storageHtml !== modelValue.value) {
+      modelValue.value = storageHtml;
     }
     emit('change', {
       html,
       json: editor.getJSON(),
+      storageHtml,
       text: editor.getText(),
     });
   },
 });
 const toolbarGroups = computed<ToolbarAction[][]>(() => {
-  // Only show upload toolbar option when using default extensions
-  // (custom extensions may not include the uploadImage command)
+  // 自定义扩展未必实现 uploadImage 命令，仅默认扩展自动提供上传工具栏入口。
   const effectiveImageUpload = props.extensions ? undefined : props.imageUpload;
   return createToolbarGroups(effectiveImageUpload);
 });
@@ -112,6 +132,18 @@ const {
 
 const menuOpenState = reactive<Record<string, boolean>>({});
 
+watch(
+  editor,
+  (currentEditor) => {
+    if (!currentEditor) return;
+    const storageHtml = toStorageHtml(currentEditor.getHTML());
+    if (storageHtml !== modelValue.value) {
+      modelValue.value = storageHtml;
+    }
+  },
+  { immediate: true },
+);
+
 function getMenuOpen(action: ToolbarAction): boolean {
   return menuOpenState[action.label] ?? false;
 }
@@ -141,12 +173,19 @@ watch(
       return;
     }
     const currentValue = editor.value.getHTML();
-    if (nextValue === currentValue) {
+    if (
+      nextValue === currentValue ||
+      nextValue === toStorageHtml(currentValue)
+    ) {
       return;
     }
     editor.value.commands.setContent(nextValue, {
       emitUpdate: false,
     });
+    const storageHtml = toStorageHtml(nextValue);
+    if (storageHtml !== nextValue) {
+      modelValue.value = storageHtml;
+    }
   },
 );
 onBeforeUnmount(() => {

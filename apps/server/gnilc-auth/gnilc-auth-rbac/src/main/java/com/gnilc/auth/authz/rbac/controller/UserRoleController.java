@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+/** 提供用户角色集合替换与查询入口，受保护的必需角色由业务策略阻止移除。 */
 @RestController
 @RequestMapping("/authz/user-role")
 public class UserRoleController {

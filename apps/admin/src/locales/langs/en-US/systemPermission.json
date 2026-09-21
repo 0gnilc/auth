@@ -1,0 +1,51 @@
+{
+  "title": "Permissions",
+  "public": "Public",
+  "protected": "Authorized",
+  "filters": {
+    "code": "Exact permission code",
+    "name": "Search permission name",
+    "targetIdentifier": "Search target",
+    "publicAccess": "Access mode"
+  },
+  "actions": {
+    "create": "Create permission",
+    "enablePublic": "Make public"
+  },
+  "table": {
+    "code": "Permission code",
+    "name": "Permission name",
+    "qualifier": "Qualifier",
+    "target": "Target",
+    "access": "Access",
+    "type": "Type"
+  },
+  "drawer": {
+    "createTitle": "Create permission",
+    "editTitle": "Edit permission"
+  },
+  "form": {
+    "code": "Permission code",
+    "name": "Permission name",
+    "qualifier": "Target qualifier",
+    "qualifierPlaceholder": "For example POST",
+    "targetIdentifier": "Target identifier",
+    "remark": "Description",
+    "publicAccess": "Public access",
+    "publicHint": "No role permission is required",
+    "protectedHint": "Access requires a permission granted through a role"
+  },
+  "validation": {
+    "code": "Enter a permission code",
+    "name": "Enter a permission name",
+    "targetIdentifier": "Enter a target identifier"
+  },
+  "messages": {
+    "saveSuccess": "Permission saved",
+    "removeConfirm": "Delete permission {name}?",
+    "removeTitle": "Delete permission",
+    "removeSuccess": "Permission deleted",
+    "publicConfirm": "This target will bypass role authorization checks. Make it publicly accessible?",
+    "publicTitle": "Confirm public access"
+  }
+}

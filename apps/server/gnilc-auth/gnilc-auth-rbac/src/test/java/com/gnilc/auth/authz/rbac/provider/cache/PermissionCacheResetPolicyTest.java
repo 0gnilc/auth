@@ -11,6 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+/** 验证权限、角色和用户事件映射到正确的目标、公开及用户权限缓存集合。 */
 class PermissionCacheResetPolicyTest {
     @Test
     void mapsPermissionAndRoleChangesToAffectedCaches() {

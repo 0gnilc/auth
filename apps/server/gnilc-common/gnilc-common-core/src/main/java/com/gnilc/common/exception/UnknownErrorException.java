@@ -1,5 +1,6 @@
 package com.gnilc.common.exception;
 
+/** 业务执行中未能归入参数或状态错误的异常，可保留底层失败原因。 */
 public class UnknownErrorException extends RuntimeException {
     public UnknownErrorException() {
         this("An unexpected error occurred.");

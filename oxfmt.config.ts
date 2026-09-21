@@ -18,6 +18,8 @@ export default defineConfig({
     '.output',
     '**/*.svg',
     '**/*.sh',
+    '**/auto-imports.d.ts',
+    '**/components.d.ts',
     'public',
     '.npmrc',
     '*-lock.yaml',

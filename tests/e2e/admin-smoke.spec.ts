@@ -7,6 +7,7 @@ interface ApiEnvelope<T = unknown> {
   data: T;
 }
 
+/** 读取真实测试 Server 的统一业务响应；类型断言只简化夹具访问，业务 code 仍由各场景断言。 */
 async function readApiResponse<T = unknown>(response: {
   json: () => Promise<unknown>;
 }) {
@@ -46,6 +47,7 @@ async function passSliderCaptcha(page: Page) {
   await expect(wrapper).toContainText(/Passed|验证通过/);
 }
 
+/** 先监听响应再点击，避免快速返回的登录请求在监听建立前完成。 */
 async function submitLogin(page: Page) {
   const responsePromise = page.waitForResponse(
     (response) =>
@@ -133,6 +135,7 @@ test('administrator CRUD preserves unsaved edits until the operator decides', as
   const createResponse = await createResponsePromise;
   const createBody = await readApiResponse(createResponse);
   expect(createBody.code).toBe(0);
+  await expect(drawer).toBeHidden();
 
   let row = rowContaining(page, usernameValue);
   await expect(row).toContainText('E2E Original');
@@ -190,6 +193,7 @@ test('administrator CRUD preserves unsaved edits until the operator decides', as
   await expect(rowContaining(page, usernameValue)).toHaveCount(0);
 });
 
+// 同时检查菜单可见性和直接接口访问，证明前端隐藏不能代替服务端权限执行。
 test('baseline administrators cannot see or call management capabilities', async ({
   page,
 }) => {
@@ -308,7 +312,7 @@ test('a dynamic Message Key is created without overwriting an existing resource'
   const duplicateBody = await readApiResponse(duplicateResponse);
   expect(duplicateBody.code).toBe(10_001);
   await expect(
-    page.getByText(/Message key already exists|Message key已存在/),
+    page.getByText(/Message Key (?:already exists|已存在)/),
   ).toBeVisible();
   await expect(drawer).toBeVisible();
   await expect(drawer.getByLabel(/Message Key/)).toHaveValue(messageKey);

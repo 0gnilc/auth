@@ -86,7 +86,7 @@ function setupAccessGuard(router: Router) {
       return to;
     }
 
-    // 是否已经生成过动态路由
+    // 此标记只表示本会话已构建前端菜单与路由，并非 Server 之后免于执行权限检查。
     if (accessStore.isAccessChecked) {
       return true;
     }

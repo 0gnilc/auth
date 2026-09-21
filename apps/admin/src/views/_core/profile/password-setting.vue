@@ -9,7 +9,7 @@ import { ProfilePasswordSetting, z } from '@vben/common-ui';
 
 import { ElMessage } from 'element-plus';
 
-import { updatePassword } from '#/api';
+import { updatePassword } from '#/api/core';
 import { $t } from '#/locales';
 import { useAuthStore } from '#/store';
 
@@ -18,8 +18,8 @@ const authStore = useAuthStore();
 const formSchema = computed((): VbenFormSchema[] => {
   const strongPassword = z
     .string()
-    .min(8, { message: $t('page.profile.form.passwordMinLength') })
-    .max(32, { message: $t('page.profile.form.passwordMaxLength') })
+    .min(8, { message: $t('profile.form.passwordMinLength') })
+    .max(32, { message: $t('profile.form.passwordMaxLength') })
     .refine(
       (value) =>
         !/\s/.test(value) &&
@@ -27,51 +27,51 @@ const formSchema = computed((): VbenFormSchema[] => {
         /[A-Z]/.test(value) &&
         /\d/.test(value) &&
         /[^A-Za-z0-9]/.test(value),
-      { message: $t('page.profile.form.passwordComplexity') },
+      { message: $t('profile.form.passwordComplexity') },
     );
 
   return [
     {
       fieldName: 'oldPassword',
-      label: $t('page.profile.form.oldPassword'),
+      label: $t('profile.form.oldPassword'),
       component: 'VbenInputPassword',
       componentProps: {
-        placeholder: $t('page.profile.form.oldPasswordPlaceholder'),
+        placeholder: $t('profile.form.oldPasswordPlaceholder'),
       },
       rules: z
         .string()
-        .min(1, { message: $t('page.profile.form.oldPasswordPlaceholder') }),
+        .min(1, { message: $t('profile.form.oldPasswordPlaceholder') }),
     },
     {
       fieldName: 'newPassword',
-      label: $t('page.profile.form.newPassword'),
+      label: $t('profile.form.newPassword'),
       component: 'VbenInputPassword',
       componentProps: {
         passwordStrength: true,
-        placeholder: $t('page.profile.form.newPasswordPlaceholder'),
+        placeholder: $t('profile.form.newPasswordPlaceholder'),
       },
       rules: strongPassword,
     },
     {
       fieldName: 'confirmPassword',
-      label: $t('page.profile.form.confirmPassword'),
+      label: $t('profile.form.confirmPassword'),
       component: 'VbenInputPassword',
       componentProps: {
         passwordStrength: true,
-        placeholder: $t('page.profile.form.confirmPasswordPlaceholder'),
+        placeholder: $t('profile.form.confirmPasswordPlaceholder'),
       },
       dependencies: {
         rules(values) {
           const { newPassword } = values;
           return z
             .string({
-              error: $t('page.profile.form.confirmPasswordPlaceholder'),
+              error: $t('profile.form.confirmPasswordPlaceholder'),
             })
             .min(1, {
-              message: $t('page.profile.form.confirmPasswordPlaceholder'),
+              message: $t('profile.form.confirmPasswordPlaceholder'),
             })
             .refine((value) => value === newPassword, {
-              message: $t('page.profile.form.passwordMismatch'),
+              message: $t('profile.form.passwordMismatch'),
             });
         },
         triggerFields: ['newPassword'],
@@ -82,7 +82,7 @@ const formSchema = computed((): VbenFormSchema[] => {
 
 async function handleSubmit(values: Recordable<any>) {
   await updatePassword(values.oldPassword, values.newPassword);
-  ElMessage.success($t('page.profile.messages.passwordUpdated'));
+  ElMessage.success($t('profile.messages.passwordUpdated'));
   await authStore.resetSessionToLogin();
 }
 </script>

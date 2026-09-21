@@ -9,8 +9,8 @@ import java.util.Arrays;
 
 /**
  * 菜单类型。
- * <p>
- * 数据库和 JSON 均使用小写字符串值。
+ *  <p>
+ *  数据库和 JSON 均使用小写字符串值。
  */
 @Getter
 public enum MenuType {
@@ -25,6 +25,7 @@ public enum MenuType {
     /** 按钮。 */
     BUTTON("button");
 
+    /** 用于数据库和 JSON 的稳定小写菜单类型值。 */
     @EnumValue
     @JsonValue
     private final String value;

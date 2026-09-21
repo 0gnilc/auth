@@ -1,25 +1,27 @@
-# Context Index
+# Gnilc Auth
 
-Gnilc Auth contains two related domain contexts. Read only the context relevant to the behavior being changed; read both when work crosses authentication or authorization and the administration system.
+Gnilc Auth establishes administrator identities and controls their access to administration resources.
 
-## Contexts
+## Language
 
-- [Server](apps/server/CONTEXT.md): establishes identities, evaluates protected access, and enforces backend APIs.
-- [Admin System](apps/admin/CONTEXT.md): manages administrator accounts, RBAC resources, navigation, and dynamic internationalization messages.
+**Admin User**: An administrator identity with credentials, a profile and sessions. Its profile identity differs from its authorization subject.
 
-## Code Scope
+**Authorization Subject**: The global user identity to which roles are assigned.
 
-- `apps/server/gnilc-auth/gnilc-auth-core/**` primarily belongs to Server authentication and authorization.
-- `apps/admin/**` primarily belongs to Admin System.
-- `apps/server/gnilc-system/**` and `apps/server/gnilc-auth/gnilc-auth-rbac/**` serve both contexts: read Server for enforcement behavior and Admin System for administration behavior.
-- `apps/server/deploy/sql/**` may initialize either context; follow the resource being initialized.
+**Admin Session**: A signed-in administrator's access and refresh credentials with independent expiration and revocation.
 
-## Relationships
+**Authentication**: Establishing the identity represented by a request's credentials.
 
-- **Admin System -> Server**: administrator credentials establish an access identity; roles and permissions provide authorization facts.
-- **Server -> Admin System**: the Server returns authentication or authorization outcomes but does not redefine administrator, menu, or management terminology.
-- **Dynamic internationalization -> business resources**: messages supply optional display text and never own the menus or other resources that reference their Message Keys.
+**Authorization**: Deciding whether an identity may access a protected resource.
 
-## Decisions
+**Admin Baseline Role**: The mandatory `admin` role providing navigation and self-service access without management privileges.
 
-- All architectural decisions live in the root [`docs/adr/`](docs/adr/), including decisions scoped to one context.
+**Management Role**: An independently assignable set of administrator-management or internationalization capabilities.
+
+**Built-in Resource**: A system-maintained role, permission or menu whose protected definition is distinct from its assignments.
+
+**Permission**: A rule governing access to an API resource. A public permission can allow anonymous access.
+
+**Menu**: A navigation resource or a UI action; visibility does not replace API authorization.
+
+**Message Key**: The global identity of a localized dynamic message, independent of its category and language.

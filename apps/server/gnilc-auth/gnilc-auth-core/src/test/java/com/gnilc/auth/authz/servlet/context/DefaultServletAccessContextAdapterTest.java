@@ -12,6 +12,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/** 验证 Servlet 主体与去除上下文路径后的访问目标被转换为独立授权事实。 */
 class DefaultServletAccessContextAdapterTest {
     @Test
     void extractsPrincipalAndContextRelativeTarget() {

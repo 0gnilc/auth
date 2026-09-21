@@ -41,6 +41,7 @@ public final class TestDataResetManager {
         cleanStores();
     }
 
+    /** 两类清理均尝试执行，保留首个失败并把另一个作为 suppressed 原因，避免清理异常互相覆盖。 */
     private void cleanStores() {
         RuntimeException failure = null;
         try {

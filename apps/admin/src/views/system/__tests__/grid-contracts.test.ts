@@ -40,7 +40,7 @@ vi.mock('#/adapter/form', () => ({
   z: {},
 }));
 
-vi.mock('#/api', () => ({
+vi.mock('#/api/system', () => ({
   ...runtime.api,
   MenuApi: {
     BadgeTypes: [],
@@ -214,7 +214,7 @@ describe('system management grid contracts', () => {
     });
   });
 
-  it('keeps an admin status switch unchanged on cancel or failure and permits retry', async () => {
+  it('取消或提交失败不切换管理员状态，之后仍可重新操作', async () => {
     const admin = await captureGrid(AdminPage);
     const statusColumn = admin.gridOptions.columns.find(
       (column: Record<string, any>) => column.field === 'status',

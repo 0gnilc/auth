@@ -1,0 +1,336 @@
+package com.gnilc.core.i18n.service.impl;
+
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.gnilc.common.base.Preconditions;
+import com.gnilc.common.exception.InvalidArgumentException;
+import com.gnilc.common.i18n.I18nMessageService;
+import com.gnilc.common.utils.PageResult;
+import com.gnilc.core.i18n.I18nMessageConstants;
+import com.gnilc.core.i18n.dao.I18nMessageDao;
+import com.gnilc.core.i18n.entity.bo.I18nMessageBo;
+import com.gnilc.core.i18n.entity.dto.I18nMessageValueDto;
+import com.gnilc.core.i18n.entity.dto.I18nMessagePageDto;
+import com.gnilc.core.i18n.entity.dto.I18nMessageDto;
+import com.gnilc.core.i18n.entity.vo.I18nMessageValueVo;
+import com.gnilc.core.i18n.entity.vo.I18nMessageVo;
+import com.gnilc.core.i18n.entity.vo.I18nMessageItemVo;
+import com.gnilc.core.i18n.service.DynamicI18nMessageService;
+import lombok.Data;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+/** 校验全局消息路径与英语回退，在事务中保存各语言翻译并构建分类语言包。 */
+@Service
+public class DynamicI18nMessageServiceImpl extends ServiceImpl<I18nMessageDao, I18nMessageBo> implements DynamicI18nMessageService {
+
+    private static final int MAX_KEY_LENGTH = 191;
+    private static final int MAX_VALUE_LENGTH = 4000;
+    private static final Pattern KEY_PATTERN = Pattern.compile(
+            "^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)*$");
+    private static final Set<String> FORBIDDEN_SEGMENTS = Set.of(
+            "__proto__", "prototype", "constructor");
+
+    private final I18nMessageService i18nMessageService;
+
+    public DynamicI18nMessageServiceImpl(I18nMessageService i18nMessageService) {
+        this.i18nMessageService = i18nMessageService;
+    }
+
+    @Override
+    public Map<String, Object> getMessageBundle(String category) {
+        String targetCategory = requireCategory(category);
+        List<I18nMessageBo> rows = lambdaQuery()
+                .eq(I18nMessageBo::getCategory, targetCategory)
+                .orderByAsc(I18nMessageBo::getMessageKey)
+                .list();
+        Map<String, Object> bundle = new LinkedHashMap<>();
+        for (String locale : I18nMessageConstants.SUPPORTED_LOCALES) {
+            Map<String, Object> localeMessages = new LinkedHashMap<>();
+            rows.stream()
+                    .filter(row -> locale.equals(row.getLocale()))
+                    .forEach(row -> putPath(localeMessages, row.getMessageKey(), row.getI18nValue()));
+            bundle.put(locale, localeMessages);
+        }
+        return bundle;
+    }
+
+    @Override
+    public List<String> getSupportedCategories() {
+        return I18nMessageConstants.SUPPORTED_CATEGORIES;
+    }
+
+    /** 按匹配语言筛选消息键后再加载其全部翻译，避免分页把一条消息拆成多个不完整语言项。 */
+    @Override
+    public PageResult<I18nMessageItemVo> getMessagePage(I18nMessagePageDto dto) {
+        I18nMessagePageDto query = dto == null ? new I18nMessagePageDto() : dto;
+        String targetCategory = StringUtils.isBlank(query.getCategory())
+                ? null
+                : requireCategory(query.getCategory());
+        if (StringUtils.isNotBlank(query.getLocale())) {
+            requireLocale(query.getLocale());
+        }
+
+        IPage<I18nMessageBo> keyPage = lambdaQuery()
+                .select(I18nMessageBo::getCategory, I18nMessageBo::getMessageKey)
+                .eq(targetCategory != null, I18nMessageBo::getCategory, targetCategory)
+                .in(targetCategory == null,
+                        I18nMessageBo::getCategory,
+                        I18nMessageConstants.SUPPORTED_CATEGORIES)
+                .like(StringUtils.isNotBlank(query.getKey()), I18nMessageBo::getMessageKey, query.getKey())
+                .like(StringUtils.isNotBlank(query.getValue()), I18nMessageBo::getI18nValue, query.getValue())
+                .eq(StringUtils.isNotBlank(query.getLocale()), I18nMessageBo::getLocale, query.getLocale())
+                .groupBy(I18nMessageBo::getCategory, I18nMessageBo::getMessageKey)
+                .orderByAsc(I18nMessageBo::getCategory, I18nMessageBo::getMessageKey)
+                .page(query.getPage());
+        List<I18nMessageBo> identities = keyPage.getRecords();
+        if (identities.isEmpty()) {
+            return PageResult.of(keyPage, List.of());
+        }
+
+        List<String> keys = identities.stream().map(I18nMessageBo::getMessageKey).distinct().toList();
+        Map<String, List<I18nMessageBo>> rowsByKey = lambdaQuery()
+                .in(I18nMessageBo::getMessageKey, keys)
+                .list()
+                .stream()
+                .collect(Collectors.groupingBy(I18nMessageBo::getMessageKey));
+        List<I18nMessageItemVo> items = identities.stream()
+                .map(row -> new I18nMessageItemVo(
+                        row.getCategory(),
+                        row.getMessageKey(),
+                        toValues(rowsByKey.getOrDefault(row.getMessageKey(), List.of()))))
+                .toList();
+        return PageResult.of(keyPage, items);
+    }
+
+    @Override
+    public I18nMessageVo getMessageValues(String messageKey) {
+        String targetKey = requireKey(messageKey);
+        List<I18nMessageBo> rows = findRows(targetKey);
+        return rows.isEmpty()
+                ? null
+                : new I18nMessageVo(rows.get(0).getCategory(), targetKey, toValues(rows));
+    }
+
+    /** 创建全局尚不存在的消息键；数据库唯一键冲突转换为同一已存在业务错误。 */
+    @Transactional
+    @Override
+    public I18nMessageVo createMessage(I18nMessageDto dto) {
+        ValidatedMessage target = validateMessage(dto);
+        Preconditions.checkArgument(findRows(target.getMessageKey()).isEmpty(),
+                i18nMessageService.get("system.i18n.targetKey.exists", target.getMessageKey()));
+        Map<String, String> values = new LinkedHashMap<>();
+        applyValues(values, target.getValues());
+
+        try {
+            persistRows(target.getCategory(), target.getMessageKey(), List.of(), values);
+        } catch (DuplicateKeyException exception) {
+            throw new InvalidArgumentException(
+                    i18nMessageService.get("system.i18n.targetKey.exists"), exception);
+        }
+        return new I18nMessageVo(target.getCategory(), target.getMessageKey(), toValues(values));
+    }
+
+    /** 保留未提交的语言，仅 null 删除指定语言；分类更新应用于该全局键全部剩余语言行。 */
+    @Transactional
+    @Override
+    public I18nMessageVo saveMessage(I18nMessageDto dto) {
+        ValidatedMessage target = validateMessage(dto);
+        List<I18nMessageBo> sourceRows = findRows(target.getMessageKey());
+        Map<String, String> mergedValues = sourceRows.stream().collect(Collectors.toMap(
+                I18nMessageBo::getLocale,
+                I18nMessageBo::getI18nValue,
+                (left, right) -> right,
+                LinkedHashMap::new));
+        applyValues(mergedValues, target.getValues());
+
+        Preconditions.checkArgument(!sourceRows.isEmpty() || !mergedValues.isEmpty(),
+                i18nMessageService.get("system.i18n.save.empty"));
+
+        persistRows(target.getCategory(), target.getMessageKey(), sourceRows, mergedValues);
+        return new I18nMessageVo(target.getCategory(), target.getMessageKey(), toValues(mergedValues));
+    }
+
+    private ValidatedMessage validateMessage(I18nMessageDto dto) {
+        Preconditions.checkArgument(dto != null, i18nMessageService.get("system.i18n.message.required"));
+        String targetCategory = requireCategory(dto.getCategory());
+        String targetKey = requireKey(dto.getMessageKey());
+        List<I18nMessageValueDto> submittedValues = validateValues(dto.getValues());
+        validatePathConflict(targetKey);
+        return new ValidatedMessage(targetCategory, targetKey, submittedValues);
+    }
+
+    @Transactional
+    @Override
+    public void removeMessage(String messageKey) {
+        String targetKey = requireKey(messageKey);
+        lambdaUpdate()
+                .eq(I18nMessageBo::getMessageKey, targetKey)
+                .remove();
+    }
+
+    private String requireCategory(String category) {
+        Preconditions.checkArgument(category != null && !category.isEmpty(),
+                i18nMessageService.get("system.i18n.category.required"));
+        Preconditions.checkArgument(I18nMessageConstants.SUPPORTED_CATEGORIES.contains(category),
+                i18nMessageService.get("system.i18n.category.unsupported", category));
+        return category;
+    }
+
+    private String requireKey(String messageKey) {
+        Preconditions.checkArgument(messageKey != null && !messageKey.isEmpty(),
+                i18nMessageService.get("system.i18n.key.required"));
+        Preconditions.checkArgument(messageKey.length() <= MAX_KEY_LENGTH,
+                i18nMessageService.get("system.i18n.key.tooLong", MAX_KEY_LENGTH));
+        Preconditions.checkArgument(KEY_PATTERN.matcher(messageKey).matches(),
+                i18nMessageService.get("system.i18n.key.invalid"));
+        Preconditions.checkArgument(Stream.of(messageKey.split("\\."))
+                        .noneMatch(FORBIDDEN_SEGMENTS::contains),
+                i18nMessageService.get("system.i18n.key.invalid"));
+        return messageKey;
+    }
+
+    private String requireLocale(String locale) {
+        Preconditions.checkArgument(I18nMessageConstants.SUPPORTED_LOCALES.contains(locale),
+                i18nMessageService.get("system.i18n.locale.unsupported", locale));
+        return locale;
+    }
+
+    private List<I18nMessageValueDto> validateValues(List<I18nMessageValueDto> values) {
+        Preconditions.checkArgument(values != null, i18nMessageService.get("system.i18n.value.required"));
+        Set<String> locales = new HashSet<>();
+        for (I18nMessageValueDto value : values) {
+            Preconditions.checkArgument(value != null, i18nMessageService.get("system.i18n.value.required"));
+            String locale = requireLocale(value.getLocale());
+            Preconditions.checkArgument(locales.add(locale),
+                    i18nMessageService.get("system.i18n.locale.duplicate", locale));
+            Preconditions.checkArgument(value.getValue() == null
+                            || value.getValue().codePointCount(0, value.getValue().length()) <= MAX_VALUE_LENGTH,
+                    i18nMessageService.get("system.i18n.value.tooLong", MAX_VALUE_LENGTH));
+        }
+        boolean hasFallback = values.stream().anyMatch(value ->
+                "en-US".equals(value.getLocale()) && StringUtils.isNotBlank(value.getValue()));
+        Preconditions.checkArgument(hasFallback, i18nMessageService.get("system.i18n.fallback.required"));
+        return values;
+    }
+
+    /** 拒绝消息键间的祖先或后代路径冲突，避免运行时嵌套对象同时充当叶子字符串。 */
+    private void validatePathConflict(String targetKey) {
+        List<String> existingKeys = lambdaQuery()
+                .select(I18nMessageBo::getMessageKey)
+                .list()
+                .stream()
+                .map(I18nMessageBo::getMessageKey)
+                .distinct()
+                .toList();
+        String conflict = existingKeys.stream()
+                .filter(key -> !key.equals(targetKey))
+                .filter(key -> key.startsWith(targetKey + ".") || targetKey.startsWith(key + "."))
+                .findFirst()
+                .orElse(null);
+        Preconditions.checkCondition(conflict == null,
+                i18nMessageService.get("system.i18n.key.pathConflict", targetKey, conflict));
+    }
+
+    private List<I18nMessageBo> findRows(String messageKey) {
+        return lambdaQuery()
+                .eq(I18nMessageBo::getMessageKey, messageKey)
+                .list();
+    }
+
+    private void applyValues(Map<String, String> values, List<I18nMessageValueDto> submittedValues) {
+        for (I18nMessageValueDto submitted : submittedValues) {
+            // null 是明确删除信号；空字符串与空白翻译保持原值，不能归一化后误删可选语言。
+            if (submitted.getValue() == null) {
+                values.remove(submitted.getLocale());
+            } else {
+                values.put(submitted.getLocale(), submitted.getValue());
+            }
+        }
+    }
+
+    private void persistRows(
+            String category,
+            String messageKey,
+            List<I18nMessageBo> existingRows,
+            Map<String, String> values) {
+        Map<String, I18nMessageBo> existingByLocale = existingRows.stream().collect(Collectors.toMap(
+                I18nMessageBo::getLocale,
+                Function.identity()));
+        for (I18nMessageBo existing : existingRows) {
+            String value = values.get(existing.getLocale());
+            if (value == null) {
+                removeById(existing.getId());
+            } else if (!Objects.equals(category, existing.getCategory())
+                    || !Objects.equals(value, existing.getI18nValue())) {
+                existing.setCategory(category);
+                existing.setI18nValue(value);
+                updateById(existing);
+            }
+        }
+        values.entrySet().stream()
+                .filter(entry -> !existingByLocale.containsKey(entry.getKey()))
+                .map(entry -> newRow(category, messageKey, entry.getKey(), entry.getValue()))
+                .forEach(this::save);
+    }
+
+    private I18nMessageBo newRow(String category, String messageKey, String locale, String value) {
+        I18nMessageBo row = new I18nMessageBo();
+        row.setCategory(category);
+        row.setMessageKey(messageKey);
+        row.setLocale(locale);
+        row.setI18nValue(value);
+        return row;
+    }
+
+    /** 通过分类、全局键、语言值与路径冲突校验的消息保存载体。 */
+    @Data
+    private static final class ValidatedMessage {
+        /** 已经校验通过的动态消息分类。 */
+        private final String category;
+        /** 已校验格式、全局身份及父子路径冲突的消息键。 */
+        private final String messageKey;
+        /** 已校验语言唯一性和英语回退要求的更新项，单项 null 值表示删除该语言。 */
+        private final List<I18nMessageValueDto> values;
+    }
+
+    private List<I18nMessageValueVo> toValues(Collection<I18nMessageBo> rows) {
+        Map<String, String> values = rows.stream().collect(Collectors.toMap(
+                I18nMessageBo::getLocale,
+                I18nMessageBo::getI18nValue,
+                (left, right) -> right));
+        return toValues(values);
+    }
+
+    private List<I18nMessageValueVo> toValues(Map<String, String> values) {
+        return I18nMessageConstants.SUPPORTED_LOCALES.stream()
+                .filter(values::containsKey)
+                .map(locale -> new I18nMessageValueVo(locale, values.get(locale)))
+                .toList();
+    }
+
+    @SuppressWarnings("unchecked")
+    private void putPath(Map<String, Object> root, String messageKey, String value) {
+        String[] segments = messageKey.split("\\.");
+        Map<String, Object> cursor = root;
+        for (int index = 0; index < segments.length - 1; index++) {
+            cursor = (Map<String, Object>) cursor.computeIfAbsent(
+                    segments[index], ignored -> new LinkedHashMap<>());
+        }
+        cursor.put(segments[segments.length - 1], value);
+    }
+}

@@ -21,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasItem;
 
+/** 通过 HTTP 验证菜单生命周期和类型字段长度，删除后可重建相同业务标识。 */
 @ApiTest
 @Import(RestExceptionHandlingConfiguration.class)
 @ContextConfiguration(

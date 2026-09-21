@@ -17,11 +17,24 @@
     ".": {
       "types": "./src/index.ts",
       "default": "./src/index.ts"
+    },
+    "./decimal": {
+      "types": "./src/decimal.ts",
+      "default": "./src/decimal.ts"
+    },
+    "./cache": {
+      "types": "./src/cache.ts",
+      "default": "./src/cache.ts"
+    },
+    "./shared": {
+      "types": "./src/shared.ts",
+      "default": "./src/shared.ts"
     }
   },
   "dependencies": {
     "@vben-core/shared": "workspace:*",
     "@vben-core/typings": "workspace:*",
+    "decimal.js": "catalog:",
     "vue-router": "catalog:"
   }
 }

@@ -2,7 +2,7 @@
 import type { ChecklistDrawerData } from '../components/checklist-drawer.vue';
 
 import type { VxeTableGridOptions } from '#/adapter/vxe-table';
-import type { RoleApi } from '#/api';
+import type { RoleApi } from '#/api/system';
 
 import { Page, useVbenDrawer, VbenButton } from '@vben/common-ui';
 import { IconifyIcon } from '@vben/icons';
@@ -16,13 +16,13 @@ import {
   getRolePermissionIds,
   removeRole,
   saveRolePermissions,
-} from '#/api';
+} from '#/api/system';
 import { $t } from '#/locales';
 
 import ChecklistDrawer from '../components/checklist-drawer.vue';
+import Form from './components/form.vue';
+import Menu from './components/menu.vue';
 import { useColumns, useGridFormSchema } from './data';
-import Form from './modules/form.vue';
-import Menu from './modules/menu.vue';
 
 const [FormDrawer, formDrawerApi] = useVbenDrawer({
   connectedComponent: Form,
@@ -94,9 +94,9 @@ function onPermissions(row: RoleApi.Role) {
     },
     async save(selected) {
       await saveRolePermissions(row.id, selected);
-      ElMessage.success($t('page.systemRole.messages.permissionsSuccess'));
+      ElMessage.success($t('systemRole.messages.permissionsSuccess'));
     },
-    title: $t('page.systemRole.drawer.permissionsTitle', { name: row.name }),
+    title: $t('systemRole.drawer.permissionsTitle', { name: row.name }),
   };
   permissionsDrawerApi.setData(data).open();
 }
@@ -108,7 +108,7 @@ function onMenus(row: RoleApi.Role) {
 async function onDelete(row: RoleApi.Role) {
   if (row.builtIn) return;
   await removeRole(row.id);
-  ElMessage.success($t('page.systemRole.messages.removeSuccess'));
+  ElMessage.success($t('systemRole.messages.removeSuccess'));
   await gridApi.query();
 }
 
@@ -122,7 +122,7 @@ function refresh() {
     <FormDrawer @success="refresh" />
     <PermissionsDrawer />
     <MenusDrawer />
-    <Grid :table-title="$t('page.systemRole.title')">
+    <Grid :table-title="$t('systemRole.title')">
       <template #toolbar-tools>
         <VbenButton
           v-access:code="'system:role:create'"
@@ -130,17 +130,13 @@ function refresh() {
           @click="onCreate"
         >
           <IconifyIcon icon="lucide:plus" class="mr-2 size-4" />
-          {{ $t('page.systemRole.actions.create') }}
+          {{ $t('systemRole.actions.create') }}
         </VbenButton>
       </template>
 
       <template #type="{ row }">
         <ElTag :type="row.builtIn ? 'warning' : 'info'" effect="plain">
-          {{
-            row.builtIn
-              ? $t('page.rbacCommon.builtIn')
-              : $t('page.rbacCommon.custom')
-          }}
+          {{ row.builtIn ? $t('rbacCommon.builtIn') : $t('rbacCommon.custom') }}
         </ElTag>
       </template>
 
@@ -150,22 +146,22 @@ function refresh() {
             {
               auth: 'system:role:update',
               disabled: row.builtIn,
-              text: $t('page.rbacCommon.edit'),
+              text: $t('rbacCommon.edit'),
               tooltip: row.builtIn
-                ? $t('page.rbacCommon.builtInProtected')
+                ? $t('rbacCommon.builtInProtected')
                 : undefined,
               onClick: () => onEdit(row),
             },
             {
               auth: 'system:role:manage-permissions',
               disabled: row.builtIn,
-              text: $t('page.systemRole.actions.permissions'),
+              text: $t('systemRole.actions.permissions'),
               onClick: () => onPermissions(row),
             },
             {
               auth: 'system:role:manage-menus',
               disabled: row.builtIn,
-              text: $t('page.systemRole.actions.menus'),
+              text: $t('systemRole.actions.menus'),
               onClick: () => onMenus(row),
             },
           ]"
@@ -174,9 +170,9 @@ function refresh() {
               auth: 'system:role:remove',
               danger: true,
               disabled: row.builtIn,
-              text: $t('page.rbacCommon.remove'),
+              text: $t('rbacCommon.remove'),
               popConfirm: {
-                title: $t('page.systemRole.messages.removeConfirm', {
+                title: $t('systemRole.messages.removeConfirm', {
                   name: row.name,
                 }),
                 confirm: () => onDelete(row),

@@ -28,7 +28,8 @@ import {
   updateMenu,
   updatePermission,
   updateRole,
-} from '..';
+} from '#/api/system';
+
 import { getI18nMessageBundle } from '../../core/i18n-message';
 
 const request = vi.hoisted(() => ({ post: vi.fn() }));

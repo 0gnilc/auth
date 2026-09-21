@@ -6,6 +6,7 @@ import org.springframework.mock.web.MockHttpServletResponse;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+/** 验证认证上下文不能缺少请求或响应，防止不完整 Servlet 边界进入处理器。 */
 class ServletAuthenticationContextTest {
     @Test
     void rejectsMissingRequestOrResponse() {

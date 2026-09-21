@@ -29,6 +29,8 @@ import type {
 } from '@vben/common-ui';
 import type { Recordable } from '@vben/types';
 
+import type { DateTimeRangeProps } from './date-time-range';
+
 import { defineAsyncComponent, defineComponent, h, ref } from 'vue';
 
 import {
@@ -40,6 +42,15 @@ import {
 import { $t } from '@vben/locales';
 
 import { ElNotification } from 'element-plus';
+
+import { DateTimeRange, ElDatePicker } from './date-time-range';
+
+export type { DateTimeRangeProps, DateTimeRangeValue } from './date-time-range';
+export {
+  DateTimeRange,
+  splitRangeAttribute,
+  updateDateTimeRangeValue,
+} from './date-time-range';
 
 type ElTreeSelectSchemaProps = InstanceType<typeof ElTreeSelectType>['$props'];
 type ElTimePickerSchemaProps = InstanceType<typeof ElTimePickerType>['$props'];
@@ -67,12 +78,6 @@ const ElCheckboxGroup = defineAsyncComponent(() =>
     import('element-plus/es/components/checkbox/index'),
     import('element-plus/es/components/checkbox-group/style/css'),
   ]).then(([res]) => res.ElCheckboxGroup),
-);
-const ElDatePicker = defineAsyncComponent(() =>
-  Promise.all([
-    import('element-plus/es/components/date-picker/index'),
-    import('element-plus/es/components/date-picker/style/css'),
-  ]).then(([res]) => res.ElDatePicker),
 );
 const ElDivider = defineAsyncComponent(() =>
   Promise.all([
@@ -147,6 +152,11 @@ const ElUpload = defineAsyncComponent(() =>
   ]).then(([res]) => res.ElUpload),
 );
 
+const placeholderMessageKeys = {
+  input: 'ui.placeholder.input',
+  select: 'ui.placeholder.select',
+} as const satisfies Record<'input' | 'select', string>;
+
 const withDefaultPlaceholder = (
   component: Component,
   type: 'input' | 'select',
@@ -159,7 +169,7 @@ const withDefaultPlaceholder = (
       const placeholder =
         props?.placeholder ||
         attrs?.placeholder ||
-        $t(`ui.placeholder.${type}`);
+        $t(placeholderMessageKeys[type]);
       // 透传组件暴露的方法
       const innerRef = ref();
       expose(
@@ -181,6 +191,8 @@ const withDefaultPlaceholder = (
   });
 };
 
+export const Select = withDefaultPlaceholder(ElSelectV2, 'select');
+
 // 这里需要自行根据业务组件库进行适配，需要用到的组件都需要在这里类型说明
 export type ComponentType =
   | 'ApiSelect'
@@ -188,6 +200,7 @@ export type ComponentType =
   | 'Checkbox'
   | 'CheckboxGroup'
   | 'DatePicker'
+  | 'DateTimeRange'
   | 'Divider'
   | 'I18nMessageInput'
   | 'IconPicker'
@@ -211,6 +224,7 @@ export interface ComponentPropsMap {
   Checkbox: CheckboxProps;
   CheckboxGroup: CheckboxGroupProps;
   DatePicker: DatePickerProps;
+  DateTimeRange: DateTimeRangeProps;
   Divider: DividerProps;
   IconPicker: IconPickerProps;
   I18nMessageInput: I18nMessageInputProps;
@@ -313,9 +327,7 @@ async function initComponentAdapter() {
         { ...slots, default: defaultSlot },
       );
     },
-    Select: (props, { attrs, slots }) => {
-      return h(ElSelectV2, { ...props, attrs }, slots);
-    },
+    Select,
     Space: ElSpace,
     Switch: ElSwitch,
     TimePicker: (props, { attrs, slots }) => {
@@ -360,6 +372,7 @@ async function initComponentAdapter() {
         slots,
       );
     },
+    DateTimeRange,
     TreeSelect: withDefaultPlaceholder(ElTreeSelect, 'select'),
     Upload: ElUpload,
   };

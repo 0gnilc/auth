@@ -13,7 +13,7 @@
       "type": "java",
       "name": "Server: Spring Boot",
       "request": "launch",
-      "mainClass": "com.gnilc.bootstrap.AccessControlApplication",
+      "mainClass": "com.gnilc.bootstrap.AuthBootApplication",
       "projectName": "gnilc-bootstrap",
       "cwd": "${workspaceFolder}/apps/server",
       "args": "--spring.profiles.active=dev"

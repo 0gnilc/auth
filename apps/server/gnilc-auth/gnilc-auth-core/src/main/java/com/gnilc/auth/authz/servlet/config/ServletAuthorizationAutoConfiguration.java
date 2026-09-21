@@ -27,6 +27,7 @@ import org.springframework.web.servlet.DispatcherServlet;
 import java.util.ArrayList;
 import java.util.List;
 
+/** 将可替换的 Servlet 身份及目标解析器连接到授权核心，过滤器仅在完整决策入口存在时注册。 */
 @AutoConfiguration(after = {DispatcherServletAutoConfiguration.class, AuthorizationAutoConfiguration.class})
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 @ConditionalOnClass({DispatcherServlet.class, Filter.class})

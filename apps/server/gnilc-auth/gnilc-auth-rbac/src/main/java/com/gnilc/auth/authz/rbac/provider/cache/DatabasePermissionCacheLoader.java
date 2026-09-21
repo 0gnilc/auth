@@ -38,7 +38,10 @@ public class DatabasePermissionCacheLoader implements PermissionCacheLoader {
     @Override
     public List<TargetPermission> loadTargetPermissions() {
         return permissionService.list().stream().map(p ->
-                new TargetPermission(p.getTargetIdentifier(), p.getCode())
+                new TargetPermission(
+                        p.getTargetIdentifier(),
+                        p.getTargetQualifier(),
+                        p.getCode())
         ).toList();
     }
 

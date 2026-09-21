@@ -10,6 +10,7 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/** 验证只汇总支持当前上下文的所需权限来源，并消除重复权限。 */
 class DelegatingRequiredPermissionsProviderTest {
     private final AccessContext context =
             new AccessContext(new AccessIdentity("9", null), new AccessTarget("/orders", "GET"));

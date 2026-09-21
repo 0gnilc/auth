@@ -115,11 +115,19 @@ describe('requestClient', () => {
       }),
     );
     businessClient.addResponseInterceptor(
-      errorMessageResponseInterceptor((fallbackMessage, error) => {
-        const responseData = error?.response?.data ?? {};
-        showError(
-          responseData.error ?? responseData.message ?? fallbackMessage,
-        );
+      errorMessageResponseInterceptor({
+        onError: (fallbackMessage, error) => {
+          const responseData = axios.isAxiosError<{
+            error?: string;
+            message?: string;
+          }>(error)
+            ? error.response?.data
+            : undefined;
+          showError(
+            responseData?.error ?? responseData?.message ?? fallbackMessage,
+          );
+        },
+        resolveMessage: () => 'Request failed',
       }),
     );
     mock.onGet('/test/page').reply(401, {

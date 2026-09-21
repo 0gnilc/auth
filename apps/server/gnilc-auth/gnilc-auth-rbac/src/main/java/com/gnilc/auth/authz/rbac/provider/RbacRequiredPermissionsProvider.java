@@ -54,11 +54,17 @@ public class RbacRequiredPermissionsProvider implements RequiredPermissionsProvi
     String path = target.getIdentifier();
     List<TargetPermission> targetPermissions = cacheService.loadTargetPermissions();
     targetPermissions = Optional.ofNullable(targetPermissions).orElse(List.of());
-    // RBAC 第一版只使用目标标识做路径匹配，目标限定符暂不参与匹配。
     return targetPermissions.stream()
       .filter(targetPermission -> matcher.match(targetPermission.getTargetIdentifier(), path))
+      .filter(targetPermission -> matchesQualifier(
+              targetPermission.getTargetQualifier(), target.getQualifier()))
       .map(targetPermission -> new Permission(targetPermission.getCode()))
       .distinct()
       .toList();
+  }
+
+  private boolean matchesQualifier(String required, String actual) {
+    return required == null
+      || actual != null && matcher.match(required, actual);
   }
 }

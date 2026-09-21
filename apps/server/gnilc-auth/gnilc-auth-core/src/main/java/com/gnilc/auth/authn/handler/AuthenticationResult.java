@@ -9,14 +9,19 @@ import java.util.Map;
 
 /**
  * 认证结果。
- * <p>
- * 结果只表达认证是否成功；不表达授权结论，也不绑定具体运行环境。
+ *  <p>
+ *  结果只表达认证是否成功；不表达授权结论，也不绑定具体运行环境。
  */
 public class AuthenticationResult {
+    /** 是否已成功建立认证主体，不表示授权检查通过。 */
     private final boolean authenticated;
+    /** 认证成功时的非空主体；认证失败时为 {@code null}。 */
     private final AccessPrincipal principal;
+    /** 认证补充事实的只读副本；未提供或认证失败时为空 Map。 */
     private final Map<String, Object> attributes;
+    /** 认证失败原因；成功时为 {@code null}。 */
     private final String reason;
+    /** 认证失败的底层异常；成功或未提供异常时为 {@code null}。 */
     private final Throwable cause;
 
     private AuthenticationResult(boolean authenticated,

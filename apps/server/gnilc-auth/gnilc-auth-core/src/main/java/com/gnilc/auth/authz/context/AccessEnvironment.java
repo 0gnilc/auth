@@ -5,10 +5,10 @@ import java.util.Objects;
 
 /**
  * 访问环境。
- * <p>
- * 访问环境是一次授权判断所属的执行环境类型。当前默认预置 Servlet 访问环境；其他环境可通过
- * {@link #of(String)} 扩展。它是 provider 判断是否参与本次授权判断的一等事实；执行环境对象仍应由
- * adapter 翻译为 {@link AccessContext} 后再进入授权核心。
+ *  <p>
+ *  访问环境是一次授权判断所属的执行环境类型。当前默认预置 Servlet 访问环境；其他环境可通过
+ *  {@link #of(String)} 扩展。它是 provider 判断是否参与本次授权判断的一等事实；执行环境对象仍应由
+ *  adapter 翻译为 {@link AccessContext} 后再进入授权核心。
  */
 public final class AccessEnvironment {
     /**
@@ -20,6 +20,7 @@ public final class AccessEnvironment {
      */
     public static final AccessEnvironment SERVLET = new AccessEnvironment("servlet");
 
+    /** 用于匹配授权处理环境的标识；工厂方法去除首尾空白并转为小写，空输入表示未指定。 */
     private final String identifier;
 
     private AccessEnvironment(String identifier) {

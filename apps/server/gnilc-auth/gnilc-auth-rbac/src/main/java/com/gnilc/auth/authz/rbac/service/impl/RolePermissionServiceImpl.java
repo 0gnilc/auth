@@ -25,6 +25,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 
+/** 校验权限选择后替换角色权限集合，内置角色的固定授权不允许修改。 */
 @Service("rolePermissionService")
 public class RolePermissionServiceImpl extends ServiceImpl<RolePermissionDao, RolePermissionBo>
         implements RolePermissionService {
@@ -85,9 +86,9 @@ public class RolePermissionServiceImpl extends ServiceImpl<RolePermissionDao, Ro
         Preconditions.checkCondition(!Boolean.TRUE.equals(role.getBuiltIn()),
                 messages.get("rbac.role.builtIn.assignments"));
 
-        Preconditions.checkCondition(CollectionUtils.isEmpty(permissionIds)
+        Preconditions.checkArgument(CollectionUtils.isEmpty(permissionIds)
                         || permissionIds.stream().noneMatch(Objects::isNull),
-                messages.get("rbac.permission.notFound"));
+                messages.get("rbac.permission.selection.required"));
         Set<Long> newSet = CollectionUtils.isEmpty(permissionIds) ? Set.of() : Sets.newHashSet(permissionIds);
         if (!newSet.isEmpty()) {
             List<PermissionBo> selectedPermissions = permissionService.getPermissions(newSet.stream().toList());

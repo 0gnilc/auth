@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/** 验证菜单子树查询可按调用目的纳入已逻辑删除的中间节点，删除路径不得遗留其后代。 */
 @SpringBootTest(classes = RbacTestApplication.class)
 @ActiveProfiles("test")
 @ContextConfiguration(initializers = RbacContainerContextInitializer.class)

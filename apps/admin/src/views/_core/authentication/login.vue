@@ -56,7 +56,7 @@ async function handleLogin(values: Recordable<any>) {
       return;
     }
   } catch {
-    // The request interceptor presents the login error to the user.
+    // 登录流程未完成时在下方重置本地验证码；此分支并不能证明所有异常都是已展示的业务拒绝。
   }
 
   await loginRef.value?.getFormApi().setFieldValue('captcha', false);

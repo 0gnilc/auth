@@ -31,7 +31,7 @@ public class DefaultPermissionCacheService implements PermissionCacheService {
 
     @Override
     public void resetTargetPermissions() {
-        // no local state
+        // 直接读取持久化数据，没有需要失效的本地状态。
     }
 
     @Override
@@ -41,7 +41,7 @@ public class DefaultPermissionCacheService implements PermissionCacheService {
 
     @Override
     public void resetUserPermissions(Long userId) {
-        // no local state
+        // 直接读取持久化数据，没有需要失效的本地状态。
     }
 
     @Override
@@ -51,11 +51,11 @@ public class DefaultPermissionCacheService implements PermissionCacheService {
 
     @Override
     public void resetPublicAccessPermissions() {
-        // no local state
+        // 直接读取持久化数据，没有需要失效的本地状态。
     }
 
     @Override
     public void resetAll() {
-        // no local state
+        // 直接读取持久化数据，没有需要失效的本地状态。
     }
 }

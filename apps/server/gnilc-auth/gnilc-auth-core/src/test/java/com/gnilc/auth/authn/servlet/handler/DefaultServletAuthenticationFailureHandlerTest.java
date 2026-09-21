@@ -8,6 +8,7 @@ import org.springframework.mock.web.MockHttpServletResponse;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/** 验证通用认证层以 HTTP 401 结束失败请求，不承担应用业务错误封装。 */
 class DefaultServletAuthenticationFailureHandlerTest {
     @Test
     void writesUnauthorizedResponse() throws Exception {

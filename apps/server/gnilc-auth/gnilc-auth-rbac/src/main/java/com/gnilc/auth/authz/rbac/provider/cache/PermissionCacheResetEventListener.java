@@ -57,6 +57,7 @@ public class PermissionCacheResetEventListener {
 
     private void reset(List<PermissionCacheResetCommand> commands) {
         for (PermissionCacheResetCommand command : commands) {
+            // 有事务时仅在成功提交后重置并广播；无事务按监听约定立即执行，回滚事件不触发重置。
             resetExecutor.execute(command);
             redisResetTransport.ifPresent(transport -> transport.publish(command));
         }

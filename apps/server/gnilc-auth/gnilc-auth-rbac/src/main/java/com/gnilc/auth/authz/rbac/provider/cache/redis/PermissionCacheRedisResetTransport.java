@@ -83,6 +83,7 @@ public class PermissionCacheRedisResetTransport implements MessageListener {
                 () -> log.warn("Ignore malformed permission cache reset message"));
     }
 
+    /** 忽略本节点已执行过的广播，仅执行其他节点发布的重置命令；消息 ID 不承担去重保证。 */
     private void executeRemoteMessage(PermissionCacheResetRedisMessage message) {
         if (nodeId.equals(message.getNodeId())) {
             return;
@@ -98,6 +99,7 @@ public class PermissionCacheRedisResetTransport implements MessageListener {
         }
     }
 
+    /** 订阅边界将无法反序列化的消息视为无效并由调用方记录；有效消息的执行失败不在这里吞掉。 */
     private Optional<PermissionCacheResetRedisMessage> decode(byte[] body) {
         try {
             PermissionCacheResetRedisMessage message = objectMapper.readValue(

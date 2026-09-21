@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.gnilc.common.base.Preconditions;
 import com.gnilc.common.i18n.I18nMessageService;
-import com.gnilc.common.utils.BeanPropertyUtils;
 import com.gnilc.common.utils.PageResult;
 import com.gnilc.auth.authz.rbac.dao.RoleDao;
 import com.gnilc.auth.authz.rbac.entity.bo.RoleBo;
@@ -28,6 +27,7 @@ import org.springframework.util.CollectionUtils;
 import java.util.List;
 
 
+/** 管理自定义角色生命周期，保护内置角色并在删除时清理所属绑定。 */
 @Service("roleService")
 public class RoleServiceImpl extends ServiceImpl<RoleDao, RoleBo> implements RoleService {
 
@@ -134,6 +134,7 @@ public class RoleServiceImpl extends ServiceImpl<RoleDao, RoleBo> implements Rol
                 roleId));
     }
 
+    /** 禁止删除内置角色；先释放唯一编码并清理权限、菜单及用户绑定，再逻辑删除角色。 */
     @Transactional
     @Override
     public void removeRole(Long id) {
@@ -166,7 +167,6 @@ public class RoleServiceImpl extends ServiceImpl<RoleDao, RoleBo> implements Rol
 
     private RoleBo validateRole(RoleDto dto, boolean update) {
         Preconditions.checkArgument(dto != null, messages.get("rbac.role.information.required"));
-        BeanPropertyUtils.trimToNull(dto);
         RoleBo role = null;
         if (update) {
             Preconditions.checkArgument(dto.getId() != null, messages.get("rbac.role.selection.required"));

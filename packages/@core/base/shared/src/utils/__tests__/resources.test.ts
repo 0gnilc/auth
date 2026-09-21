@@ -38,25 +38,21 @@ describe('loadScript', () => {
   });
 
   it('should reject when the script fails to load', async () => {
-    let capturedScript: HTMLScriptElement | null = null;
-
     // 拦截 append，捕获 script 元素但不插入 DOM，
     // 防止 happy-dom v20+ 自动触发 load 事件
     const appendSpy = vi
       .spyOn(document.head, 'append')
-      .mockImplementation((...nodes) => {
-        for (const node of nodes) {
-          if (node instanceof HTMLScriptElement) {
-            capturedScript = node;
-          }
-        }
-      });
+      .mockImplementation(() => {});
 
     const promise = loadScript('error.js');
+    const capturedScript = appendSpy.mock.calls
+      .flat()
+      .find(
+        (node): node is HTMLScriptElement => node instanceof HTMLScriptElement,
+      );
 
     appendSpy.mockRestore();
 
-    expect(capturedScript).toBeTruthy();
     if (!capturedScript) {
       throw new Error('Expected the captured script element to exist');
     }

@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
+/** 验证每类重置命令只调用对应缓存操作，使策略与实际失效执行保持一致。 */
 class PermissionCacheResetExecutorTest {
     @Test
     void routesEveryCommandType() {

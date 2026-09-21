@@ -1,0 +1,49 @@
+{
+  "title": "I18n Messages",
+  "newMessagePlaceholder": "Create an internationalization message",
+  "filters": {
+    "key": "Message Key",
+    "keyPlaceholder": "Search by Message Key",
+    "value": "Translation",
+    "valuePlaceholder": "Search by translation",
+    "category": "Category",
+    "locale": "Locale",
+    "allLocales": "All locales"
+  },
+  "actions": {
+    "search": "Search",
+    "reset": "Reset",
+    "create": "Create",
+    "remove": "Delete",
+    "reload": "Reload"
+  },
+  "drawer": {
+    "createTitle": "Create internationalization message",
+    "editTitle": "Edit internationalization message"
+  },
+  "form": {
+    "category": "Category",
+    "messageKey": "Message Key"
+  },
+  "validation": {
+    "keyRequired": "Enter a Message Key",
+    "keyTooLong": "Message Key cannot exceed 191 characters",
+    "keyInvalid": "Message Key must be a dot-delimited identifier beginning with a letter",
+    "enRequired": "The en-US fallback text is required",
+    "valueTooLong": "A locale value cannot exceed 4000 characters"
+  },
+  "table": {
+    "category": "Category",
+    "key": "Message Key",
+    "operations": "Actions",
+    "empty": "No internationalization messages"
+  },
+  "messages": {
+    "saveSuccess": "Internationalization message saved",
+    "removeSuccess": "Internationalization message deleted",
+    "removeConfirm": "Delete every locale value for Message Key “{key}”?",
+    "removeTitle": "Delete internationalization message",
+    "runtimeReloadFailed": "Data was saved, but the current page language pack could not be refreshed",
+    "listReloadFailed": "Data changed, but the list could not be refreshed"
+  }
+}

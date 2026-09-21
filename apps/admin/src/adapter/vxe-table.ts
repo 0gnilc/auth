@@ -101,6 +101,7 @@ setupVbenVxeTable({
     vxeUI.renderer.add('CellSwitch', {
       renderTableDefault({ attrs, props }, { column, row }) {
         const loadingKey = `__loading_${column.field}`;
+        const canChange = attrs?.canChange?.(!row[column.field], row) !== false;
         const finallyProps = {
           activeText: $t('common.enabled'),
           activeValue: true,
@@ -108,12 +109,16 @@ setupVbenVxeTable({
           inactiveValue: false,
           inlinePrompt: true,
           ...props,
+          disabled: props?.disabled || !canChange,
           loading: row[loadingKey] ?? false,
           modelValue: row[column.field],
           'onUpdate:modelValue': onChange,
         };
 
         async function onChange(newValue: unknown) {
+          if (attrs?.canChange?.(newValue, row) === false) {
+            return;
+          }
           row[loadingKey] = true;
           try {
             const result = await attrs?.beforeChange?.(newValue, row);

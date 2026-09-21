@@ -4,36 +4,20 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 import java.time.Instant;
 
-/**
- * 角色
- *
- * @author kyhns7
- */
+/** 角色管理查询结果。 */
 @Data
 public class RoleVo  {
-    /**
-     * id
-     */
+    /** 记录的数据库主键。 */
     private Long id;
-    /**
-     * 创建时间
-     */
+    /** 记录创建的 UTC 时间点。 */
     @JsonFormat(shape = JsonFormat.Shape.STRING)
     private Instant createTime;
-    /**
-     * 角色标识
-     */
+    /** 角色的稳定标识码。 */
     private String code;
-    /**
-     * 角色名称
-     */
+    /** 角色显示名称。 */
     private String name;
-    /**
-     * 描述/备注
-     */
+    /** 可选的管理备注。 */
     private String remark;
-    /**
-     * 是否系统内置,0否、1是
-     */
+    /** 是否为系统维护的内置资源，决定适用的维护限制。 */
     private Boolean builtIn;
 }

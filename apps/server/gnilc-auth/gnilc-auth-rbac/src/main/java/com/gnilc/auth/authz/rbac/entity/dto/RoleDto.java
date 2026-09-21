@@ -2,27 +2,15 @@ package com.gnilc.auth.authz.rbac.entity.dto;
 
 import lombok.Data;
 
-/**
- * 角色
- *
- * @author kyhns7
- */
+/** 创建或更新角色定义的输入，更新时指定角色 ID。 */
 @Data
 public class RoleDto {
-    /**
-     * id
-     */
+    /** 更新目标的数据库 ID；创建操作不使用该值。 */
     private Long id;
-    /**
-     * 角色标识
-     */
+    /** 角色的稳定标识码。 */
     private String code;
-    /**
-     * 角色名称
-     */
+    /** 角色显示名称。 */
     private String name;
-    /**
-     * 描述/备注
-     */
+    /** 可选的管理备注。 */
     private String remark;
 }

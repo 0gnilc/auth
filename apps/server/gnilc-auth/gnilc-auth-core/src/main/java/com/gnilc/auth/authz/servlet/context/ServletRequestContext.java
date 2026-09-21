@@ -6,13 +6,16 @@ import jakarta.servlet.ServletResponse;
 
 /**
  * Servlet 请求参数包装对象。
- * <p>
- * 该对象仅用于包装一次 Servlet 请求处理过程中的 request、response 和 chain，
- * 不定义认证、授权或流程控制语义。
+ *  <p>
+ *  该对象仅用于包装一次 Servlet 请求处理过程中的 request、response 和 chain，
+ *  不定义认证、授权或流程控制语义。
  */
 public class ServletRequestContext {
+    /** 当前 Servlet 请求。 */
     private final ServletRequest request;
+    /** 当前 Servlet 响应。 */
     private final ServletResponse response;
+    /** 当前请求的后续过滤器链，仅作为上下文事实传递。 */
     private final FilterChain chain;
 
     /**

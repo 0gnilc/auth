@@ -21,10 +21,12 @@ import org.springframework.util.CollectionUtils;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 
+/** 以完整祖先闭包替换角色菜单绑定，并发布对应导航授权变化事件。 */
 @Service("roleMenuServiceImpl")
 public class RoleMenuServiceImpl extends ServiceImpl<RoleMenusDao, RoleMenuBo> implements RoleMenuService {
     private final MenuService menuService;
@@ -69,6 +71,7 @@ public class RoleMenuServiceImpl extends ServiceImpl<RoleMenusDao, RoleMenuBo> i
                 .toList();
     }
 
+    /** 先验证选择并计算含祖先的完整菜单集合，再按差集增删绑定；停用菜单仍可保留授权。 */
     @Transactional
     @Override
     public void saveRoleMenus(RoleMenuDto dto) {
@@ -80,6 +83,9 @@ public class RoleMenuServiceImpl extends ServiceImpl<RoleMenusDao, RoleMenuBo> i
         Preconditions.checkCondition(role != null, messages.get("rbac.role.notFound"));
         Preconditions.checkCondition(!Boolean.TRUE.equals(role.getBuiltIn()),
                 messages.get("rbac.role.builtIn.assignments"));
+        Preconditions.checkArgument(CollectionUtils.isEmpty(menuIds)
+                        || menuIds.stream().noneMatch(Objects::isNull),
+                messages.get("rbac.menu.selection.required"));
 
         Set<Long> oldSet = lambdaQuery()
                 .select(RoleMenuBo::getMenuId)
@@ -92,6 +98,7 @@ public class RoleMenuServiceImpl extends ServiceImpl<RoleMenusDao, RoleMenuBo> i
         Set<Long> selectedMenuIds = CollectionUtils.isEmpty(menuIds)
                 ? Set.of()
                 : new HashSet<>(menuIds);
+        // 必须在删除旧绑定前验证全部节点并补齐祖先；无效选择不能破坏原有角色菜单。
         Set<Long> newSet = menuService.getMenusWithAncestors(selectedMenuIds, true).stream()
                 .map(MenuBo::getId)
                 .collect(Collectors.toSet());

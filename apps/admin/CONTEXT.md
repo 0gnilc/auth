@@ -1,57 +1,35 @@
 # Admin System
 
-The Admin System provides authenticated administration of administrator accounts, RBAC resources, navigation, and dynamic internationalization messages.
+Admin manages administrator identities, role assignments, navigation and dynamic internationalization.
 
-## Administrators
+## Identity And Access
 
-**Admin User**: A person identity that can sign in to the administration system and owns mutable profile data. Each Admin User has a corresponding RBAC subject. _Avoid_: User, backend user
+**Admin User**: An administrator identity with its own session and authorization subject.
 
-**Current Admin User**: The Admin User represented by the active administrator session. Self-service operations always derive their target from this identity.
+**Current Admin User**: The administrator represented by the active session; self-service targets this identity rather than a selected account.
 
-**Admin Credentials**: The username and password used to prove an Admin User's identity. Credentials are not the session or tokens issued after authentication.
+**Admin User Administration**: Management of another administrator's profile and role assignments, distinct from self-service; the current operator cannot disable or delete their own account.
 
-**Admin Session**: The authenticated login state of an Admin User. It can be refreshed or revoked independently of the user's profile.
+**Default Admin Baseline**: The recoverable bootstrap administrator and mandatory access bindings. Reinitialization preserves existing credentials and profile data.
 
-**Current Admin Self-Service**: The ability of the Current Admin User to read or update their own profile and password without selecting another Admin User.
+**Admin Access Baseline Role**: The mandatory `admin` role for shell and self-service access, without ordinary business management.
 
-**Admin User Administration**: Management of a selected Admin User's account data and role assignments. It is distinct from Current Admin Self-Service and cannot disable or delete the current operator.
+**Administration Module**: A complete resource or workflow that forms a useful unit of operator responsibility.
 
-**Default Admin Baseline**: The recoverable bootstrap Admin User, RBAC subject, baseline role, and mandatory binding required after system initialization. Recovery preserves operator-managed profile and credential data.
+**Management Role**: An independently assignable set of access for a module or an established separation of duties; it describes a capability rather than a job or person.
 
-## Roles And Resources
+**Custom Role**: An operator-owned access combination for an environment-specific need.
 
-**Admin Access Baseline Role**: The mandatory built-in `admin` role retained by every Admin User. It provides self-service and basic administration-shell access; specialized roles add management capabilities.
+**Built-in RBAC Resource**: A system-maintained Role, Permission, or Menu whose protected identity is independent of its assignments. The [role catalog](../../docs/role/role-design.md) explains the current access model.
 
-**Built-in Role**: A role whose identity, permissions, and menus are maintained by the system. It may be assigned according to its rules but cannot be redefined or deleted through administration.
+## Navigation And Messages
 
-**Built-in RBAC Resource**: A role, permission, or menu whose built-in status is intrinsic and system-maintained. Assignment does not make an ordinary resource built in.
+**Current Admin Navigation Route Tree**: The enabled, reachable menus available to the current administrator, including ancestors needed to reach usable pages.
 
-**RBAC Manager**: The built-in `rbac:manager` role that may administer Admin Users, roles, permissions, menus, and their assignments.
+**Menu Authorization Closure**: Granted menus plus their required ancestors; disabled menus can remain granted while absent from navigation.
 
-**I18n Manager**: The built-in `i18n:manager` role that may query and maintain dynamic internationalization messages across categories.
+**Button Menu**: A frontend action whose access code controls visibility independently of backend API enforcement.
 
-## Navigation
+**Message Key**: The globally unique identity of a dynamic message across locales and categories.
 
-**Current Admin Navigation Route Tree**: The enabled, reachable navigation hierarchy available to the Current Admin User. It excludes orphaned nodes and directories without a usable navigation descendant.
-
-**Menu Hierarchy**: An acyclic tree of root menus and non-root menus with exactly one parent. Parent and child types constrain which relationships are valid.
-
-**Menu Type**: The immutable classification that defines a menu's hierarchy and runtime behavior. Changing type creates a new menu identity rather than mutating the existing one.
-
-**Menu Authorization Closure**: A role's valid menu grants plus every ancestor required to connect those menus to the root. Disabled menus may remain granted even while absent from navigation.
-
-**Menu Disablement**: Temporary exclusion of a menu and its descendants from navigation without removing existing grants.
-
-**Menu Subtree Removal**: Removal of a menu, all descendants, and their role-menu grants as one operation.
-
-**Button Menu**: A leaf menu representing a frontend action. Its access code controls action visibility but is never a substitute for backend permission enforcement.
-
-## Dynamic Internationalization
-
-**I18n Message Administration**: Cross-category management of dynamic internationalization messages. Messages provide display text and do not own resources that reference them.
-
-**Message Key**: The immutable, globally unique identity of one dynamic message across locales and categories.
-
-**I18n Message Category**: A required, mutable grouping that controls administration filters and runtime bundle scope. Category is not part of message identity.
-
-**I18n Fallback Locale**: The locale used when the active locale has no message text. The fallback is `en-US`, whose value is required for every dynamic message.
+**I18n Message Category**: The mutable grouping used for message administration and runtime bundles, independent of message identity. Dynamic messages provide optional display text to business resources; [ADR-0010](../../docs/adr/0010-keep-dynamic-i18n-auxiliary-to-business-resources.md) explains their separate lifecycle.

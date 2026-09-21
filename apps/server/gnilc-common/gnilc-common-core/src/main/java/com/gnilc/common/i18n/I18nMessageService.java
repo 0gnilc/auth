@@ -37,6 +37,10 @@ public class I18nMessageService {
         return get(code, LocaleContextHolder.getLocale(), args);
     }
 
+    /**
+     * 按支持的请求语言读取静态消息；不支持的语言归一到配置的默认语言。
+     * 找不到消息时记录缺失键并返回键本身；消息源故障不转换成“缺少翻译”。
+     */
     public String get(String code, Locale locale, Object... args) {
         String messageCode = requireCode(code);
         Object[] messageArgs = args == null ? new Object[0] : args;
@@ -49,6 +53,7 @@ public class I18nMessageService {
         return message;
     }
 
+    /** 允许调用方显式提供缺少翻译时的展示文案；不能用此默认值替代业务或配置校验。 */
     public String getOrDefault(String code, String defaultMessage, Object... args) {
         String messageCode = requireCode(code);
         Object[] messageArgs = args == null ? new Object[0] : args;

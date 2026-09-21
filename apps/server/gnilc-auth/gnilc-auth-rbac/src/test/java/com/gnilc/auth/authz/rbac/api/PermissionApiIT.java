@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
 
+/** 通过 HTTP 验证权限资源生命周期、Unicode 边界及删除后业务标识可复用。 */
 @ApiTest
 @Import(RestExceptionHandlingConfiguration.class)
 @ContextConfiguration(

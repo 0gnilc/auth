@@ -12,6 +12,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/** 验证基类策略要求覆盖全部所需权限，与肯定式策略的任一匹配语义区分。 */
 class AbstractAccessDecisionTest {
     private final AccessContext context =
             new AccessContext(new AccessIdentity("9", null), new AccessTarget("/orders", "GET"));

@@ -12,6 +12,7 @@ import org.springframework.context.annotation.Configuration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/** 验证授权 Servlet 装配依赖完整决策和拒绝入口，应用可替换环境适配组件。 */
 class ServletAuthorizationAutoConfigurationTest {
     @Test
     void createsServletBeansOnlyWhenDecisionAndDeniedEntryPointExist() {

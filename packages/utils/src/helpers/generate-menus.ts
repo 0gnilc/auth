@@ -27,12 +27,8 @@ function generateMenus(
     // 获取最终的路由路径
     const path = finalRoutesMap[route.name as string] ?? route.path ?? '';
 
-    const {
-      meta = {} as RouteMeta,
-      name: routeName,
-      redirect,
-      children = [],
-    } = route;
+    const { meta: routeMeta, name: routeName, redirect, children = [] } = route;
+    const meta = (routeMeta ?? {}) as Partial<RouteMeta>;
     const {
       activeIcon,
       badge,
@@ -63,7 +59,10 @@ function generateMenus(
     }
 
     // 确定最终路径
-    const resultPath = hideChildrenInMenu ? redirect || path : link || path;
+    let resultPath = link || path;
+    if (hideChildrenInMenu) {
+      resultPath = typeof redirect === 'string' ? redirect : path;
+    }
 
     return {
       activeIcon,

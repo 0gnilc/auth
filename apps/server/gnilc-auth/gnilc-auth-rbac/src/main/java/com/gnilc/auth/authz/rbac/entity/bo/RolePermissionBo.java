@@ -7,42 +7,26 @@ import java.io.Serializable;
 import java.time.Instant;
 import lombok.Data;
 
-/**
- * 角色关联权限(多对多)
- * 
- * @author kyhns7
- */
+/** 一条角色与权限绑定的持久化记录。 */
 @Data
 @TableName("az_role_permission")
 public class RolePermissionBo implements Serializable {
 	@Serial
 	private static final long serialVersionUID = 1L;
 
-	/**
-	 * id
-	 */
+	/** 记录的数据库主键。 */
 	@TableId(type = IdType.AUTO)
 	private Long id;
-	/**
-	 * 是否删除
-	 */
+	/** 逻辑删除标记：0 表示有效，1 表示已删除。 */
 	private Integer del;
-	/**
-	 * 创建时间
-	 */
+	/** 记录创建的 UTC 时间点。 */
 	@TableField(fill = FieldFill.INSERT)
 	private Instant createTime;
-	/**
-	 * 修改时间
-	 */
+	/** 记录最近更新的 UTC 时间点；尚未记录更新时可为空。 */
 	@TableField(fill = FieldFill.UPDATE)
 	private Instant updateTime;
-	/**
-	 * 角色id
-	 */
+	/** 所关联角色的数据库 ID。 */
 	private Long roleId;
-	/**
-	 * 权限id
-	 */
+	/** 所关联权限的数据库 ID。 */
 	private Long permissionId;
 }

@@ -27,6 +27,7 @@ public final class DatabaseCleaner {
 
     /**
      * 暂时关闭外键检查并截断当前 schema 的全部业务表，结束前恢复外键检查。
+     * 调用方须先通过 TestEnvironmentGuard；该底层执行器本身不判定是否允许破坏性清理。
      */
     public void truncateBusinessTables() {
         List<String> tables = jdbcTemplate.queryForList("""

@@ -39,13 +39,21 @@ onMounted(async () => {
     appTimezone.value = timezoneValue;
   }
 });
+
+async function onTimezoneChange(timezone: string | undefined) {
+  if (timezone) await timezoneStore.setTimezone(timezone);
+}
 </script>
 
 <template>
   <SelectItem v-model="appLocale" :items="SUPPORT_LANGUAGES">
     {{ $t('preferences.language') }}
   </SelectItem>
-  <SelectItem v-model="appTimezone" :items="timezoneOptionsRef">
+  <SelectItem
+    v-model="appTimezone"
+    :items="timezoneOptionsRef"
+    @update:model-value="onTimezoneChange"
+  >
     {{ $t('preferences.timezone') }}
   </SelectItem>
   <SwitchItem v-model="appDynamicTitle">

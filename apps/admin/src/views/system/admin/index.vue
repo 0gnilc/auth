@@ -2,7 +2,7 @@
 import type { ChecklistDrawerData } from '../components/checklist-drawer.vue';
 
 import type { VxeTableGridOptions } from '#/adapter/vxe-table';
-import type { AdminApi } from '#/api';
+import type { AdminApi } from '#/api/system';
 
 import { useAccess } from '@vben/access';
 import { Page, useVbenDrawer, VbenButton } from '@vben/common-ui';
@@ -18,12 +18,12 @@ import {
   removeAdmin,
   saveAdminRoles,
   updateAdmin,
-} from '#/api';
+} from '#/api/system';
 import { $t } from '#/locales';
 
 import ChecklistDrawer from '../components/checklist-drawer.vue';
+import Form from './components/form.vue';
 import { useColumns, useGridFormSchema } from './data';
-import Form from './modules/form.vue';
 
 const ADMIN_ROLE_CODE = 'admin';
 
@@ -74,6 +74,7 @@ const [Grid, gridApi] = useVbenVxeGrid<AdminApi.Admin>({
   } as VxeTableGridOptions<AdminApi.Admin>,
 });
 
+/** 按 RBAC userId 识别当前管理员，不能将管理员资料表的 id 与会话用户主键混用。 */
 function isCurrentAdmin(row: AdminApi.Admin) {
   return String(row.userId) === String(userStore.userInfo?.userId ?? '');
 }
@@ -92,11 +93,12 @@ function onRoles(row: AdminApi.Admin) {
       const roles = await getRoleList();
       return {
         options: roles.map((role) => ({
-          description: role.remark,
+          description: role.remark ?? undefined,
           disabled: role.code === ADMIN_ROLE_CODE,
           label: role.name,
           value: role.code,
         })),
+        // admin 是管理员身份的固定角色，回显与提交都保留它，额外角色才由此抽屉编辑。
         selected: [...new Set([ADMIN_ROLE_CODE, ...(row.roleCodes ?? [])])],
       };
     },
@@ -104,9 +106,9 @@ function onRoles(row: AdminApi.Admin) {
       await saveAdminRoles(row.id, [
         ...new Set([ADMIN_ROLE_CODE, ...selected]),
       ]);
-      ElMessage.success($t('page.systemAdmin.messages.rolesSuccess'));
+      ElMessage.success($t('systemAdmin.messages.rolesSuccess'));
     },
-    title: $t('page.systemAdmin.drawer.rolesTitle', { name: row.username }),
+    title: $t('systemAdmin.drawer.rolesTitle', { name: row.username }),
   };
   rolesDrawerApi.setData(data).open();
 }
@@ -115,17 +117,15 @@ async function onStatusChange(status: boolean, row: AdminApi.Admin) {
   if (isCurrentAdmin(row)) return false;
   try {
     await ElMessageBox.confirm(
-      $t('page.systemAdmin.messages.statusConfirm', {
+      $t('systemAdmin.messages.statusConfirm', {
         name: row.username,
-        status: status
-          ? $t('page.rbacCommon.enabled')
-          : $t('page.rbacCommon.disabled'),
+        status: status ? $t('rbacCommon.enabled') : $t('rbacCommon.disabled'),
       }),
-      $t('page.systemAdmin.messages.statusTitle'),
+      $t('systemAdmin.messages.statusTitle'),
       { type: 'warning' },
     );
     await updateAdmin({ id: row.id, status });
-    ElMessage.success($t('page.systemAdmin.messages.statusSuccess'));
+    ElMessage.success($t('systemAdmin.messages.statusSuccess'));
     return true;
   } catch {
     return false;
@@ -134,11 +134,11 @@ async function onStatusChange(status: boolean, row: AdminApi.Admin) {
 
 async function onDelete(row: AdminApi.Admin) {
   if (isCurrentAdmin(row)) {
-    ElMessage.warning($t('page.systemAdmin.messages.currentProtected'));
+    ElMessage.warning($t('systemAdmin.messages.currentProtected'));
     return;
   }
   await removeAdmin(row.id);
-  ElMessage.success($t('page.systemAdmin.messages.removeSuccess'));
+  ElMessage.success($t('systemAdmin.messages.removeSuccess'));
   await gridApi.query();
 }
 
@@ -151,7 +151,7 @@ function refresh() {
   <Page auto-content-height>
     <FormDrawer @success="refresh" />
     <RolesDrawer @success="refresh" />
-    <Grid :table-title="$t('page.systemAdmin.title')">
+    <Grid :table-title="$t('systemAdmin.title')">
       <template #toolbar-tools>
         <VbenButton
           v-access:code="'system:admin:create'"
@@ -159,7 +159,7 @@ function refresh() {
           @click="onCreate"
         >
           <IconifyIcon icon="lucide:plus" class="mr-2 size-4" />
-          {{ $t('page.systemAdmin.actions.create') }}
+          {{ $t('systemAdmin.actions.create') }}
         </VbenButton>
       </template>
 
@@ -191,7 +191,7 @@ function refresh() {
             </template>
             <div class="text-muted-foreground mb-2 text-xs">
               {{
-                $t('page.systemAdmin.table.roleCount', {
+                $t('systemAdmin.table.roleCount', {
                   count: row.roleCodes.length,
                 })
               }}
@@ -215,12 +215,12 @@ function refresh() {
           :actions="[
             {
               auth: 'system:admin:update',
-              text: $t('page.rbacCommon.edit'),
+              text: $t('rbacCommon.edit'),
               onClick: () => onEdit(row),
             },
             {
               auth: 'system:admin:manage-roles',
-              text: $t('page.systemAdmin.actions.roles'),
+              text: $t('systemAdmin.actions.roles'),
               onClick: () => onRoles(row),
             },
           ]"
@@ -229,9 +229,9 @@ function refresh() {
               auth: 'system:admin:remove',
               danger: true,
               disabled: isCurrentAdmin(row),
-              text: $t('page.rbacCommon.remove'),
+              text: $t('rbacCommon.remove'),
               popConfirm: {
-                title: $t('page.systemAdmin.messages.removeConfirm', {
+                title: $t('systemAdmin.messages.removeConfirm', {
                   name: row.username,
                 }),
                 confirm: () => onDelete(row),

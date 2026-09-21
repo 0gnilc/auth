@@ -9,6 +9,25 @@ import type { ComponentPropsMap, ComponentType } from './component';
 import { setupVbenForm, useVbenForm as useForm, z } from '@vben/common-ui';
 import { $t } from '@vben/locales';
 
+interface RequiredNumberRuleOptions {
+  integer?: boolean;
+  max: number;
+  message: string;
+  min: number;
+}
+
+function createRequiredNumberRule({
+  integer = false,
+  max,
+  message,
+  min,
+}: RequiredNumberRuleOptions) {
+  const error = () => message;
+  const numberRule = z.number({ error });
+  const precisionRule = integer ? numberRule.int({ error }) : numberRule;
+  return precisionRule.min(min, { error }).max(max, { error });
+}
+
 async function initSetupVbenForm() {
   setupVbenForm<ComponentType>({
     config: {
@@ -50,7 +69,7 @@ function useVbenForm<
   );
 }
 
-export { initSetupVbenForm, useVbenForm, z };
+export { createRequiredNumberRule, initSetupVbenForm, useVbenForm, z };
 
 export type VbenFormSchema<TValues extends FormValues = FormValues> =
   FormSchema<ComponentType, ComponentPropsMap, TValues>;

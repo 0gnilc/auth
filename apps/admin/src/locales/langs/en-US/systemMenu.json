@@ -1,0 +1,88 @@
+{
+  "title": "Menus",
+  "root": "Root",
+  "filters": {
+    "keyword": "Keyword"
+  },
+  "actions": {
+    "create": "Create menu",
+    "append": "Add child"
+  },
+  "types": {
+    "catalog": "Catalog",
+    "menu": "Menu",
+    "embedded": "Embedded",
+    "link": "Link",
+    "button": "Button"
+  },
+  "table": {
+    "title": "Menu title",
+    "name": "Menu name",
+    "type": "Type",
+    "accessCode": "Button access code",
+    "path": "Path",
+    "status": "Status"
+  },
+  "drawer": {
+    "createTitle": "Create menu",
+    "editTitle": "Edit menu"
+  },
+  "sections": {
+    "routing": "Routing",
+    "badgeAndTabs": "Badge and tabs",
+    "behavior": "Visibility and behavior"
+  },
+  "form": {
+    "type": "Menu type",
+    "typeImmutable": "The type cannot be changed after a successful save",
+    "parent": "Parent menu",
+    "name": "Menu name",
+    "title": "Menu title",
+    "path": "Route path",
+    "component": "Component path",
+    "accessCode": "Button access code",
+    "iframeSrc": "Embedded page URL",
+    "link": "External URL",
+    "status": "Enabled",
+    "order": "Order",
+    "redirect": "Redirect",
+    "activePath": "Active menu path",
+    "icon": "Icon",
+    "query": "Route query (JSON object)",
+    "badge": "Badge content",
+    "badgeType": "Badge type",
+    "badgeVariants": "Badge variant",
+    "affixTabOrder": "Affixed tab order",
+    "maxNumOfOpenTab": "Maximum matching tabs",
+    "affixTab": "Affix tab",
+    "fullPathKey": "Use full path as tab key",
+    "hideChildrenInMenu": "Hide child menus",
+    "hideInBreadcrumb": "Hide in breadcrumb",
+    "hideInMenu": "Hide in menu",
+    "hideInTab": "Hide in tabs",
+    "keepAlive": "Keep page alive",
+    "noBasicLayout": "Skip basic layout",
+    "openInNewWindow": "Open in a new window"
+  },
+  "validation": {
+    "type": "Select a menu type",
+    "parent": "Select a parent menu",
+    "name": "Enter a menu name",
+    "title": "Configure a menu title",
+    "path": "Enter a route path",
+    "component": "Enter a component path",
+    "accessCode": "Enter a button access code",
+    "iframeSrc": "Enter an embedded page URL",
+    "link": "Enter an external URL",
+    "query": "Route query must be a valid JSON object",
+    "url": "Enter a complete http or https URL",
+    "parentType": "The selected parent cannot contain this menu type"
+  },
+  "messages": {
+    "saveSuccess": "Menu saved",
+    "removeConfirm": "Delete {name} and all of its descendants?",
+    "removeTitle": "Delete menu",
+    "removeSuccess": "Menu deleted",
+    "removeImpactConfirm": "Delete {name}? This also deletes {descendants} descendant nodes and affects menu grants for {roles} roles."
+  }
+}

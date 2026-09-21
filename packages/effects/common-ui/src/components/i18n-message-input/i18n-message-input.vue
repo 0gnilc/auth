@@ -197,7 +197,7 @@ function getMessageValue(values: I18nMessageValue[], locale: string) {
   return values.find((item) => item.locale === locale)?.value ?? '';
 }
 
-/** 更新草稿中的 Message Key。 */
+/** 更新 Key 时立即撤销旧查询资格和已查找状态；保存前必须重新查找，避免覆盖未核对的资源。 */
 function setDraftKey(value: string) {
   ++loadSequence;
   loadError.value = false;

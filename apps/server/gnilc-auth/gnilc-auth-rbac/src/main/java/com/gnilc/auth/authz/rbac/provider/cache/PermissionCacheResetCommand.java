@@ -7,19 +7,15 @@ import java.util.Objects;
 
 /**
  * 标准化权限缓存重置命令。
- * <p>
- * Spring 事件和 Redis 消息都传递该命令，避免在多个节点重复推导业务事件影响范围。
+ *  <p>
+ *  Spring 事件和 Redis 消息都传递该命令，避免在多个节点重复推导业务事件影响范围。
  */
 @Setter
 @Getter
 public class PermissionCacheResetCommand {
-    /**
-     * 需要重置的缓存目标。
-     */
+    /** 需要重置的缓存目标。 */
     private Target target;
-    /**
-     * 用户权限缓存目标对应的用户 ID，其他目标不需要该字段。
-     */
+    /** 用户权限缓存目标对应的用户 ID，其他目标不需要该字段。 */
     private Long userId;
 
     public PermissionCacheResetCommand() {
@@ -66,9 +62,7 @@ public class PermissionCacheResetCommand {
         return new PermissionCacheResetCommand(Target.ALL, null);
     }
 
-    /**
-     * 权限缓存重置目标。
-     */
+    /** 权限缓存重置目标。 */
     public enum Target {
         /** 目标权限缓存。 */
         TARGET_PERMISSIONS,

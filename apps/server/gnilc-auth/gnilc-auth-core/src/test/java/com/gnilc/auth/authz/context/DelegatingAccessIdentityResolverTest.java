@@ -7,6 +7,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/** 验证访问身份解析按顺序取首个匹配处理器，没有匹配时使用明确的回退规则。 */
 class DelegatingAccessIdentityResolverTest {
     @Test
     void usesFirstMatchThenFallback() {

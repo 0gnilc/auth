@@ -4,8 +4,11 @@ import type { AdminApi } from '#/api/system/admin';
 
 import { baseRequestClient, requestClient } from '#/api/request';
 
+/** 管理员独立会话的访问及刷新令牌。 */
 interface AdminSession {
+  /** 当前身份会话的访问令牌。 */
   accessToken: string;
+  /** 当前身份会话的刷新令牌，用于刷新或撤销本次会话。 */
   refreshToken: string;
 }
 
@@ -40,9 +43,7 @@ export async function getAdminUserInfo() {
   return requestClient.get<AdminApi.Admin>('/sys/admin/user-info');
 }
 
-export async function updateProfile(
-  profile: Pick<AdminApi.Admin, 'avatar' | 'desc' | 'nickname'>,
-) {
+export async function updateProfile(profile: AdminApi.ProfileInput) {
   return requestClient.post<null>('/sys/admin/user-info/update', profile);
 }
 

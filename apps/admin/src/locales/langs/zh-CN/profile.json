@@ -1,0 +1,28 @@
+{
+  "title": "个人中心",
+  "tabs": {
+    "basic": "基本设置",
+    "password": "修改密码"
+  },
+  "form": {
+    "nickname": "昵称",
+    "nicknamePlaceholder": "请输入昵称",
+    "avatar": "头像 URL",
+    "avatarPlaceholder": "请输入头像 URL，留空可清除",
+    "description": "个人简介",
+    "oldPassword": "旧密码",
+    "oldPasswordPlaceholder": "请输入旧密码",
+    "newPassword": "新密码",
+    "newPasswordPlaceholder": "请输入新密码",
+    "confirmPassword": "确认密码",
+    "confirmPasswordPlaceholder": "请再次输入新密码",
+    "passwordMinLength": "密码至少 8 个字符",
+    "passwordMaxLength": "密码最多 32 个字符",
+    "passwordComplexity": "密码需包含大小写字母、数字和特殊字符，且不能含空白",
+    "passwordMismatch": "两次输入的密码不一致"
+  },
+  "messages": {
+    "basicUpdated": "基本资料已更新",
+    "passwordUpdated": "密码已修改，请重新登录"
+  }
+}

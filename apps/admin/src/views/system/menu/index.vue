@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { MenuFormDrawerData } from './modules/form.vue';
+import type { MenuFormDrawerData } from './components/form.vue';
 
 import type { VxeTableGridOptions } from '#/adapter/vxe-table';
-import type { MenuApi } from '#/api';
+import type { MenuApi } from '#/api/system';
 
 import { ref } from 'vue';
 
@@ -12,11 +12,21 @@ import { IconifyIcon } from '@vben/icons';
 import { ElMessage, ElMessageBox, ElTag } from 'element-plus';
 
 import { useVbenVxeGrid, VbenTableAction } from '#/adapter/vxe-table';
-import { getMenuTree, getRoleList, getRoleMenuIds, removeMenu } from '#/api';
+import {
+  getMenuTree,
+  getRoleList,
+  getRoleMenuIds,
+  removeMenu,
+} from '#/api/system';
 import { $t } from '#/locales';
 
-import { menuTypeTagTypes, useColumns, useGridFormSchema } from './data';
-import Form from './modules/form.vue';
+import Form from './components/form.vue';
+import {
+  menuTypeMessageKeys,
+  menuTypeTagTypes,
+  useColumns,
+  useGridFormSchema,
+} from './data';
 
 const menuTree = ref<MenuApi.Menu[]>([]);
 
@@ -79,7 +89,7 @@ function openForm(data: Omit<MenuFormDrawerData, 'menus'>) {
 }
 
 function onCreate(parentId = '0') {
-  openForm({ parentId: String(parentId) });
+  openForm({ parentId });
 }
 
 function onEdit(row: MenuApi.Menu) {
@@ -97,6 +107,7 @@ function hasBuiltInDescendant(row: MenuApi.Menu) {
   return descendants(row).some((item) => item.builtIn);
 }
 
+/** 删除前提示整个子树及关联角色影响；此处查询只提供确认信息，实际删除约束仍由 Server 执行。 */
 async function onDelete(row: MenuApi.Menu) {
   if (row.builtIn || hasBuiltInDescendant(row)) return;
   const subtreeIds = new Set([row.id, ...descendants(row).map(({ id }) => id)]);
@@ -112,19 +123,19 @@ async function onDelete(row: MenuApi.Menu) {
   );
   try {
     await ElMessageBox.confirm(
-      $t('page.systemMenu.messages.removeImpactConfirm', {
+      $t('systemMenu.messages.removeImpactConfirm', {
         descendants: subtreeIds.size - 1,
         name: $t(row.title),
         roles: affectedRoles.length,
       }),
-      $t('page.systemMenu.messages.removeTitle'),
+      $t('systemMenu.messages.removeTitle'),
       { type: 'warning' },
     );
   } catch {
     return;
   }
   await removeMenu(row.id);
-  ElMessage.success($t('page.systemMenu.messages.removeSuccess'));
+  ElMessage.success($t('systemMenu.messages.removeSuccess'));
   await gridApi.query();
 }
 
@@ -140,7 +151,7 @@ function refresh() {
 <template>
   <Page auto-content-height>
     <FormDrawer @success="refresh" />
-    <Grid :table-title="$t('page.systemMenu.title')">
+    <Grid :table-title="$t('systemMenu.title')">
       <template #toolbar-tools>
         <VbenButton
           v-access:code="'system:menu:create'"
@@ -148,7 +159,7 @@ function refresh() {
           @click="onCreate()"
         >
           <IconifyIcon icon="lucide:plus" class="mr-2 size-4" />
-          {{ $t('page.systemMenu.actions.create') }}
+          {{ $t('systemMenu.actions.create') }}
         </VbenButton>
       </template>
 
@@ -168,7 +179,7 @@ function refresh() {
 
       <template #type="{ row }">
         <ElTag :type="menuTypeTagTypes[row.type]" effect="plain">
-          {{ $t(`page.systemMenu.types.${row.type}`) }}
+          {{ $t(menuTypeMessageKeys[row.type]) }}
         </ElTag>
       </template>
 
@@ -179,9 +190,7 @@ function refresh() {
       <template #status="{ row }">
         <ElTag :type="row.status ? 'success' : 'info'" effect="plain">
           {{
-            row.status
-              ? $t('page.rbacCommon.enabled')
-              : $t('page.rbacCommon.disabled')
+            row.status ? $t('rbacCommon.enabled') : $t('rbacCommon.disabled')
           }}
         </ElTag>
       </template>
@@ -192,15 +201,15 @@ function refresh() {
             {
               auth: 'system:menu:create',
               disabled: !canAppend(row),
-              text: $t('page.systemMenu.actions.append'),
+              text: $t('systemMenu.actions.append'),
               onClick: () => onCreate(row.id),
             },
             {
               auth: 'system:menu:update',
               disabled: row.builtIn,
-              text: $t('page.rbacCommon.edit'),
+              text: $t('rbacCommon.edit'),
               tooltip: row.builtIn
-                ? $t('page.rbacCommon.builtInProtected')
+                ? $t('rbacCommon.builtInProtected')
                 : undefined,
               onClick: () => onEdit(row),
             },
@@ -210,7 +219,7 @@ function refresh() {
               auth: 'system:menu:remove',
               danger: true,
               disabled: row.builtIn || hasBuiltInDescendant(row),
-              text: $t('page.rbacCommon.remove'),
+              text: $t('rbacCommon.remove'),
               onClick: () => onDelete(row),
             },
           ]"

@@ -12,6 +12,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/** 验证肯定式策略在任一权限匹配时放行，目标没有权限要求时也放行。 */
 class AffirmativeAccessDecisionTest {
     private final AccessContext context =
             new AccessContext(new AccessIdentity("9", null), new AccessTarget("/orders", "GET"));

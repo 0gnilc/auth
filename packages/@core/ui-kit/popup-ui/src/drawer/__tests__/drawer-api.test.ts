@@ -66,6 +66,20 @@ describe('drawerApi', () => {
     expect(onBeforeClose).toHaveBeenCalled();
   });
 
+  it('抽屉已关闭时不重复执行关闭确认钩子', async () => {
+    // 先验证从未打开时关闭，再验证成功关闭后的重复关闭；两种情况都不应再次询问草稿。
+    const onBeforeClose = vi.fn(() => true);
+    const drawerApiWithHook = new DrawerApi({ onBeforeClose });
+
+    await drawerApiWithHook.close();
+    expect(onBeforeClose).not.toHaveBeenCalled();
+
+    drawerApiWithHook.open();
+    await drawerApiWithHook.close();
+    await drawerApiWithHook.close();
+    expect(onBeforeClose).toHaveBeenCalledOnce();
+  });
+
   it('should trigger onCancel and keep drawer open if onCancel is provided', () => {
     const onCancel = vi.fn();
     const drawerApiWithHook = new DrawerApi({ onCancel });

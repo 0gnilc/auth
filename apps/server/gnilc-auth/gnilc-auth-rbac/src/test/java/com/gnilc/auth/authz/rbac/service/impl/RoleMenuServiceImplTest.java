@@ -41,6 +41,7 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+/** 验证菜单选择先形成合法祖先闭包，再替换绑定；无效或受保护选择不能改写已有授权。 */
 @ExtendWith(MockitoExtension.class)
 class RoleMenuServiceImplTest {
     @Mock
@@ -122,6 +123,21 @@ class RoleMenuServiceImplTest {
                 .hasMessage("Built-in role permissions and menus cannot be modified.");
         verify(roleMenus, never()).lambdaQuery();
         verify(roleMenus, never()).saveBatch(anyCollection());
+    }
+
+    @Test
+    void saveRoleMenusDistinguishesANullSelectionBeforeReadingBindings() {
+        RoleMenuDto dto = assignment(
+                7L, java.util.Collections.singletonList(null));
+        when(roleService.getById(7L)).thenReturn(role(7L, false));
+
+        assertThatThrownBy(() -> roleMenus.saveRoleMenus(dto))
+                .isInstanceOf(InvalidArgumentException.class)
+                .hasMessage("A menu must be selected.");
+
+        verify(roleMenus, never()).lambdaQuery();
+        verify(roleMenus, never()).saveBatch(anyCollection());
+        verify(eventPublisher, never()).publishEvent(any());
     }
 
     private RoleMenuDto assignment(Long roleId, List<Long> menuIds) {

@@ -3,7 +3,7 @@ import { shallowMount } from '@vue/test-utils';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import AdminForm from '../modules/form.vue';
+import AdminForm from '../components/form.vue';
 
 const runtime = vi.hoisted(() => ({
   api: {
@@ -56,7 +56,7 @@ vi.mock('#/adapter/form', async () => {
   };
 });
 
-vi.mock('#/api', () => runtime.api);
+vi.mock('#/api/system', () => runtime.api);
 vi.mock('#/locales', () => ({ $t: (key: string) => key }));
 vi.mock('element-plus', () => ({
   ElMessage: runtime.messages,
@@ -108,6 +108,8 @@ describe('administrator form workflow', () => {
     expect(runtime.api.createAdmin).toHaveBeenCalledTimes(2);
     expect(runtime.api.createAdmin).toHaveBeenLastCalledWith(
       expect.objectContaining({
+        avatar: null,
+        desc: null,
         nickname: 'Retry User',
         password: 'Strong#123',
         username: 'retry-user',

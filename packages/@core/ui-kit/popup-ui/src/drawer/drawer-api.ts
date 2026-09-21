@@ -85,6 +85,11 @@ export class DrawerApi {
    * @description 关闭抽屉时会调用 onBeforeClose 钩子函数，如果 onBeforeClose 返回 false，则不关闭弹窗
    */
   async close() {
+    // 关闭后的重复调用不再触发草稿确认钩子，避免成功回调与刷新同时关闭时重复询问。
+    if (!this.state.isOpen) {
+      return;
+    }
+
     // 通过 onBeforeClose 钩子函数来判断是否允许关闭弹窗
     // 如果 onBeforeClose 返回 false，则不关闭弹窗
     const allowClose = (await this.api.onBeforeClose?.()) ?? true;
@@ -102,7 +107,7 @@ export class DrawerApi {
   }
 
   /**
-   * 锁定抽屉状态（用于提交过程中的等待状态）
+   * 锁定当前抽屉的交互状态；不提供请求幂等，也不阻止调用方直接再次执行提交方法。
    * @description 锁定状态将禁用默认的取消按钮，使用spinner覆盖抽屉内容，隐藏关闭按钮，阻止手动关闭弹窗，将默认的提交按钮标记为loading状态
    * @param isLocked 是否锁定
    */

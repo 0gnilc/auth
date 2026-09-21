@@ -15,7 +15,7 @@ import {
   getMenuAccessCodes,
   login as loginAdmin,
   logout as logoutAdmin,
-} from '#/api';
+} from '#/api/core';
 import { $t } from '#/locales';
 
 export const useAuthStore = defineStore('auth', () => {
@@ -25,11 +25,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   const loginLoading = ref(false);
 
-  /**
-   * 异步处理登录操作
-   * Asynchronously handle the login process
-   * @param params 登录表单数据
-   */
+  /** 建立令牌、身份和菜单访问码；初始化身份失败时清理新会话，避免保留不完整权限状态。 */
   async function login(
     params: Recordable<any>,
     onSuccess?: () => Promise<void> | void,
@@ -92,7 +88,7 @@ export const useAuthStore = defineStore('auth', () => {
         await logoutAdmin(accessStore.refreshToken);
       }
     } catch {
-      // 不做任何处理
+      // 远端注销失败仍要清理本地身份、菜单和动态消息，不能让旧会话继续留在页面。
     }
     await resetSessionState();
 
@@ -107,6 +103,7 @@ export const useAuthStore = defineStore('auth', () => {
     });
   }
 
+  /** 身份与菜单访问码都加载成功后再发布到 Store，避免二者属于不同的初始化阶段。 */
   async function getUserInfo() {
     const [userInfo, accessCodes] = await Promise.all([
       getAdminUserInfo(),
@@ -122,6 +119,7 @@ export const useAuthStore = defineStore('auth', () => {
     await router.replace(LOGIN_PATH);
   }
 
+  /** 同时清理会话派生状态和动态消息快照，防止下一次登录沿用上一会话内容。 */
   async function resetSessionState() {
     resetAllStores();
     accessStore.setLoginExpired(false);

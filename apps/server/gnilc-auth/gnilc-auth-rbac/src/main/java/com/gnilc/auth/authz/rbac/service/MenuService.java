@@ -9,6 +9,7 @@ import com.gnilc.auth.authz.rbac.entity.vo.MenuVo;
 import java.util.List;
 import java.util.Set;
 
+/** 管理菜单层级、授权祖先闭包和当前身份可达的导航树。 */
 public interface MenuService extends IService<MenuBo> {
 
     List<MenuVo> getMenuTree();

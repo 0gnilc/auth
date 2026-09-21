@@ -710,6 +710,7 @@ describe('useVbenForm integration', () => {
     expect(wrapper.text()).not.toContain('Name is required');
 
     await input.trigger('blur');
+    // blur 校验异步发布错误，等待可观察结果，而非假定一次微任务清空就已完成。
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('Name is required');
     });
@@ -818,6 +819,7 @@ describe('useVbenForm integration', () => {
     await formApi.setFieldValue('name', ' raw ');
     await wrapper.get('form').trigger('submit');
 
+    // DOM 提交还需经过异步表单校验，回调真正发生后再检查事件参数。
     await vi.waitFor(() => {
       expect(onSubmit).toHaveBeenCalledOnce();
     });

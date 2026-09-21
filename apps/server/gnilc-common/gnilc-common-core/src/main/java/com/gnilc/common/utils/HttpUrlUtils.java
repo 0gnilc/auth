@@ -13,6 +13,7 @@ public final class HttpUrlUtils {
 
     /**
      * 判断字符串是否为包含主机名的完整 HTTP 或 HTTPS URL。
+     * 只检查语法，不发起网络请求，也不判定目标是否属于业务允许访问的域名或网络。
      *
      * @param value 待校验的字符串
      * @return URL 协议、主机和语法均有效时返回 {@code true}

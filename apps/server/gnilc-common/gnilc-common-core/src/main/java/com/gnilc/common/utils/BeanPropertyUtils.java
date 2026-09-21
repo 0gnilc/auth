@@ -20,6 +20,7 @@ public final class BeanPropertyUtils {
 
     /**
      * 将源对象中的非 {@code null} 属性复制到目标对象。
+     * 适用于 null 表示“不修改”的局部更新；需要清空字段的完整更新不能借此表达删除。
      */
     public static void copyNonNullProperties(Object source, Object target) {
         BeanWrapper src = new BeanWrapperImpl(source);
@@ -32,6 +33,7 @@ public final class BeanPropertyUtils {
 
     /**
      * 去除对象中可读写字符串属性的首尾空白，并将空白字符串转换为 {@code null}。
+     * 该操作会原地改变业务值，仅可用于明确允许这种规范化的调用场景。
      *
      * @param target             待修改的对象
      * @param excludedProperties 不参与处理的属性名

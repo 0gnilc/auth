@@ -13,25 +13,33 @@ import {
   ElTag,
 } from 'element-plus';
 
+import { confirmDiscardChanges } from '#/adapter/confirm-discard-changes';
 import { $t } from '#/locales';
 
-import { confirmDrawerClose } from './dirty';
-
-/** 多选清单中的单个候选项。 */
+/** 角色、权限等授权列表中的可勾选选项。 */
 export interface ChecklistOption {
+  /** 可选的授权资源说明。 */
   description?: string;
+  /** 该选项是否不能由当前操作修改；省略时可修改。 */
   disabled?: boolean;
+  /** 授权资源显示名称。 */
   label: string;
+  /** 授权资源标识，由具体授权操作决定其为 ID 或编码。 */
   value: string;
 }
 
-/** 打开清单 Drawer 时由业务页面传入的加载和保存配置。 */
+/** 授权勾选抽屉的查询和保存契约。 */
 export interface ChecklistDrawerData {
+  /** 载入可选授权资源及当前已选标识。 */
   load: () => Promise<{
+    /** 可供当前操作勾选的授权资源。 */
     options: ChecklistOption[];
+    /** 当前已授予的资源标识列表。 */
     selected: string[];
   }>;
+  /** 提交当前全部已选资源标识并保存授权。 */
   save: (selected: string[]) => Promise<void>;
+  /** 已本地化的授权抽屉标题。 */
   title: string;
 }
 
@@ -69,7 +77,7 @@ const [Drawer, drawerApi] = useVbenDrawer({
   async onBeforeClose() {
     return (
       saved.value ||
-      (await confirmDrawerClose(
+      (await confirmDiscardChanges(
         !isEqual(normalized(selected.value), initialSelected.value),
       ))
     );
@@ -78,6 +86,7 @@ const [Drawer, drawerApi] = useVbenDrawer({
     if (!payload.value) return;
     drawerApi.lock();
     try {
+      // 保存的是完整授权集合，搜索仅过滤显示，不能把当前搜索结果误当成全部授权。
       await payload.value.save(normalized(selected.value));
       initialSelected.value = normalized(selected.value);
       saved.value = true;
@@ -122,7 +131,7 @@ function remove(option: ChecklistOption) {
     <section class="shrink-0 border-b border-border pb-4">
       <div class="mb-3 flex items-center justify-between gap-3">
         <h3 class="text-sm font-medium">
-          {{ $t('page.rbacCommon.selected') }}
+          {{ $t('rbacCommon.selected') }}
         </h3>
         <span class="text-xs text-muted-foreground">
           {{ selected.length }} / {{ options.length }}
@@ -141,7 +150,7 @@ function remove(option: ChecklistOption) {
         </ElTag>
       </div>
       <span v-else class="text-sm text-muted-foreground">
-        {{ $t('page.rbacCommon.noneSelected') }}
+        {{ $t('rbacCommon.noneSelected') }}
       </span>
     </section>
 
@@ -150,7 +159,7 @@ function remove(option: ChecklistOption) {
       <ElInput
         v-model="filter"
         clearable
-        :placeholder="$t('page.rbacCommon.filterPlaceholder')"
+        :placeholder="$t('rbacCommon.filterPlaceholder')"
         class="mb-4 shrink-0"
       >
         <template #prefix>
@@ -190,7 +199,7 @@ function remove(option: ChecklistOption) {
         </ElCheckboxGroup>
         <ElEmpty
           v-else
-          :description="$t('page.rbacCommon.noMatches')"
+          :description="$t('rbacCommon.noMatches')"
           :image-size="72"
         />
       </div>

@@ -18,6 +18,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+/** 验证允许请求继续过滤链，拒绝请求仅交给拒绝入口处理且不执行业务链。 */
 class ServletAuthorizationFilterTest {
     private final AccessContext accessContext =
             new AccessContext(new AccessIdentity("3", null), new AccessTarget("/secure", "GET"));

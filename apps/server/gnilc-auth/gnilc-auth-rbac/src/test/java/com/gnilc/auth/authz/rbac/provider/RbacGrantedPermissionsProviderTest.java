@@ -18,6 +18,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+/** 验证数值用户身份合并用户和公开权限，匿名或非数值身份只获取公开权限。 */
 class RbacGrantedPermissionsProviderTest {
     private final PermissionCacheService cacheService = mock(PermissionCacheService.class);
     private final RbacGrantedPermissionsProvider provider = new RbacGrantedPermissionsProvider();

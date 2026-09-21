@@ -1,11 +1,15 @@
 import type { RequestClient } from './request-client';
-import type { MakeErrorMessageFn, ResponseInterceptorConfig } from './types';
+import type {
+  ErrorMessageInterceptorOptions,
+  RequestErrorType,
+  ResponseInterceptorConfig,
+} from './types';
 
-import { $t } from '@vben/locales';
-import { isFunction } from '@vben/utils';
+import { isFunction } from '@vben/utils/shared';
 
 import axios from 'axios';
 
+/** 按调用方选择返回原响应、响应体或业务数据；HTTP 成功与业务码成功必须分别判断。 */
 export const defaultResponseInterceptor = ({
   codeField = 'code',
   dataField = 'data',
@@ -44,6 +48,7 @@ export const defaultResponseInterceptor = ({
   };
 };
 
+/** 仅对 HTTP 401 协调令牌刷新并重放请求；刷新中的请求共享队列，重放仍为 401 时退出而不无限刷新。 */
 export const authenticateResponseInterceptor = ({
   client,
   doReAuthenticate,
@@ -70,7 +75,7 @@ export const authenticateResponseInterceptor = ({
         await doReAuthenticate();
         throw error;
       }
-      // 如果正在刷新 token，则将请求加入队列，等待刷新完成
+      // 等待者也必须标记为已重放，避免各自再次收到 401 时形成刷新循环。
       if (client.isRefreshing) {
         config.__isRetryRequest = true;
         return new Promise((resolve, reject) => {
@@ -97,7 +102,7 @@ export const authenticateResponseInterceptor = ({
           ...error.config,
         });
 
-        // 处理队列中的请求
+        // 刷新完成即可释放同批等待者，不等待首个业务重放完成；后续新的 401 可以开始下一轮刷新。
         const queue = client.refreshTokenQueue.splice(0);
         queue.forEach((queued) => queued.resolve(newToken));
 
@@ -117,8 +122,9 @@ export const authenticateResponseInterceptor = ({
   };
 };
 
+/** 集中展示请求错误；取消或主动关闭提示只抑制反馈，仍保留 Promise 拒绝而不转成业务成功。 */
 export const errorMessageResponseInterceptor = (
-  makeErrorMessage?: MakeErrorMessageFn,
+  options: ErrorMessageInterceptorOptions,
 ): ResponseInterceptorConfig => {
   return {
     rejected: (error: any) => {
@@ -126,47 +132,44 @@ export const errorMessageResponseInterceptor = (
         return Promise.reject(error);
       }
 
-      const err: string = error?.toString?.() ?? '';
-      let errMsg = '';
-      if (err?.includes('Network Error')) {
-        errMsg = $t('ui.fallback.http.networkError');
-      } else if (error?.message?.includes?.('timeout')) {
-        errMsg = $t('ui.fallback.http.requestTimeout');
-      }
-      if (errMsg) {
-        makeErrorMessage?.(errMsg, error);
+      if (error?.config?.showErrorMessage === false) {
         return Promise.reject(error);
       }
 
-      let errorMessage: string;
-      const status = error?.response?.status;
-
-      switch (status) {
-        case 400: {
-          errorMessage = $t('ui.fallback.http.badRequest');
-          break;
-        }
-        case 401: {
-          errorMessage = $t('ui.fallback.http.unauthorized');
-          break;
-        }
-        case 403: {
-          errorMessage = $t('ui.fallback.http.forbidden');
-          break;
-        }
-        case 404: {
-          errorMessage = $t('ui.fallback.http.notFound');
-          break;
-        }
-        case 408: {
-          errorMessage = $t('ui.fallback.http.requestTimeout');
-          break;
-        }
-        default: {
-          errorMessage = $t('ui.fallback.http.internalServerError');
+      const err: string = error?.toString?.() ?? '';
+      let type: RequestErrorType;
+      if (err?.includes('Network Error')) {
+        type = 'network-error';
+      } else if (error?.message?.includes?.('timeout')) {
+        type = 'request-timeout';
+      } else {
+        switch (error?.response?.status) {
+          case 400: {
+            type = 'bad-request';
+            break;
+          }
+          case 401: {
+            type = 'unauthorized';
+            break;
+          }
+          case 403: {
+            type = 'forbidden';
+            break;
+          }
+          case 404: {
+            type = 'not-found';
+            break;
+          }
+          case 408: {
+            type = 'request-timeout';
+            break;
+          }
+          default: {
+            type = 'internal-server-error';
+          }
         }
       }
-      makeErrorMessage?.(errorMessage, error);
+      options.onError(options.resolveMessage(type, error), error);
       return Promise.reject(error);
     },
   };

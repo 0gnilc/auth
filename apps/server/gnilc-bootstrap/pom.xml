@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>com.gnilc.auth</groupId>
+        <groupId>com.gnilc</groupId>
         <artifactId>gnilc-auth-parent</artifactId>
         <version>1.0.0</version>
     </parent>
@@ -13,9 +13,15 @@
 
     <dependencies>
         <dependency>
-            <groupId>com.gnilc.auth</groupId>
-            <artifactId>gnilc-system</artifactId>
+            <groupId>com.gnilc</groupId>
+            <artifactId>gnilc-core</artifactId>
             <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
         </dependency>
 
         <dependency>
@@ -25,7 +31,7 @@
         </dependency>
 
         <dependency>
-            <groupId>com.gnilc.auth</groupId>
+            <groupId>com.gnilc</groupId>
             <artifactId>gnilc-test-support</artifactId>
             <scope>test</scope>
         </dependency>
@@ -55,6 +61,17 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <mainClass>com.gnilc.bootstrap.AuthBootApplication</mainClass>
+                    <classifier>exec</classifier>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>repackage</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

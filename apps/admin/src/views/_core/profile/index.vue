@@ -15,11 +15,11 @@ const tabsValue = ref<string>('basic');
 
 const tabs = computed(() => [
   {
-    label: $t('page.profile.tabs.basic'),
+    label: $t('profile.tabs.basic'),
     value: 'basic',
   },
   {
-    label: $t('page.profile.tabs.password'),
+    label: $t('profile.tabs.password'),
     value: 'password',
   },
 ]);
@@ -27,7 +27,7 @@ const tabs = computed(() => [
 <template>
   <Profile
     v-model:model-value="tabsValue"
-    :title="$t('page.profile.title')"
+    :title="$t('profile.title')"
     :user-info="userStore.userInfo"
     :tabs="tabs"
   >

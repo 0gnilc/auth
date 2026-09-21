@@ -1,3 +1,5 @@
+import type { PreferencesExtension } from '../src/types';
+
 import { nextTick, watch } from 'vue';
 
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -289,6 +291,11 @@ describe('preferences', () => {
   });
 
   it('initializes custom preferences extension with default values', async () => {
+    interface WorkbenchPreferences {
+      enableWorkbench: boolean;
+      tenantMode: string;
+    }
+
     const extension = {
       fields: [
         {
@@ -310,7 +317,7 @@ describe('preferences', () => {
       ],
       tabLabel: '扩展',
       title: '业务偏好',
-    } as const;
+    } satisfies PreferencesExtension<WorkbenchPreferences>;
 
     await preferenceManager.initPreferences({
       extension,
@@ -325,6 +332,10 @@ describe('preferences', () => {
   });
 
   it('does not expose mutable custom preference baselines or extension schema', async () => {
+    interface ReadonlyPreferences {
+      pageSize: number;
+    }
+
     const extension = {
       fields: [
         {
@@ -341,7 +352,7 @@ describe('preferences', () => {
       ],
       tabLabel: '扩展',
       title: '业务偏好',
-    } as const;
+    } satisfies PreferencesExtension<ReadonlyPreferences>;
 
     await preferenceManager.initPreferences({
       extension,

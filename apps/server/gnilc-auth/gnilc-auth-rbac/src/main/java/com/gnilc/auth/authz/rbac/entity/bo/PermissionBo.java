@@ -8,64 +8,38 @@ import java.time.Instant;
 
 import lombok.Data;
 
-/**
- * 权限
- *
- * @author kyhns7
- */
+/** 访问目标权限的持久化记录，公开访问属性与角色授予分别管理。 */
 @Data
 @TableName("az_permission")
 public class PermissionBo implements Serializable {
     @Serial
     private static final long serialVersionUID = 1L;
 
-    /**
-     * id
-     */
+    /** 记录的数据库主键。 */
     @TableId(type = IdType.AUTO)
     private Long id;
-    /**
-     * 是否删除,0未删除、1已删除
-     */
+    /** 逻辑删除标记：0 表示有效，1 表示已删除。 */
     private Integer del;
-    /**
-     * 创建时间
-     */
+    /** 记录创建的 UTC 时间点。 */
     @TableField(fill = FieldFill.INSERT)
     private Instant createTime;
-    /**
-     * 修改时间
-     */
+    /** 记录最近更新的 UTC 时间点；尚未记录更新时可为空。 */
     @TableField(fill = FieldFill.UPDATE)
     private Instant updateTime;
-    /**
-     * 权限标识
-     */
+    /** 权限的稳定标识码。 */
     private String code;
-    /**
-     * 权限名称
-     */
+    /** 权限显示名称。 */
     private String name;
-    /**
-     * 访问目标标识
-     */
+    /** 受保护访问目标的标识。 */
     private String targetIdentifier;
-    /**
-     * 访问目标限定符
-     */
+    /** 目标限定符，如 HTTP 方法；为空时不限定变体。 */
     @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String targetQualifier;
-    /**
-     * 描述/备注
-     */
+    /** 可选的管理备注。 */
     @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String remark;
-    /**
-     * 是否公开访问,0否、1是
-     */
+    /** 是否允许无角色授权的公开访问；不授予菜单可见性。 */
     private Boolean publicAccess;
-    /**
-     * 是否系统内置,0否、1是
-     */
+    /** 是否为系统维护的内置资源，决定适用的维护限制。 */
     private Boolean builtIn;
 }

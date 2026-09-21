@@ -35,7 +35,7 @@ async function generateRoutesByFrontend(
  */
 function hasAuthority(route: RouteRecordRaw, access: string[]) {
   const authority = route.meta?.authority;
-  if (!authority) {
+  if (!Array.isArray(authority)) {
     return true;
   }
   const canAccess = access.some((value) => authority.includes(value));

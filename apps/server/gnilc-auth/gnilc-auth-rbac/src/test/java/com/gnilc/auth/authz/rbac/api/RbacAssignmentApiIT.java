@@ -30,6 +30,7 @@ import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
 
+/** 通过角色、菜单和权限绑定入口验证集合替换与去重，非法输入不得破坏原绑定。 */
 @ApiTest
 @Import(RestExceptionHandlingConfiguration.class)
 @ContextConfiguration(

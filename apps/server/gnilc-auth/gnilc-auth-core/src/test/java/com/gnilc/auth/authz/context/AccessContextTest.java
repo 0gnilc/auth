@@ -6,6 +6,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/** 验证访问上下文的环境标识规范化，以及缺少环境时使用约定的未指定值。 */
 class AccessContextTest {
     @Test
     void normalizesEnvironmentAndDefaultsToUnspecified() {

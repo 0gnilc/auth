@@ -7,43 +7,27 @@ import java.io.Serializable;
 import java.time.Instant;
 import lombok.Data;
 
-/**
- * 用户关联角色(多对多)
- * 
- * @author kyhns7
- */
+/** 一条 RBAC 用户与角色绑定的持久化记录。 */
 @Data
 @TableName("az_user_role")
 public class UserRoleBo implements Serializable {
 	@Serial
 	private static final long serialVersionUID = 1L;
 
-	/**
-	 * id
-	 */
+	/** 记录的数据库主键。 */
 	@TableId(type = IdType.AUTO)
 	private Long id;
-	/**
-	 * 是否删除
-	 */
+	/** 逻辑删除标记：0 表示有效，1 表示已删除。 */
 	private Integer del;
-	/**
-	 * 创建时间
-	 */
+	/** 记录创建的 UTC 时间点。 */
 	@TableField(fill = FieldFill.INSERT)
 	private Instant createTime;
-	/**
-	 * 修改时间
-	 */
+	/** 记录最近更新的 UTC 时间点；尚未记录更新时可为空。 */
 	@TableField(fill = FieldFill.UPDATE)
 	private Instant updateTime;
-	/**
-	 * 用户id
-	 */
+	/** 所关联 RBAC 用户的数据库 ID。 */
 	private Long userId;
-	/**
-	 * 角色id
-	 */
+	/** 所关联角色的数据库 ID。 */
 	private Long roleId;
 
 }
